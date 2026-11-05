@@ -1,0 +1,17 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "NSFaceIDUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用面容 ID 解锁你的 Aegis 保险库。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

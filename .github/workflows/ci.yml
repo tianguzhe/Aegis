@@ -1,0 +1,35 @@
+name: Build and test
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test core and localizations
+        run: bash Scripts/ci-annotate.sh Test bash Scripts/test.sh
+      - name: Build macOS
+        run: bash Scripts/ci-annotate.sh macOS bash Scripts/build.sh macos Debug
+      - name: Build iOS Simulator
+        run: bash Scripts/ci-annotate.sh iOS bash Scripts/build.sh ios-simulator Debug
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aegis-build-diagnostics
+          path: |
+            .build/artifacts.noindex/logs/*
+            .build/artifacts.noindex/xcode/*/Logs/Test/*.xcresult
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

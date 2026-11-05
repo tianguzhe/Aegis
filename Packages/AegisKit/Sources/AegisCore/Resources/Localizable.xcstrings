@@ -1,0 +1,2558 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "action.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加记录"
+          }
+        }
+      }
+    },
+    "action.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "action.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
+    "action.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续"
+          }
+        }
+      }
+    },
+    "action.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "action.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        }
+      }
+    },
+    "action.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建保险库"
+          }
+        }
+      }
+    },
+    "action.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "action.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "action.favorite": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏"
+          }
+        }
+      }
+    },
+    "action.hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏"
+          }
+        }
+      }
+    },
+    "action.lock": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "锁定保险库"
+          }
+        }
+      }
+    },
+    "action.restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复"
+          }
+        }
+      }
+    },
+    "action.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
+    "action.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "action.search": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索保险库"
+          }
+        }
+      }
+    },
+    "action.settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置"
+          }
+        }
+      }
+    },
+    "action.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示"
+          }
+        }
+      }
+    },
+    "action.trash": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移至回收站"
+          }
+        }
+      }
+    },
+    "action.unfavorite": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消收藏"
+          }
+        }
+      }
+    },
+    "action.unlock": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁保险库"
+          }
+        }
+      }
+    },
+    "app.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作未完成"
+          }
+        }
+      }
+    },
+    "app.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在打开保险库…"
+          }
+        }
+      }
+    },
+    "app.securityCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端到端加密 · 本地优先"
+          }
+        }
+      }
+    },
+    "app.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的密码，只属于你。"
+          }
+        }
+      }
+    },
+    "app.tagline": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将秘密，交给神盾。"
+          }
+        }
+      }
+    },
+    "app.vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的保险库"
+          }
+        }
+      }
+    },
+    "autofill.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消填充"
+          }
+        }
+      }
+    },
+    "autofill.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认填充"
+          }
+        }
+      }
+    },
+    "autofill.domainWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请核对当前网站与所选账号的网址，再确认填充。"
+          }
+        }
+      }
+    },
+    "autofill.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有可用的登录信息"
+          }
+        }
+      }
+    },
+    "autofill.emptyDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在 Aegis 中添加登录记录。"
+          }
+        }
+      }
+    },
+    "autofill.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他登录信息"
+          }
+        }
+      }
+    },
+    "autofill.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Aegis 填充"
+          }
+        }
+      }
+    },
+    "autofill.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在 Aegis 中创建或同步保险库。"
+          }
+        }
+      }
+    },
+    "backup.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择加密备份"
+          }
+        }
+      }
+    },
+    "backup.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入前会验证主密码和所有记录的完整性。已有保险库时，只能合并同一保险库的备份。"
+          }
+        }
+      }
+    },
+    "backup.exportName": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aegis 加密备份"
+          }
+        }
+      }
+    },
+    "backup.importAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证并导入"
+          }
+        }
+      }
+    },
+    "backup.importTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复你的保险库"
+          }
+        }
+      }
+    },
+    "backup.password": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份对应的主密码"
+          }
+        }
+      }
+    },
+    "backup.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择备份文件"
+          }
+        }
+      }
+    },
+    "biometric.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 Face ID 或 Touch ID 解锁此设备。生物识别信息变更后需要重新启用。"
+          }
+        }
+      }
+    },
+    "biometric.reason": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁 Aegis 保险库"
+          }
+        }
+      }
+    },
+    "biometric.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生物识别解锁"
+          }
+        }
+      }
+    },
+    "brand.logo": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aegis 神盾标志"
+          }
+        }
+      }
+    },
+    "editor.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑记录"
+          }
+        }
+      }
+    },
+    "editor.generate": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成安全密码"
+          }
+        }
+      }
+    },
+    "editor.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建记录"
+          }
+        }
+      }
+    },
+    "editor.notePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只属于你的重要信息…"
+          }
+        }
+      }
+    },
+    "editor.titlePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "例如：Apple 账号"
+          }
+        }
+      }
+    },
+    "editor.websitePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://example.com"
+          }
+        }
+      }
+    },
+    "error.appGroup": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法访问应用共享容器，请检查 App Group 签名配置。"
+          }
+        }
+      }
+    },
+    "error.damagedData": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据完整性验证失败，已停止读取。"
+          }
+        }
+      }
+    },
+    "error.derivationFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥派生失败，请稍后重试。"
+          }
+        }
+      }
+    },
+    "error.differentVault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现另一个保险库。请先导出本地加密备份，再处理保险库冲突。"
+          }
+        }
+      }
+    },
+    "error.invalidParameters": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库的加密参数不受支持。"
+          }
+        }
+      }
+    },
+    "error.invalidPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码不正确，或保险库数据已损坏。"
+          }
+        }
+      }
+    },
+    "error.invalidRecoveryKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复密钥格式不正确。"
+          }
+        }
+      }
+    },
+    "error.keychain": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法访问系统钥匙串。"
+          }
+        }
+      }
+    },
+    "error.locked": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先解锁保险库。"
+          }
+        }
+      }
+    },
+    "error.oversizedRecord": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单条记录过大，请将内容控制在 256 KB 以内。"
+          }
+        }
+      }
+    },
+    "error.passwordMismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两次输入的主密码不一致。"
+          }
+        }
+      }
+    },
+    "error.randomFailure": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统无法生成安全随机数。"
+          }
+        }
+      }
+    },
+    "error.titleRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请为这条记录填写名称。"
+          }
+        }
+      }
+    },
+    "error.unsupportedFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此保险库需要更新版本的 Aegis。"
+          }
+        }
+      }
+    },
+    "error.weakMasterPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码至少需要 12 个字符，建议使用较长的独特短语。"
+          }
+        }
+      }
+    },
+    "field.cardNumber": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡号"
+          }
+        }
+      }
+    },
+    "field.cardholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "持卡人"
+          }
+        }
+      }
+    },
+    "field.details": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细信息"
+          }
+        }
+      }
+    },
+    "field.expiry": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有效期"
+          }
+        }
+      }
+    },
+    "field.favorite": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入收藏"
+          }
+        }
+      }
+    },
+    "field.kind": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类型"
+          }
+        }
+      }
+    },
+    "field.modified": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后修改"
+          }
+        }
+      }
+    },
+    "field.notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备注"
+          }
+        }
+      }
+    },
+    "field.optional": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选填"
+          }
+        }
+      }
+    },
+    "field.password": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码"
+          }
+        }
+      }
+    },
+    "field.secureNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "笔记内容"
+          }
+        }
+      }
+    },
+    "field.securityCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全码"
+          }
+        }
+      }
+    },
+    "field.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "field.username": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户名 / 邮箱"
+          }
+        }
+      }
+    },
+    "field.website": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网站"
+          }
+        }
+      }
+    },
+    "generator.characters": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个字符"
+          }
+        }
+      }
+    },
+    "generator.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制密码"
+          }
+        }
+      }
+    },
+    "generator.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用设备的安全随机数生成器，每次生成全新密码。"
+          }
+        }
+      }
+    },
+    "generator.digits": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含数字"
+          }
+        }
+      }
+    },
+    "generator.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制后 30 秒自动清理剪贴板。"
+          }
+        }
+      }
+    },
+    "generator.length": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码长度"
+          }
+        }
+      }
+    },
+    "generator.regenerate": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新生成"
+          }
+        }
+      }
+    },
+    "generator.symbols": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含符号"
+          }
+        }
+      }
+    },
+    "generator.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让密码，更难被猜中。"
+          }
+        }
+      }
+    },
+    "generator.uppercase": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含大写字母"
+          }
+        }
+      }
+    },
+    "kind.card": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银行卡"
+          }
+        }
+      }
+    },
+    "kind.login": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录信息"
+          }
+        }
+      }
+    },
+    "kind.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全笔记"
+          }
+        }
+      }
+    },
+    "list.conflict": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存在同步冲突"
+          }
+        }
+      }
+    },
+    "list.conflictDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一台设备同时修改了这条记录。两个版本都已保存，请比较后选择保留的版本。"
+          }
+        }
+      }
+    },
+    "list.count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 条记录"
+          }
+        }
+      }
+    },
+    "list.emptyDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一个账号，剩下的交给 Aegis。"
+          }
+        }
+      }
+    },
+    "list.emptyTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从第一条秘密开始。"
+          }
+        }
+      }
+    },
+    "list.favoritesDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点亮星标，即可快速找到常用记录。"
+          }
+        }
+      }
+    },
+    "list.favoritesEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把常用账号放在手边"
+          }
+        }
+      }
+    },
+    "list.noResults": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的记录"
+          }
+        }
+      }
+    },
+    "list.noResultsDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试试其他名称、账号或网址。"
+          }
+        }
+      }
+    },
+    "list.resolve": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留这个版本"
+          }
+        }
+      }
+    },
+    "list.resolveConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留当前版本？"
+          }
+        }
+      }
+    },
+    "list.resolveMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他冲突版本将归入加密历史，当前版本成为唯一有效版本。"
+          }
+        }
+      }
+    },
+    "list.selectDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一条记录查看详情，或添加新的记录。"
+          }
+        }
+      }
+    },
+    "list.selectTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的秘密，安然在此。"
+          }
+        }
+      }
+    },
+    "list.trashDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除的记录会保留在这里，随时可以恢复。"
+          }
+        }
+      }
+    },
+    "list.trashEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站是空的"
+          }
+        }
+      }
+    },
+    "list.untitled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未命名记录"
+          }
+        }
+      }
+    },
+    "nav.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部记录"
+          }
+        }
+      }
+    },
+    "nav.categories": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分类"
+          }
+        }
+      }
+    },
+    "nav.favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "个人收藏"
+          }
+        }
+      }
+    },
+    "nav.generator": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码生成器"
+          }
+        }
+      }
+    },
+    "nav.library": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库"
+          }
+        }
+      }
+    },
+    "nav.settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偏好设置"
+          }
+        }
+      }
+    },
+    "nav.tools": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工具"
+          }
+        }
+      }
+    },
+    "nav.trash": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站"
+          }
+        }
+      }
+    },
+    "recovery.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制恢复密钥"
+          }
+        }
+      }
+    },
+    "recovery.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忘记主密码时，这份恢复密钥可以解锁保险库。请抄写或保存在独立的安全位置。"
+          }
+        }
+      }
+    },
+    "recovery.enter": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进入保险库"
+          }
+        }
+      }
+    },
+    "recovery.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我已在安全位置保存恢复密钥"
+          }
+        }
+      }
+    },
+    "recovery.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留好最后一把钥匙。"
+          }
+        }
+      }
+    },
+    "recovery.warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任何持有它的人都能解锁保险库。此密钥只在创建时展示一次。"
+          }
+        }
+      }
+    },
+    "settings.about": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关于 Aegis"
+          }
+        }
+      }
+    },
+    "settings.aboutDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "得名于希腊神话中雅典娜的神盾。以原生体验，守护你的数字生活。"
+          }
+        }
+      }
+    },
+    "settings.autofill": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统自动填充"
+          }
+        }
+      }
+    },
+    "settings.autofillDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在系统的密码与自动填充设置中启用 Aegis。扩展需要 App Group 签名配置，首次填充时输入主密码。"
+          }
+        }
+      }
+    },
+    "settings.backup": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加密备份"
+          }
+        }
+      }
+    },
+    "settings.backupDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份包含密文和被包裹的密钥。恢复时需要对应的主密码。"
+          }
+        }
+      }
+    },
+    "settings.clipboardDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 秒后清理本应用复制的内容。"
+          }
+        }
+      }
+    },
+    "settings.clipboardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剪贴板保护"
+          }
+        }
+      }
+    },
+    "settings.encryption": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Argon2id · AES-256-GCM"
+          }
+        }
+      }
+    },
+    "settings.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出加密备份"
+          }
+        }
+      }
+    },
+    "settings.import": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入加密备份"
+          }
+        }
+      }
+    },
+    "settings.language": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言"
+          }
+        }
+      }
+    },
+    "settings.languageValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简体中文"
+          }
+        }
+      }
+    },
+    "settings.lockDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进入后台时锁定；5 分钟无操作后锁定。"
+          }
+        }
+      }
+    },
+    "settings.lockTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动锁定"
+          }
+        }
+      }
+    },
+    "settings.security": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全"
+          }
+        }
+      }
+    },
+    "settings.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 0.1.0"
+          }
+        }
+      }
+    },
+    "sync.accountChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 账号已变更"
+          }
+        }
+      }
+    },
+    "sync.accountChangedDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检测到 iCloud 账号变更。已锁定保险库并停止同步，避免不同账号的数据混合。请切回原账号并重新启动应用。"
+          }
+        }
+      }
+    },
+    "sync.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有加密后的保险库数据会同步到你的 iCloud 私有数据库。"
+          }
+        }
+      }
+    },
+    "sync.disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地保险库"
+          }
+        }
+      }
+    },
+    "sync.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步需要处理"
+          }
+        }
+      }
+    },
+    "sync.localDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地数据已保存。连接配置完成后即可在 iPhone 和 Mac 之间同步。"
+          }
+        }
+      }
+    },
+    "sync.now": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即同步"
+          }
+        }
+      }
+    },
+    "sync.ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已与 iCloud 同步"
+          }
+        }
+      }
+    },
+    "sync.setupRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要在 Xcode 配置开发团队、CloudKit 容器和签名后启用 iCloud。详见项目中的配置说明。"
+          }
+        }
+      }
+    },
+    "sync.syncing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "sync.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 同步"
+          }
+        }
+      }
+    },
+    "sync.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 暂不可用"
+          }
+        }
+      }
+    },
+    "unlock.biometric": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用面容 / 指纹解锁"
+          }
+        }
+      }
+    },
+    "unlock.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁你的 Aegis 保险库。"
+          }
+        }
+      }
+    },
+    "unlock.recoveryNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复密钥可解锁保险库。请立即导出加密备份并妥善保管。"
+          }
+        }
+      }
+    },
+    "unlock.recoveryPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入恢复密钥"
+          }
+        }
+      }
+    },
+    "unlock.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "欢迎回来。"
+          }
+        }
+      }
+    },
+    "unlock.usePassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用主密码"
+          }
+        }
+      }
+    },
+    "unlock.useRecovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用恢复密钥"
+          }
+        }
+      }
+    },
+    "welcome.cloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 iCloud"
+          }
+        }
+      }
+    },
+    "welcome.cloudHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已有保险库？先连接 iCloud，下载后使用原主密码解锁。"
+          }
+        }
+      }
+    },
+    "welcome.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再次输入主密码"
+          }
+        }
+      }
+    },
+    "welcome.createHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码不会上传到 iCloud。请妥善保存你的恢复密钥。"
+          }
+        }
+      }
+    },
+    "welcome.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 与 Mac 之间，安全保存密码、银行卡和重要笔记。"
+          }
+        }
+      }
+    },
+    "welcome.import": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从加密备份恢复"
+          }
+        }
+      }
+    },
+    "welcome.master": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码"
+          }
+        }
+      }
+    },
+    "welcome.passwordHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少 12 个字符，建议使用独特的长短语。"
+          }
+        }
+      }
+    },
+    "welcome.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为你的数字生活，\n留一处安心之所。"
+          }
+        }
+      }
+    },
+    "preview.noteTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行备忘"
+          }
+        }
+      }
+    },
+    "preview.noteBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# 旅行备忘\n\n把重要的事情，安心放在这里。\n\n## 出发前\n- [x] 保存航班信息\n- [ ] 整理随身物品\n\n> 这是一份 **Markdown** 示例笔记。\n\n```text\nAegis · 私人保险库\n```\n\n| 项目 | 状态 |\n| --- | --- |\n| 行程 | 已确认 |\n| 住宿 | 已预订 |"
+          }
+        }
+      }
+    },
+    "markdown.mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "笔记模式"
+          }
+        }
+      }
+    },
+    "markdown.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑 Markdown"
+          }
+        }
+      }
+    },
+    "markdown.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览"
+          }
+        }
+      }
+    },
+    "markdown.editor": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown 笔记编辑器"
+          }
+        }
+      }
+    },
+    "markdown.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写下一些内容，即可在这里预览。"
+          }
+        }
+      }
+    },
+    "markdown.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "支持 Markdown：标题、粗体、列表、任务清单、引用、代码块和表格。"
+          }
+        }
+      }
+    },
+    "markdown.copySource": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制原文"
+          }
+        }
+      }
+    },
+    "markdown.imagePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[图片：%@]"
+          }
+        }
+      }
+    },
+    "settings.lockDescription.mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 分钟无操作后锁定；系统休眠或切换系统用户时锁定。切换普通窗口不会立即锁定。"
+          }
+        }
+      }
+    },
+    "markdown.taskDone": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成"
+          }
+        }
+      }
+    },
+    "markdown.taskPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待完成"
+          }
+        }
+      }
+    },
+    "ui.brandSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的私人保险库"
+          }
+        }
+      }
+    },
+    "ui.protected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端到端加密保护"
+          }
+        }
+      }
+    },
+    "ui.clearSearch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除搜索"
+          }
+        }
+      }
+    },
+    "ui.recentOrder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近修改"
+          }
+        }
+      }
+    },
+    "ui.nameOrder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按名称排列"
+          }
+        }
+      }
+    },
+    "ui.sort": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "排序方式"
+          }
+        }
+      }
+    },
+    "ui.moreActions": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多操作"
+          }
+        }
+      }
+    },
+    "ui.privateItem": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅你可以访问"
+          }
+        }
+      }
+    },
+    "ui.editorSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每一份重要信息，都有安全的位置。"
+          }
+        }
+      }
+    },
+    "ui.savedEncrypted": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加密保存"
+          }
+        }
+      }
+    },
+    "ui.generatorSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让每个账号，都拥有独一无二的密码。"
+          }
+        }
+      }
+    },
+    "ui.randomPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全随机生成"
+          }
+        }
+      }
+    },
+    "ui.generatorRules": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成规则"
+          }
+        }
+      }
+    },
+    "ui.generatorShared": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里的设置也会用于新增、编辑记录时生成密码。"
+          }
+        }
+      }
+    },
+    "ui.lengthRange": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12 至 64 个字符"
+          }
+        }
+      }
+    },
+    "ui.lengthDecrease": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "减少密码长度"
+          }
+        }
+      }
+    },
+    "ui.lengthIncrease": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "增加密码长度"
+          }
+        }
+      }
+    },
+    "ui.settingsSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按你的习惯，守护你的保险库。"
+          }
+        }
+      }
+    },
+    "ui.unlockHero": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重要的秘密，\n值得安心收藏。"
+          }
+        }
+      }
+    },
+    "ui.unlockHeroDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 与 Mac 之间，\n让每一份私密信息都触手可及。"
+          }
+        }
+      }
+    },
+    "ui.personalVault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "个人保险库"
+          }
+        }
+      }
+    },
+    "ui.createTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从安心开始。"
+          }
+        }
+      }
+    },
+    "ui.unlockFooter": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码仅用于本地解锁，不会上传。"
+          }
+        }
+      }
+    },
+    "preview.cardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日常支付卡"
+          }
+        }
+      }
+    },
+    "preview.cardNotes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "## 用卡备忘\n\n- [x] 开启交易提醒\n- [ ] 检查月度账单\n\n> 仅用于界面预览的示例卡片。"
+          }
+        }
+      }
+    },
+    "composer.write": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "书写"
+          }
+        }
+      }
+    },
+    "composer.split": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对照"
+          }
+        }
+      }
+    },
+    "composer.expand": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开编辑"
+          }
+        }
+      }
+    },
+    "composer.expandHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开大编辑器（⇧⌘E）"
+          }
+        }
+      }
+    },
+    "composer.previewHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览随内容更新"
+          }
+        }
+      }
+    },
+    "composer.hideKeyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起键盘"
+          }
+        }
+      }
+    },
+    "composer.characterCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 字符"
+          }
+        }
+      }
+    },
+    "composer.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这里写下值得珍藏的内容…"
+          }
+        }
+      }
+    },
+    "composer.placeholderHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用标题整理思路，用清单记下重要的事。"
+          }
+        }
+      }
+    },
+    "composer.focusTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注编辑"
+          }
+        }
+      }
+    },
+    "composer.focusHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给重要的内容，多一点空间。"
+          }
+        }
+      }
+    },
+    "composer.draftHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改保留在当前表单，保存记录后生效。"
+          }
+        }
+      }
+    },
+    "composer.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MARKDOWN 原文"
+          }
+        }
+      }
+    },
+    "composer.placeholderText": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字"
+          }
+        }
+      }
+    },
+    "composer.linkText": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接文字"
+          }
+        }
+      }
+    },
+    "composer.format.heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题"
+          }
+        }
+      }
+    },
+    "composer.format.bold": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加粗"
+          }
+        }
+      }
+    },
+    "composer.format.italic": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "斜体"
+          }
+        }
+      }
+    },
+    "composer.format.bullet": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无序列表"
+          }
+        }
+      }
+    },
+    "composer.format.task": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待办清单"
+          }
+        }
+      }
+    },
+    "composer.format.quote": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "引用"
+          }
+        }
+      }
+    },
+    "composer.format.code": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代码块"
+          }
+        }
+      }
+    },
+    "composer.format.link": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

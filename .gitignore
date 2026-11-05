@@ -1,0 +1,15 @@
+.build/
+build/
+DerivedData/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+Config/Local.xcconfig
+*.aegisbackup
+*.xcarchive/
+*.xcresult/
+release/
+TestResults/
+__pycache__/
+*.py[cod]
+.swiftpm/

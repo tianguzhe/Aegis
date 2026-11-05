@@ -1,0 +1,6 @@
+AEGIS_BUNDLE_PREFIX = app.aegis
+AEGIS_CLOUD_CONTAINER = iCloud.app.aegis
+AEGIS_CLOUD_ENABLED = NO
+AEGIS_APP_GROUP =
+DEVELOPMENT_TEAM =
+#include? "Local.xcconfig"

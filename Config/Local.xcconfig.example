@@ -1,0 +1,6 @@
+// Copy to Local.xcconfig and substitute your registered identifiers.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+AEGIS_BUNDLE_PREFIX = com.yourcompany.aegis
+AEGIS_CLOUD_CONTAINER = iCloud.com.yourcompany.aegis
+AEGIS_APP_GROUP = group.com.yourcompany.aegis
+AEGIS_CLOUD_ENABLED = YES

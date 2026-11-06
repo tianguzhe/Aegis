@@ -46,3 +46,23 @@ CloudKit 跨设备同步、生物识别和系统自动填充仍需要签名设�
 - `Scripts/preview.sh --build-only` 通过：依次签名 Debug dylib、Credential Provider 和宿主，并通过 `codesign --verify --deep --strict` 核验。
 - 构建后的实际 LaunchServices 清理对本工程 11 个已注册开发应用副本发出注销请求，保留全部原文件。
 - 当前调整没有改变产品功能，也没有发布安装包或部署 CloudKit schema。GitHub Actions 的远端运行结果需在推送后查看。
+
+## 按钮状态与首次进入流程
+
+- macOS 主应用／扩展构建及临时签名检查通过，iOS 主应用／扩展随模拟器测试构建通过。
+- Duo 上 2 项针对性 UI 测试通过：短密码／确认不匹配时禁止创建；恢复密钥未确认、确认、取消确认时进入按钮正确切换；空名称／纯空格禁止保存；密码生成器最小长度处禁用减号。
+- 已查看恢复密钥确认按钮的实际截图：禁用态为浅灰底灰字，启用态为深色底白字。对照截图保存于 `Docs/Previews/recovery-button-disabled.png` 和 `recovery-button-enabled.png`。
+- 结果包：`.build/artifacts.noindex/results/ButtonStates.xcresult`。新增中文提示集中在 String Catalog，244 个本地化键校验通过。
+
+## 审查问题修复与 Actions
+
+- 修复草稿关闭保护、锁定前快照、加密持久化与解锁恢复；未确认恢复密钥同样加密保留，确认后移除。
+- iOS 后台锁定保留系统 30 秒剪贴板过期时间；手动／系统／空闲锁定按策略清理。
+- Markdown 书写／预览切换保留输入组件，避免重复执行命令和丢失撤销栈。
+- Mac 设置弹窗已实际验证错误提示可见；内嵌设置、导入、编辑与大编辑器由当前呈现层处理错误。
+- 统一可缩放字体、辅助功能字号纵向布局、浅色对比度与 44pt 小图标命中范围。
+- 20 项 Python 测试、26 项 Swift 核心测试通过；新增测试验证加密本机状态跨锁定／存储对象重建的恢复、AAD 绑定和篡改拒绝。
+- Duo 完整 8 项 UI 回归通过（`.build/artifacts.noindex/results/UIFixes.xcresult`）；最后的草稿快照与展开生命周期修改后，3 项关键流程再次通过（`UIFixes-final.xcresult`）。
+- macOS 主应用／扩展构建、临时签名与 `codesign --verify --deep --strict` 通过。
+- GitHub Actions 失败运行 `42138301319` 的根因为原生 SwiftPM 未编译 `.xcstrings`，3 个本地化断言返回键名，后续两端构建被跳过。已从 Catalog 生成 `.strings`，添加生成一致性校验，并强制本地测试使用 native build system 对齐 CI。
+- 本地重复清理时发现 LaunchServices `-10814`（应用已不可用）被误判为失败，已作为幂等清理处理，其他清理错误仍返回失败。

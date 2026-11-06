@@ -29,6 +29,7 @@ struct VaultView: View {
     @State private var recentFirst = false
     @State private var mobilePath: [UUID] = []
     @State private var selectedTab = 0
+    @State private var resumingDraft: VaultDraft?
 
     private var filtered: [VaultEntry] {
         session.entries.filter { entry in
@@ -65,6 +66,9 @@ struct VaultView: View {
         .sheet(isPresented: $showEditor) { ItemEditorView(item: VaultItem(kind: newItemKind), parents: []).environment(session) }
         .sheet(isPresented: $showSettings) { SettingsView().environment(session) }
         .sheet(isPresented: $showGenerator) { GeneratorView().environment(session) }
+        .sheet(item: $resumingDraft) { draft in
+            ItemEditorView(item: draft.original, parents: draft.parents).environment(session)
+        }
         .onChange(of: filter) { _, _ in selection = nil; selectedItem = nil; session.touch() }
         .onChange(of: search) { _, _ in session.touch() }
         .onChange(of: session.entries.map(\.id)) { _, _ in
@@ -80,7 +84,7 @@ struct VaultView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: UUID.self) { id in
                         if let entry = session.entries.first(where: { $0.id == id }) ?? selectedEntry {
-                            ItemDetailView(entry: entry).id(entry.id)
+                            ItemDetailView(entry: entry).id(entry.item.id)
                         }
                     }
             }.tabItem { Label(L10n.text("nav.library"), systemImage: "square.grid.2x2") }.tag(0)
@@ -110,8 +114,8 @@ struct VaultView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "checkmark.shield").font(.system(size: 15)).foregroundStyle(AegisTheme.teal)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(L10n.text("ui.protected")).font(.system(size: 12, weight: .medium)).foregroundStyle(AegisTheme.text)
-                        Text(session.syncTitle).font(.system(size: 10)).foregroundStyle(AegisTheme.secondary).lineLimit(1)
+                        Text(L10n.text("ui.protected")).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.text)
+                        Text(session.syncTitle).aegisFont(size: 10).foregroundStyle(AegisTheme.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -128,7 +132,7 @@ struct VaultView: View {
         }
     }
     private func sectionCaption(_ key: String) -> some View {
-        Text(L10n.text(key)).font(.system(size: 10, weight: .semibold)).foregroundStyle(AegisTheme.secondary)
+        Text(L10n.text(key)).aegisFont(size: 10, weight: .semibold).foregroundStyle(AegisTheme.secondary)
             .padding(.horizontal, 12).tracking(1)
     }
     private func sidebarRow(_ value: VaultFilter) -> some View {
@@ -137,9 +141,9 @@ struct VaultView: View {
         return Button { filter = value } label: {
             HStack(spacing: 12) {
                 Image(systemName: value.symbol).font(.system(size: 16, weight: active ? .semibold : .regular)).frame(width: 20)
-                Text(value.title).font(.system(size: 13, weight: active ? .semibold : .regular))
+                Text(value.title).aegisFont(size: 13, weight: active ? .semibold : .regular)
                 Spacer(minLength: 0)
-                if count > 0 { Text(count, format: .number).font(.system(size: 11, weight: .medium)).monospacedDigit().opacity(active ? 1 : 0.65) }
+                if count > 0 { Text(count, format: .number).aegisFont(size: 11, weight: .medium).monospacedDigit().opacity(active ? 1 : 0.65) }
             }.foregroundStyle(active ? AegisTheme.teal : AegisTheme.text.opacity(0.8))
                 .padding(.horizontal, 12).padding(.vertical, 12).frame(maxWidth: .infinity)
                 .background(active ? AegisTheme.selected : Color.clear, in: RoundedRectangle(cornerRadius: 10))
@@ -148,7 +152,7 @@ struct VaultView: View {
     }
     private func sidebarAction(_ key: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(L10n.text(key), systemImage: symbol).font(.system(size: 13)).foregroundStyle(AegisTheme.text.opacity(0.8))
+            Label(L10n.text(key), systemImage: symbol).aegisFont(size: 13).foregroundStyle(AegisTheme.text.opacity(0.8))
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 11).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
@@ -166,8 +170,8 @@ struct VaultView: View {
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(mobile ? L10n.text("app.vault") : filter.title)
-                            .font(.system(size: mobile ? 28 : 23, weight: .semibold)).tracking(-0.6).foregroundStyle(AegisTheme.text)
-                        Text(L10n.format("list.count", Int64(filtered.count))).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
+                            .aegisFont(size: mobile ? 28 : 23, weight: .semibold).tracking(-0.6).foregroundStyle(AegisTheme.text)
+                        Text(L10n.format("list.count", Int64(filtered.count))).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
                     }
                     Spacer(minLength: 8)
                     AegisIconButton(symbol: "plus", label: L10n.text("action.add"), prominent: true) { showEditor = true }
@@ -175,10 +179,10 @@ struct VaultView: View {
                 }
                 HStack(spacing: 9) {
                     Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(AegisTheme.secondary)
-                    TextField(L10n.text("action.search"), text: $search).textFieldStyle(.plain).font(.system(size: 13))
+                    TextField(L10n.text("action.search"), text: $search).textFieldStyle(.plain).aegisFont(size: 13)
                         .aegisNoCapitalization().autocorrectionDisabled().accessibilityIdentifier("vaultSearch")
                     if !search.isEmpty {
-                        Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(AegisTheme.secondary) }.buttonStyle(.plain).accessibilityLabel(L10n.text("ui.clearSearch"))
+                        Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel(L10n.text("ui.clearSearch"))
                     }
                 }.padding(12).background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 11))
                 if mobile {
@@ -186,8 +190,9 @@ struct VaultView: View {
                         HStack(spacing: 8) {
                             ForEach(VaultFilter.allCases) { value in
                                 Button { filter = value } label: {
-                                    Label(value.title, systemImage: value.symbol).font(.system(size: 12, weight: filter == value ? .semibold : .medium))
+                                    Label(value.title, systemImage: value.symbol).aegisFont(size: 12, weight: filter == value ? .semibold : .medium)
                                         .padding(.horizontal, 13).padding(.vertical, 10)
+                                        .frame(minHeight: 44)
                                         .foregroundStyle(filter == value ? Color.white : AegisTheme.secondary)
                                         .background(filter == value ? AegisTheme.navy : AegisTheme.inset, in: Capsule())
                                 }.buttonStyle(.plain)
@@ -196,13 +201,25 @@ struct VaultView: View {
                     }.scrollIndicators(.hidden)
                 }
             }.padding(mobile ? 22 : 24)
+            if !session.recoverableDrafts.isEmpty {
+                Menu {
+                    ForEach(session.recoverableDrafts) { draft in
+                        Button(draft.item.title.isEmpty ? L10n.text("list.untitled") : draft.item.title) { resumingDraft = draft }
+                    }
+                } label: {
+                    Label(L10n.format("draft.resumeCount", Int64(session.recoverableDrafts.count)), systemImage: "square.and.pencil")
+                        .font(.callout).foregroundStyle(AegisTheme.teal).frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 10))
+                }.menuStyle(.borderlessButton).padding(.horizontal, 22).padding(.bottom, 14)
+                    .accessibilityIdentifier("resumeDrafts")
+            }
             HStack {
-                Text(L10n.text(recentFirst ? "ui.recentOrder" : "ui.nameOrder")).font(.system(size: 10, weight: .medium)).foregroundStyle(AegisTheme.secondary)
+                Text(L10n.text(recentFirst ? "ui.recentOrder" : "ui.nameOrder")).aegisFont(size: 10, weight: .medium).foregroundStyle(AegisTheme.secondary)
                 Spacer()
                 Menu {
                     Button(L10n.text("ui.nameOrder")) { recentFirst = false }
                     Button(L10n.text("ui.recentOrder")) { recentFirst = true }
-                } label: { Image(systemName: "arrow.up.arrow.down").font(.system(size: 11)).frame(width: 32, height: 32).contentShape(Rectangle()) }
+                } label: { Image(systemName: "arrow.up.arrow.down").font(.system(size: 11)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(AegisTheme.secondary).accessibilityLabel(L10n.text("ui.sort"))
             }.padding(.horizontal, 26).padding(.bottom, 12)
             if filtered.isEmpty {
@@ -242,7 +259,7 @@ struct VaultView: View {
             if !mobile {
                 HStack(spacing: 6) {
                     Circle().fill(AegisTheme.teal).frame(width: 5, height: 5)
-                    Text(session.syncTitle).font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
+                    Text(session.syncTitle).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                     Spacer()
                 }.padding(.horizontal, 24).padding(.vertical, 17)
             }
@@ -251,7 +268,7 @@ struct VaultView: View {
 
     private var detail: some View {
         Group {
-            if let entry = selectedEntry { ItemDetailView(entry: entry).id(entry.id) }
+            if let entry = selectedEntry { ItemDetailView(entry: entry).id(entry.item.id) }
             else {
                 VStack(spacing: 22) {
                     ZStack {
@@ -260,8 +277,8 @@ struct VaultView: View {
                         AegisMark(size: 88).rotationEffect(.degrees(-7))
                     }.accessibilityHidden(true)
                     VStack(spacing: 10) {
-                        Text(L10n.text("list.selectTitle")).font(.system(size: 25, weight: .medium, design: .serif)).foregroundStyle(AegisTheme.text)
-                        Text(L10n.text("list.selectDescription")).font(.system(size: 13)).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                        Text(L10n.text("list.selectTitle")).aegisFont(size: 25, weight: .medium, design: .serif).foregroundStyle(AegisTheme.text)
+                        Text(L10n.text("list.selectDescription")).aegisFont(size: 13).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
                     }.multilineTextAlignment(.center)
                     AegisPill(title: L10n.text("ui.protected"), symbol: "checkmark.shield")
                 }.padding(30).frame(maxWidth: .infinity, maxHeight: .infinity).background(AegisTheme.background)

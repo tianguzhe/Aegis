@@ -17,8 +17,8 @@ struct ItemDetailView: View {
                 header
                 if entry.isConflict {
                     VStack(alignment: .leading, spacing: 12) {
-                        Label(L10n.text("list.conflict"), systemImage: "exclamationmark.triangle").font(.system(size: 14, weight: .semibold))
-                        Text(L10n.text("list.conflictDetail")).font(.system(size: 13)).lineSpacing(4)
+                        Label(L10n.text("list.conflict"), systemImage: "exclamationmark.triangle").aegisFont(size: 14, weight: .semibold)
+                        Text(L10n.text("list.conflictDetail")).aegisFont(size: 13).lineSpacing(4)
                         Button(L10n.text("list.resolve")) { confirmResolution = true }.buttonStyle(AegisButtonStyle())
                     }.foregroundStyle(AegisTheme.text).aegisCard()
                 }
@@ -43,7 +43,7 @@ struct ItemDetailView: View {
                     Image(systemName: "clock").font(.system(size: 11))
                     Text(L10n.text("field.modified"))
                     Text(entry.item.modifiedAt, format: .dateTime.year().month().day().hour().minute())
-                }.font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).padding(.horizontal, 2)
+                }.aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.horizontal, 2)
                 if entry.item.deletedAt != nil {
                     Button { Task { await session.restore(entry) } } label: {
                         Label(L10n.text("action.restore"), systemImage: "arrow.uturn.backward")
@@ -85,7 +85,7 @@ struct ItemDetailView: View {
                         Button(L10n.text("action.trash"), role: .destructive) { confirmTrash = true }
                     } else { Button(L10n.text("action.restore")) { Task { await session.restore(entry) } } }
                 } label: {
-                    Image(systemName: "ellipsis").font(.system(size: 18)).foregroundStyle(AegisTheme.secondary).frame(width: 28, height: 36)
+                    Image(systemName: "ellipsis").font(.system(size: 18)).foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle())
                 }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L10n.text("ui.moreActions"))
             }
             HStack(alignment: .center, spacing: 18) {
@@ -94,8 +94,8 @@ struct ItemDetailView: View {
                     Text(entry.item.title).font(.system(size: titleSize, weight: .semibold)).tracking(-0.7)
                         .foregroundStyle(AegisTheme.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     if let host = displayHost {
-                        Text(host).font(.system(size: 13)).foregroundStyle(AegisTheme.secondary).lineLimit(1)
-                    } else { Text(L10n.text("ui.privateItem")).font(.system(size: 13)).foregroundStyle(AegisTheme.secondary) }
+                        Text(host).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary).lineLimit(1)
+                    } else { Text(L10n.text("ui.privateItem")).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary) }
                 }
             }
             HStack(spacing: 10) {
@@ -115,12 +115,12 @@ struct ItemDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(L10n.text(entry.item.kind == .note ? "field.secureNote" : "field.notes"))
-                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(AegisTheme.text)
+                    .aegisFont(size: 13, weight: .semibold).foregroundStyle(AegisTheme.text)
                 Spacer()
                 Button {
                     SecureClipboard.copy(entry.item.notes); session.touch(); copiedNotes = true
                 } label: { Label(L10n.text(copiedNotes ? "action.copied" : "markdown.copySource"), systemImage: copiedNotes ? "checkmark" : "doc.on.doc") }
-                    .font(.system(size: 11, weight: .medium)).buttonStyle(.plain).foregroundStyle(AegisTheme.teal)
+                    .aegisFont(size: 11, weight: .medium).buttonStyle(.plain).foregroundStyle(AegisTheme.teal)
                     .task(id: copiedNotes) {
                         guard copiedNotes else { return }
                         try? await Task.sleep(for: .seconds(2)); copiedNotes = false
@@ -134,16 +134,16 @@ struct ItemDetailView: View {
             HStack {
                 Image(systemName: "simcard").font(.system(size: 28, weight: .ultraLight)).foregroundStyle(Color(red: 0.85, green: 0.73, blue: 0.48))
                 Spacer()
-                Text("Aegis").font(.system(size: 19, weight: .medium, design: .serif)).foregroundStyle(.white.opacity(0.6))
+                Text("Aegis").aegisFont(size: 19, weight: .medium, design: .serif).foregroundStyle(.white.opacity(0.6))
             }
             Text("••••  ••••  ••••  " + (entry.item.cardNumber.isEmpty ? "••••" : String(entry.item.cardNumber.filter(\.isNumber).suffix(4))))
-                .font(.system(size: 20, weight: .medium, design: .monospaced)).foregroundStyle(.white)
+                .aegisFont(size: 20, weight: .medium, design: .monospaced).foregroundStyle(.white)
                 .minimumScaleFactor(0.65).lineLimit(1)
             HStack {
                 Text(entry.item.cardholder.isEmpty ? L10n.text("field.cardholder") : entry.item.cardholder).lineLimit(1)
                 Spacer()
                 Text(entry.item.expiry)
-            }.font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.72))
+            }.aegisFont(size: 12, weight: .medium).foregroundStyle(.white.opacity(0.72))
         }.padding(26).background(LinearGradient(colors: [AegisTheme.navy, Color(red: 0.19, green: 0.33, blue: 0.29)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20))
     }
 }
@@ -159,7 +159,7 @@ private struct SecretField: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 9) {
-                Text(L10n.text(label)).font(.system(size: 11, weight: .medium)).foregroundStyle(AegisTheme.secondary)
+                Text(L10n.text(label)).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
                 Text(secret && !revealed ? "••••••••••••" : value.isEmpty ? "—" : value)
                     .font(.system(size: valueSize, design: secret ? .monospaced : .default)).foregroundStyle(AegisTheme.text)
                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)

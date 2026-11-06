@@ -1382,7 +1382,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "任何持有它的人都能解锁保险库。此密钥只在创建时展示一次。"
+            "value": "任何持有它的人都能解锁保险库。确认保存前，恢复配置会加密保留在本机。"
           }
         }
       }
@@ -1459,7 +1459,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "30 秒后清理本应用复制的内容。"
+            "value": "复制内容仅在本机保留 30 秒；切换应用仍可粘贴，手动锁定会立即清理。"
           }
         }
       }
@@ -2427,7 +2427,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "修改保留在当前表单，保存记录后生效。"
+            "value": "草稿已加密保留，保存记录后同步。"
           }
         }
       }
@@ -2549,6 +2549,215 @@
           "stringUnit": {
             "state": "translated",
             "value": "链接"
+          }
+        }
+      }
+    },
+    "welcome.confirmHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请再次输入相同的主密码。"
+          }
+        }
+      }
+    },
+    "welcome.passwordMatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两次输入的主密码一致。"
+          }
+        }
+      }
+    },
+    "welcome.passwordTooLong": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码过长，请缩短后重试。"
+          }
+        }
+      }
+    },
+    "recovery.confirmHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先确认已妥善保存恢复密钥，再进入保险库。"
+          }
+        }
+      }
+    },
+    "recovery.confirmedHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已确认保存恢复密钥，可以继续。"
+          }
+        }
+      }
+    },
+    "editor.titleRequiredHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填写名称后即可保存记录。"
+          }
+        }
+      }
+    },
+    "backup.chooseHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先选择一份 Aegis 加密备份。"
+          }
+        }
+      }
+    },
+    "backup.passwordHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入备份对应的主密码后即可导入。"
+          }
+        }
+      }
+    },
+    "action.creating": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在创建…"
+          }
+        }
+      }
+    },
+    "action.unlocking": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在解锁…"
+          }
+        }
+      }
+    },
+    "action.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在保存…"
+          }
+        }
+      }
+    },
+    "backup.importing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证并导入…"
+          }
+        }
+      }
+    },
+    "draft.protected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草稿已加密保留"
+          }
+        }
+      }
+    },
+    "draft.closeTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留这次编辑吗？"
+          }
+        }
+      }
+    },
+    "draft.keepAndClose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留草稿并关闭"
+          }
+        }
+      }
+    },
+    "draft.discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放弃修改"
+          }
+        }
+      }
+    },
+    "draft.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续编辑"
+          }
+        }
+      }
+    },
+    "draft.closeMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未保存到保险库。可以保留加密草稿，下次解锁后继续编辑。"
+          }
+        }
+      }
+    },
+    "draft.resumeCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续未完成的编辑（%lld）"
           }
         }
       }

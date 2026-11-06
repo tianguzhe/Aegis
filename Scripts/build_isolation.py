@@ -174,7 +174,13 @@ class BuildArea:
                 continue
             result = subprocess.run([str(LSREGISTER), "-u", str(path)], capture_output=True, text=True, timeout=30)
             if result.returncode:
-                failures.append(f"{path}: {(result.stderr or result.stdout).strip()}")
+                detail = (result.stderr or result.stdout).strip()
+                if re.search(r"(?<!\d)-10814(?!\d)", detail):
+                    # kLSApplicationNotFoundErr: a stale/disabled registration can
+                    # remain in -dump after a prior successful unregister.
+                    print(f"[build-isolation] Already unavailable to LaunchServices: {path}", flush=True)
+                    continue
+                failures.append(f"{path}: {detail}")
         if failures:
             raise RuntimeError("Could not unregister development apps:\n" + "\n".join(failures))
         # A successful -u can leave launch-disabled records in the database.

@@ -67,17 +67,17 @@ private struct AutoFillView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 9) {
-                                Text(L10n.text("autofill.domainWarning")).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary).lineSpacing(4)
-                                ForEach(services, id: \.self) { Text($0).font(.system(size: 12, weight: .medium, design: .monospaced)).foregroundStyle(AegisTheme.teal) }
+                                Text(L10n.text("autofill.domainWarning")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary).lineSpacing(4)
+                                ForEach(services, id: \.self) { Text($0).aegisFont(size: 12, weight: .medium, design: .monospaced).foregroundStyle(AegisTheme.teal) }
                             }.padding(16).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 12))
                             ForEach(entries) { entry in
                                 Button { selected = entry.item } label: {
                                     HStack(spacing: 12) {
                                         ItemIcon(item: entry.item)
                                         VStack(alignment: .leading, spacing: 6) {
-                                            Text(entry.item.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(AegisTheme.text)
-                                            Text(entry.item.username).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
-                                            Text(entry.item.website).font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).lineLimit(1)
+                                            Text(entry.item.title).aegisFont(size: 14, weight: .semibold).foregroundStyle(AegisTheme.text)
+                                            Text(entry.item.username).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+                                            Text(entry.item.website).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).lineLimit(1)
                                         }.frame(maxWidth: .infinity, alignment: .leading)
                                         Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
                                     }.padding(16).aegisSurface()
@@ -91,14 +91,14 @@ private struct AutoFillView: View {
                     VStack(alignment: .leading, spacing: 26) {
                         AegisMark(size: 64).padding(.top, 12)
                         VStack(alignment: .leading, spacing: 9) {
-                            Text(L10n.text("unlock.title")).font(.system(size: 26, weight: .semibold)).foregroundStyle(AegisTheme.text)
-                            Text(L10n.text("unlock.description")).font(.system(size: 13)).foregroundStyle(AegisTheme.secondary)
+                            Text(L10n.text("unlock.title")).aegisFont(size: 26, weight: .semibold).foregroundStyle(AegisTheme.text)
+                            Text(L10n.text("unlock.description")).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary)
                         }
                         AegisInput(title: L10n.text("welcome.master"), icon: "lock") {
                             SecureField(L10n.text("welcome.master"), text: $password).textContentType(.password)
-                        }
+                        }.disabled(busy)
                         Button { unlock() } label: {
-                            HStack { if busy { ProgressView().controlSize(.small).tint(.white) }; Text(L10n.text("action.unlock")) }
+                            HStack { if busy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(busy ? "action.unlocking" : "action.unlock")) }
                         }.buttonStyle(PrimaryButtonStyle()).disabled(password.isEmpty || busy)
                     }.padding(28)
                 }
@@ -119,6 +119,7 @@ private struct AutoFillView: View {
 
     private func clear() { generation = UUID(); entries = []; password = ""; unlocked = false; selected = nil }
     private func unlock() {
+        guard !busy, !password.isEmpty else { return }
         let submitted = password, token = generation
         password = ""; busy = true
         Task {

@@ -8,6 +8,15 @@ struct UnlockView: View {
     @State private var useRecovery = false
     @State private var showImport = false
     private var creating: Bool { session.phase == .setup }
+    private var validCreationPassword: Bool { password.count >= 12 && password.utf8.count <= 4096 }
+    private var canSubmit: Bool {
+        !session.isBusy && session.storageAvailable && !password.isEmpty &&
+        (!creating || (validCreationPassword && password == confirmation))
+    }
+    private var confirmationHint: String {
+        if confirmation.isEmpty { return L10n.text("welcome.confirmHint") }
+        return L10n.text(password == confirmation ? "welcome.passwordMatch" : "error.passwordMismatch")
+    }
     var body: some View {
         GeometryReader { geometry in
             if geometry.size.width >= 850 {
@@ -34,7 +43,7 @@ struct UnlockView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
                 AegisMark(size: 38)
-                Text("Aegis").font(.system(size: 28, weight: .medium, design: .serif)).foregroundStyle(.white)
+                Text("Aegis").aegisFont(size: 28, weight: .medium, design: .serif).foregroundStyle(.white)
             }
             Spacer()
             ZStack {
@@ -46,13 +55,13 @@ struct UnlockView: View {
             }.frame(maxWidth: .infinity).frame(height: 310).accessibilityHidden(true)
             Spacer()
             VStack(alignment: .leading, spacing: 18) {
-                Text(L10n.text("ui.unlockHero")).font(.system(size: 35, weight: .medium, design: .serif)).foregroundStyle(.white).lineSpacing(8)
-                Text(L10n.text("ui.unlockHeroDetail")).font(.system(size: 14)).lineSpacing(7).foregroundStyle(.white.opacity(0.6))
+                Text(L10n.text("ui.unlockHero")).aegisFont(size: 35, weight: .medium, design: .serif).foregroundStyle(.white).lineSpacing(8)
+                Text(L10n.text("ui.unlockHeroDetail")).aegisFont(size: 14).lineSpacing(7).foregroundStyle(.white.opacity(0.6))
             }
             HStack(spacing: 7) {
                 Image(systemName: "checkmark.shield")
                 Text(L10n.text("app.securityCaption"))
-            }.font(.system(size: 11)).foregroundStyle(.white.opacity(0.45)).padding(.top, 44)
+            }.aegisFont(size: 11).foregroundStyle(.white.opacity(0.45)).padding(.top, 44)
         }.padding(44).background(LinearGradient(colors: [Color(red: 0.13, green: 0.25, blue: 0.22), AegisTheme.navy], startPoint: .topLeading, endPoint: .bottomTrailing))
     }
 
@@ -61,35 +70,43 @@ struct UnlockView: View {
             VStack(alignment: .leading, spacing: 14) {
                 AegisPill(title: L10n.text("ui.personalVault"), symbol: "lock.shield")
                 Text(L10n.text(creating ? "ui.createTitle" : "unlock.title"))
-                    .font(.system(size: 32, weight: .semibold)).tracking(-0.8).foregroundStyle(AegisTheme.text)
+                    .aegisFont(size: 32, weight: .semibold).tracking(-0.8).foregroundStyle(AegisTheme.text)
                 Text(L10n.text(creating ? "welcome.description" : "unlock.description"))
-                    .font(.system(size: 14)).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
+                    .aegisFont(size: 14).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
             }
             VStack(spacing: 18) {
                 AegisInput(title: L10n.text(useRecovery ? "unlock.recoveryPlaceholder" : "welcome.master"), icon: "lock") {
                     SecureField(L10n.text(useRecovery ? "unlock.recoveryPlaceholder" : "welcome.master"), text: $password)
                         .textContentType(creating ? .newPassword : .password).accessibilityIdentifier("masterPassword").onSubmit(submit)
-                }
+                }.disabled(session.isBusy)
                 if creating {
                     AegisInput(title: L10n.text("welcome.confirm"), icon: "checkmark.shield") {
                         SecureField(L10n.text("welcome.confirm"), text: $confirmation).textContentType(.newPassword).accessibilityIdentifier("confirmPassword").onSubmit(submit)
-                    }
-                    Text(L10n.text("welcome.passwordHint")).font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    }.disabled(session.isBusy)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Label(L10n.text(password.utf8.count > 4096 ? "welcome.passwordTooLong" : "welcome.passwordHint"),
+                              systemImage: validCreationPassword ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(validCreationPassword ? AegisTheme.teal : AegisTheme.secondary)
+                        Label(confirmationHint,
+                              systemImage: !confirmation.isEmpty && password == confirmation ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(!confirmation.isEmpty && password == confirmation ? AegisTheme.teal : AegisTheme.secondary)
+                    }.aegisFont(size: 11).frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("creationRequirements")
                 }
                 Button(action: submit) {
                     HStack(spacing: 10) {
-                        if session.isBusy { ProgressView().controlSize(.small).tint(.white) }
-                        Text(L10n.text(creating ? "action.create" : "action.unlock"))
-                        Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold))
+                        if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
+                        Text(L10n.text(session.isBusy ? (creating ? "action.creating" : "action.unlocking") : (creating ? "action.create" : "action.unlock")))
+                        if !session.isBusy { Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)) }
                     }
-                }.buttonStyle(PrimaryButtonStyle()).disabled(session.isBusy || password.isEmpty || !session.storageAvailable).accessibilityIdentifier("unlockButton")
+                }.buttonStyle(PrimaryButtonStyle()).disabled(!canSubmit).accessibilityIdentifier("unlockButton")
                 if !creating {
                     if session.biometricEnabled {
                         Button { Task { await session.unlockWithBiometrics() } } label: { Label(L10n.text("unlock.biometric"), systemImage: "touchid") }
                             .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy)
                     }
                     Button(L10n.text(useRecovery ? "unlock.usePassword" : "unlock.useRecovery")) { useRecovery.toggle(); password = "" }
-                        .font(.system(size: 12)).foregroundStyle(AegisTheme.teal).buttonStyle(.plain).frame(maxWidth: .infinity).padding(.top, 4)
+                        .aegisFont(size: 12).foregroundStyle(session.isBusy ? AegisTheme.disabledText : AegisTheme.teal).buttonStyle(.plain).frame(maxWidth: .infinity).padding(.top, 4).disabled(session.isBusy)
                 }
             }
             if creating {
@@ -97,20 +114,20 @@ struct UnlockView: View {
                     Rectangle().fill(AegisTheme.border).frame(height: 1)
                     Button { Task { await session.connectCloud() } } label: { Label(L10n.text("welcome.cloud"), systemImage: "icloud") }
                         .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy)
-                    Text(L10n.text("welcome.cloudHint")).font(.system(size: 11)).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
-                    Button(L10n.text("welcome.import")) { showImport = true }.font(.system(size: 12)).foregroundStyle(AegisTheme.teal).buttonStyle(.plain)
+                    Text(L10n.text("welcome.cloudHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                    Button(L10n.text("welcome.import")) { showImport = true }.aegisFont(size: 12).foregroundStyle(session.isBusy ? AegisTheme.disabledText : AegisTheme.teal).buttonStyle(.plain).disabled(session.isBusy)
                 }
             }
-            Label(L10n.text("ui.unlockFooter"), systemImage: "lock.shield").font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).padding(.top, 10)
+            Label(L10n.text("ui.unlockFooter"), systemImage: "lock.shield").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.top, 10)
         }
     }
     private func submit() {
-        guard !session.isBusy else { return }
-        if creating, password != confirmation { session.error = L10n.text("error.passwordMismatch"); return }
+        guard canSubmit else { return }
+        let isCreating = creating, isRecovery = useRecovery
         let submitted = password; password = ""; confirmation = ""
         Task {
-            if creating { await session.create(password: submitted) }
-            else { await session.unlock(password: submitted, recovery: useRecovery) }
+            if isCreating { await session.create(password: submitted) }
+            else { await session.unlock(password: submitted, recovery: isRecovery) }
         }
     }
 }
@@ -123,10 +140,10 @@ struct RecoveryView: View {
             AegisSheetHeader(title: L10n.text("recovery.title"), symbol: "key.horizontal")
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text(L10n.text("recovery.description")).font(.system(size: 14)).lineSpacing(6).foregroundStyle(AegisTheme.secondary)
+                    Text(L10n.text("recovery.description")).aegisFont(size: 14).lineSpacing(6).foregroundStyle(AegisTheme.secondary)
                     VStack(alignment: .leading, spacing: 20) {
                         Text(session.recoveryKey?.replacingOccurrences(of: "-", with: "  ") ?? "")
-                            .font(.system(size: 17, weight: .medium, design: .monospaced)).lineSpacing(12).textSelection(.enabled)
+                            .aegisFont(size: 17, weight: .medium, design: .monospaced).lineSpacing(12).textSelection(.enabled)
                             .foregroundStyle(AegisTheme.text).frame(maxWidth: .infinity, alignment: .leading)
                         Button {
                             if let key = session.recoveryKey { SecureClipboard.copy(key); copied = true }
@@ -134,14 +151,25 @@ struct RecoveryView: View {
                             .buttonStyle(AegisButtonStyle(fullWidth: true))
                     }.aegisCard().privacySensitive()
                     Label(L10n.text("recovery.warning"), systemImage: "exclamationmark.shield")
-                        .font(.system(size: 12)).lineSpacing(5).foregroundStyle(AegisTheme.gold).padding(16)
+                        .aegisFont(size: 12).lineSpacing(5).foregroundStyle(AegisTheme.gold).padding(16)
                         .background(AegisTheme.gold.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
                     Toggle(L10n.text("recovery.saved"), isOn: Bindable(session).recoveryAcknowledged)
-                        .font(.system(size: 13)).toggleStyle(.switch).tint(AegisTheme.teal)
-                    Button(L10n.text("recovery.enter")) { session.recoveryKey = nil }
-                        .buttonStyle(PrimaryButtonStyle()).disabled(!session.recoveryAcknowledged)
+                        .aegisFont(size: 13).toggleStyle(.switch).tint(AegisTheme.teal)
+                        .accessibilityIdentifier("recoveryAcknowledgement")
+                    VStack(spacing: 10) {
+                        Button(L10n.text("recovery.enter")) {
+                            guard session.recoveryAcknowledged else { return }
+                            session.confirmRecovery()
+                        }.buttonStyle(PrimaryButtonStyle()).disabled(!session.recoveryAcknowledged)
+                            .accessibilityIdentifier("enterVaultButton")
+                        Label(L10n.text(session.recoveryAcknowledged ? "recovery.confirmedHint" : "recovery.confirmHint"),
+                              systemImage: session.recoveryAcknowledged ? "checkmark.circle" : "info.circle")
+                            .aegisFont(size: 11).foregroundStyle(session.recoveryAcknowledged ? AegisTheme.teal : AegisTheme.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }.padding(24)
             }
-        }.background(AegisTheme.background).aegisSheetSize(width: 540, height: 620).interactiveDismissDisabled()
+        }.background(AegisTheme.background).aegisSheetSize(width: 540, height: 620).interactiveDismissDisabled().vaultErrorPresenter()
+            .onChange(of: session.recoveryAcknowledged) { _, _ in session.touch() }
     }
 }

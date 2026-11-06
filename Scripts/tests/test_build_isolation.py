@@ -153,6 +153,11 @@ class BuildIsolationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "denied"):
                 self.area.cleanup()
 
+    def test_cleanup_is_idempotent_for_unavailable_registration(self):
+        with patch.object(self.area, "registered", return_value=[self.area.work / "Old.app"]), \
+             patch.object(isolation.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", "failed to scan: -10814")):
+            self.area.cleanup()
+
     def test_execute_preserves_failure_and_always_cleans_up(self):
         with patch.object(self.area, "cleanup") as cleanup:
             code = isolation.execute(self.area, [sys.executable, "-c", "raise SystemExit(23)"], "test")

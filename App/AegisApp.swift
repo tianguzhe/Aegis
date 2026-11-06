@@ -48,16 +48,14 @@ struct RootView: View {
         .task { await session.bootstrap() }
         .simultaneousGesture(TapGesture().onEnded { session.touch() })
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { session.lock() }
+            if phase == .background { session.lock(reason: .background) }
         }
         #if os(macOS)
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in session.lock() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.screensDidSleepNotification)) { _ in session.lock() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.sessionDidResignActiveNotification)) { _ in session.lock() }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in session.lock(reason: .system) }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.screensDidSleepNotification)) { _ in session.lock(reason: .system) }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.sessionDidResignActiveNotification)) { _ in session.lock(reason: .system) }
         #endif
-        .alert(L10n.text("app.error"), isPresented: Binding(get: { session.error != nil }, set: { if !$0 { session.error = nil } })) {
-            Button(L10n.text("action.done")) { session.error = nil }
-        } message: { Text(session.error ?? "") }
+        .vaultErrorPresenter()
         .sheet(isPresented: Binding(get: { session.recoveryKey != nil }, set: { _ in })) { RecoveryView().environment(session) }
     }
 }

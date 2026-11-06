@@ -15,7 +15,7 @@ let package = Package(
     targets: [
         .target(name: "CArgon2", exclude: ["LICENSE"], publicHeadersPath: "include",
                 cSettings: [.define("ARGON2_NO_THREADS"), .headerSearchPath("include")]),
-        .target(name: "AegisCore", dependencies: ["CArgon2"], resources: [.process("Resources")]),
+        .target(name: "AegisCore", dependencies: ["CArgon2"], exclude: ["Resources/Localizable.xcstrings"], resources: [.process("Resources")]),
         .target(name: "AegisStorage", dependencies: ["AegisCore"]),
         .target(name: "AegisSync", dependencies: ["AegisCore", "AegisStorage"]),
         .target(name: "AegisMarkdown", dependencies: ["AegisCore", .product(name: "Markdown", package: "swift-markdown")]),

@@ -21,7 +21,7 @@ struct GeneratorView: View {
                             Spacer()
                             AegisIconButton(symbol: "arrow.clockwise", label: L10n.text("generator.regenerate"), action: regenerate)
                         }
-                        Text(styledPassword).font(.system(size: 27, weight: .medium, design: .monospaced))
+                        Text(styledPassword).aegisFont(size: 27, weight: .medium, design: .monospaced)
                             .tracking(0.6).lineSpacing(8).textSelection(.enabled)
                             .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                         Button {
@@ -34,14 +34,14 @@ struct GeneratorView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(L10n.text("generator.length")).font(.system(size: 14, weight: .medium)).foregroundStyle(AegisTheme.text)
-                                    Text(L10n.text("ui.lengthRange")).font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
+                                    Text(L10n.text("generator.length")).aegisFont(size: 14, weight: .medium).foregroundStyle(AegisTheme.text)
+                                    Text(L10n.text("ui.lengthRange")).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                                 }
                                 Spacer()
                                 HStack(spacing: 7) {
-                                    AegisIconButton(symbol: "minus", label: L10n.text("ui.lengthDecrease")) { session.passwordOptions.length -= 1 }.disabled(session.passwordOptions.length <= 12)
-                                    Text(session.passwordOptions.length, format: .number).font(.system(size: 28, weight: .medium, design: .rounded)).monospacedDigit().foregroundStyle(AegisTheme.teal).frame(minWidth: 40)
-                                    AegisIconButton(symbol: "plus", label: L10n.text("ui.lengthIncrease")) { session.passwordOptions.length += 1 }.disabled(session.passwordOptions.length >= 64)
+                                    AegisIconButton(symbol: "minus", label: L10n.text("ui.lengthDecrease")) { session.passwordOptions.length -= 1 }.disabled(session.passwordOptions.length <= 12).accessibilityIdentifier("decreasePasswordLength")
+                                    Text(session.passwordOptions.length, format: .number).aegisFont(size: 28, weight: .medium, design: .rounded).monospacedDigit().foregroundStyle(AegisTheme.teal).frame(minWidth: 40)
+                                    AegisIconButton(symbol: "plus", label: L10n.text("ui.lengthIncrease")) { session.passwordOptions.length += 1 }.disabled(session.passwordOptions.length >= 64).accessibilityIdentifier("increasePasswordLength")
                                 }
                             }
                             Slider(value: Binding(get: { Double(session.passwordOptions.length) }, set: { session.passwordOptions.length = Int($0) }), in: 12...64, step: 1)
@@ -55,10 +55,10 @@ struct GeneratorView: View {
                         generatorToggle("generator.symbols", sample: "# & %", value: $session.passwordOptions.symbols)
                     }
                     Label(L10n.text("generator.footer"), systemImage: "clock.arrow.circlepath")
-                        .font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).frame(maxWidth: .infinity)
+                        .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).frame(maxWidth: .infinity)
                 }.padding(.horizontal, 24).padding(.bottom, 26).frame(maxWidth: 620).frame(maxWidth: .infinity)
             }
-        }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 740))
+        }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 740)).vaultErrorPresenter()
             .onAppear(perform: regenerate).onChange(of: session.passwordOptions) { _, _ in regenerate() }
             .task(id: copied) { if copied { try? await Task.sleep(for: .seconds(2)); copied = false } }.privacySensitive()
     }
@@ -72,9 +72,9 @@ struct GeneratorView: View {
     private func generatorToggle(_ key: String, sample: String, value: Binding<Bool>) -> some View {
         Toggle(isOn: value) {
             HStack {
-                Text(L10n.text(key)).font(.system(size: 13)).foregroundStyle(AegisTheme.text)
+                Text(L10n.text(key)).aegisFont(size: 13).foregroundStyle(AegisTheme.text)
                 Spacer()
-                Text(sample).font(.system(size: 11, design: .monospaced)).foregroundStyle(AegisTheme.secondary).padding(.trailing, 12)
+                Text(sample).aegisFont(size: 11, design: .monospaced).foregroundStyle(AegisTheme.secondary).padding(.trailing, 12)
             }
         }.toggleStyle(.switch).tint(AegisTheme.teal).padding(.horizontal, 20).padding(.vertical, 16)
     }
@@ -118,8 +118,8 @@ struct SettingsView: View {
                     HStack(spacing: 15) {
                         AegisMark(size: 50)
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(L10n.text("app.vault")).font(.system(size: 17, weight: .semibold)).foregroundStyle(AegisTheme.text)
-                            Text(L10n.text("ui.privateItem")).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
+                            Text(L10n.text("app.vault")).aegisFont(size: 17, weight: .semibold).foregroundStyle(AegisTheme.text)
+                            Text(L10n.text("ui.privateItem")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "checkmark.shield.fill").font(.system(size: 23)).foregroundStyle(AegisTheme.teal)
@@ -144,11 +144,11 @@ struct SettingsView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "icloud").font(.system(size: 24, weight: .light)).foregroundStyle(AegisTheme.teal)
                                 VStack(alignment: .leading, spacing: 5) {
-                                    Text(session.syncTitle).font(.system(size: 14, weight: .medium)).foregroundStyle(AegisTheme.text)
-                                    Text(L10n.text("sync.description")).font(.system(size: 12)).lineSpacing(3).foregroundStyle(AegisTheme.secondary)
+                                    Text(session.syncTitle).aegisFont(size: 14, weight: .medium).foregroundStyle(AegisTheme.text)
+                                    Text(L10n.text("sync.description")).aegisFont(size: 12).lineSpacing(3).foregroundStyle(AegisTheme.secondary)
                                 }
                             }
-                            if case .failed(let detail) = session.syncStatus { Text(detail).font(.system(size: 12)).foregroundStyle(.orange) }
+                            if case .failed(let detail) = session.syncStatus { Text(detail).aegisFont(size: 12).foregroundStyle(.orange) }
                             Button { Task { await session.connectCloud() } } label: { Label(L10n.text("sync.now"), systemImage: "arrow.triangle.2.circlepath") }
                                 .buttonStyle(AegisButtonStyle(fullWidth: true))
                         }.padding(20)
@@ -167,15 +167,15 @@ struct SettingsView: View {
                         SettingsRowText(symbol: "rectangle.and.pencil.and.ellipsis", title: "settings.autofill", detail: "settings.autofillDescription").padding(18)
                     }
                     HStack {
-                        Text("Aegis").font(.system(size: 18, weight: .medium, design: .serif))
+                        Text("Aegis").aegisFont(size: 18, weight: .medium, design: .serif)
                         Spacer()
-                        Text(L10n.text("settings.version")).font(.system(size: 11))
+                        Text(L10n.text("settings.version")).aegisFont(size: 11)
                         Text("·")
-                        Text(L10n.text("settings.languageValue")).font(.system(size: 11))
+                        Text(L10n.text("settings.languageValue")).aegisFont(size: 11)
                     }.foregroundStyle(AegisTheme.secondary).padding(.horizontal, 4).padding(.vertical, 8)
                 }.padding(.horizontal, 24).padding(.bottom, 24).frame(maxWidth: 650).frame(maxWidth: .infinity)
             }
-        }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 760))
+        }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 760)).vaultErrorPresenter()
             .sheet(isPresented: $showImport) { ImportBackupView().environment(session) }
             .fileExporter(isPresented: $showExport, document: document, contentType: .aegisBackup, defaultFilename: "Aegis-\(Date.now.formatted(.iso8601.year().month().day()))") { result in
                 if case .failure(let error) = result { session.error = error.localizedDescription }; document = nil
@@ -186,7 +186,7 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Image(systemName: symbol).font(.system(size: 16)).foregroundStyle(AegisTheme.teal).frame(width: 32)
-                Text(L10n.text(title)).font(.system(size: 13)).foregroundStyle(AegisTheme.text)
+                Text(L10n.text(title)).aegisFont(size: 13).foregroundStyle(AegisTheme.text)
                 Spacer()
                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(AegisTheme.secondary)
             }.padding(18).contentShape(Rectangle())
@@ -203,8 +203,8 @@ private struct SettingsRowText: View {
             Image(systemName: symbol).font(.system(size: 17)).foregroundStyle(AegisTheme.teal)
                 .frame(width: 32, height: 32).background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 6) {
-                Text(L10n.text(title)).font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.text)
-                Text(L10n.text(detail)).font(.system(size: 11)).lineSpacing(4).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(L10n.text(title)).aegisFont(size: 13, weight: .medium).foregroundStyle(AegisTheme.text)
+                Text(L10n.text(detail)).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -218,31 +218,36 @@ struct ImportBackupView: View {
     @State private var password = ""
     var body: some View {
         VStack(spacing: 0) {
-            AegisSheetHeader(title: L10n.text("backup.importTitle"), symbol: "arrow.down.doc", close: { dismiss() })
+            AegisSheetHeader(title: L10n.text("backup.importTitle"), symbol: "arrow.down.doc", close: { dismiss() }, closeDisabled: session.isBusy)
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text(L10n.text("backup.description")).font(.system(size: 13)).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
+                    Text(L10n.text("backup.description")).aegisFont(size: 13).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
                     Button { showPicker = true } label: {
                         VStack(spacing: 13) {
                             Image(systemName: data == nil ? "doc.badge.plus" : "checkmark.circle.fill").font(.system(size: 30, weight: .light))
-                            Text(L10n.text(data == nil ? "backup.choose" : "backup.selected")).font(.system(size: 14, weight: .medium))
+                            Text(L10n.text(data == nil ? "backup.choose" : "backup.selected")).aegisFont(size: 14, weight: .medium)
                         }.foregroundStyle(AegisTheme.teal).frame(maxWidth: .infinity).padding(.vertical, 28)
                             .background(AegisTheme.selected.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(AegisTheme.teal.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(.plain).disabled(session.isBusy)
                     AegisInput(title: L10n.text("backup.password"), icon: "lock") {
                         SecureField(L10n.text("welcome.master"), text: $password).textContentType(.password)
+                    }.disabled(session.isBusy)
+                    if !session.isBusy && (data == nil || password.isEmpty) {
+                        Label(L10n.text(data == nil ? "backup.chooseHint" : "backup.passwordHint"), systemImage: "info.circle")
+                            .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                     }
                     Button {
-                        guard let data else { return }
+                        guard let data, !session.isBusy, !password.isEmpty else { return }
                         let submitted = password; password = ""
                         Task { if await session.importBackup(data: data, password: submitted) { dismiss() } }
                     } label: {
-                        HStack { if session.isBusy { ProgressView().controlSize(.small).tint(.white) }; Text(L10n.text("backup.importAction")) }
+                        HStack { if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(session.isBusy ? "backup.importing" : "backup.importAction")) }
                     }.buttonStyle(PrimaryButtonStyle()).disabled(data == nil || password.isEmpty || session.isBusy)
                 }.padding(24)
             }
-        }.background(AegisTheme.background).aegisSheetSize(width: 520, height: 520)
+        }.background(AegisTheme.background).aegisSheetSize(width: 520, height: 520).vaultErrorPresenter()
+            .interactiveDismissDisabled(session.isBusy)
             .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisBackup, .data, .json]) { result in
                 do {
                     let url = try result.get()

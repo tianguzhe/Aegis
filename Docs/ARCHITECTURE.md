@@ -13,7 +13,15 @@
 
 主密码（UTF-8 原样编码，不自动去空格或归一化）+ 16 字节随机盐，经 Argon2id 派生 32 字节 KEK。KEK 以 AES-GCM 包裹 32 字节随机保险库密钥。独立的 32 字节随机恢复密钥另行包裹同一保险库密钥。密钥包裹 AAD 包含格式版本、保险库 ID 与用途。
 
-生物识别使用 `biometryCurrentSet` 与 `WhenPasscodeSetThisDeviceOnly` 的 Keychain 条目，仅限本设备；不参与 iCloud Keychain 同步。主密码与恢复密钥不持久化。Swift 字符串和 SwiftUI 控件无法保证所有内存副本立即清零；锁定清理可控密钥引用、可见条目、表单与本应用持有的剪贴板内容。
+生物识别使用 `biometryCurrentSet` 与 `WhenPasscodeSetThisDeviceOnly` 的 Keychain 条目，仅限本设备；不参与 iCloud Keychain 同步。主密码不持久化。恢复密钥在用户确认前以保险库密钥加密保存在本机，确认后从本地状态移除。Swift 字符串和 SwiftUI 控件无法保证所有内存副本立即清零；锁定清理可控密钥引用、可见条目和表单。iOS 后台锁定保留系统设置的 local-only 剪贴板过期时间，以支持切到其他 App 粘贴；手动锁定立即清理本应用持有的剪贴板内容。
+
+## 可恢复的本机状态
+
+`LocalVaultStateStore` 使用独立用途 AAD（`aegis|local-state|1|<vaultID>`）和随机 nonce，将草稿及待确认恢复密钥以 AES-256-GCM 保存到数据库目录下的 `local-state-<vaultID>.aegis`。它不上传 CloudKit，也不包含在用户导出的保险库备份中。
+
+恢复配置先落盘，再提交保险库 header；创建中断后，主密码解锁会解密本机状态并继续确认。此机制覆盖升级后新建的保险库；旧版本已丢失且未保存的恢复密钥无法凭空还原。
+
+编辑器保留原始内容及其父 revision，持续同步加密草稿。锁定前还会同步读取已注册编辑器的最新绑定值，避免 SwiftUI 的 onChange 尚未送达导致最后输入丢失。锁定后本地状态对象移除明文与密钥，解锁再恢复。显式保存或放弃会移除对应草稿。详情身份使用稳定 item ID，远端 revision 更新不会销毁当前编辑器；保存仍使用草稿原父版本，保留真实同步冲突。
 
 ## 不可变版本
 

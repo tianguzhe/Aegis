@@ -8,7 +8,7 @@ import AppKit
 
 enum AegisTheme {
     static let navy = Color(red: 0.07, green: 0.16, blue: 0.16)
-    static let gold = Color(red: 0.69, green: 0.53, blue: 0.29)
+    static let gold = adaptive(0x80602D, dark: 0xD9B778)
     static let teal = adaptive(0x27635B, dark: 0x83C3B4)
     static let background = adaptive(0xF7F8F5, dark: 0x171C1B)
     static let surface = adaptive(0xFFFFFF, dark: 0x202725)
@@ -16,8 +16,10 @@ enum AegisTheme {
     static let inset = adaptive(0xF3F5F0, dark: 0x29322F)
     static let selected = adaptive(0xE2EDE5, dark: 0x2B443A)
     static let text = adaptive(0x23352F, dark: 0xECF2ED)
-    static let secondary = adaptive(0x77837C, dark: 0xA4B1A9)
+    static let secondary = adaptive(0x53645A, dark: 0xA4B1A9)
     static let border = adaptive(0xE4E9E2, dark: 0x35413A)
+    static let disabledFill = adaptive(0xE6EAE5, dark: 0x303A34)
+    static let disabledText = adaptive(0x738077, dark: 0x96A49B)
 
     static func adaptive(_ light: UInt32, dark: UInt32) -> Color {
         func components(_ hex: UInt32) -> (CGFloat, CGFloat, CGFloat) {
@@ -77,8 +79,8 @@ struct AegisBrand: View {
         HStack(spacing: 12) {
             AegisMark(size: compact ? 32 : 42)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Aegis").font(.system(size: compact ? 22 : 26, weight: .semibold, design: .serif)).tracking(-0.6)
-                if !compact { Text(L10n.text("ui.brandSubtitle")).font(.system(size: 11, weight: .medium)).foregroundStyle(AegisTheme.secondary) }
+                Text("Aegis").aegisFont(size: compact ? 22 : 26, weight: .semibold, design: .serif).tracking(-0.6)
+                if !compact { Text(L10n.text("ui.brandSubtitle")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary) }
             }
         }.foregroundStyle(AegisTheme.text)
     }
@@ -87,15 +89,32 @@ struct AegisBrand: View {
 struct AegisButtonStyle: ButtonStyle {
     var primary = false
     var fullWidth = false
-    @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 14, weight: .semibold))
+        AegisButtonBody(label: configuration.label, primary: primary, fullWidth: fullWidth,
+                        pressed: configuration.isPressed)
+    }
+}
+
+/// Read the environment on an installed View, including when a ButtonStyle wraps another style.
+private struct AegisButtonBody: View {
+    let label: ButtonStyleConfiguration.Label
+    let primary: Bool
+    let fullWidth: Bool
+    let pressed: Bool
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        label.aegisFont(size: 14, weight: .semibold)
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 20)
             .padding(.horizontal, 18).padding(.vertical, 12)
-            .foregroundStyle(primary ? Color.white : AegisTheme.text)
-            .background(primary ? AegisTheme.navy : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(primary ? Color.clear : AegisTheme.border))
-            .opacity(enabled ? (configuration.isPressed ? 0.78 : 1) : 0.4)
+            .foregroundStyle(enabled ? (primary ? Color.white : AegisTheme.text) : AegisTheme.disabledText)
+            .background(enabled ? (primary ? AegisTheme.navy : AegisTheme.surface) : AegisTheme.disabledFill,
+                        in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(enabled && primary ? Color.clear : AegisTheme.border))
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .opacity(enabled && pressed ? 0.78 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: enabled)
     }
 }
 struct PrimaryButtonStyle: ButtonStyle {
@@ -109,6 +128,7 @@ struct AegisIconButton: View {
     var prominent = false
     let action: () -> Void
     @State private var hovering = false
+    @Environment(\.isEnabled) private var enabled
     private var targetSize: CGFloat {
         #if os(iOS)
         44
@@ -119,10 +139,11 @@ struct AegisIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 15, weight: .medium)).frame(width: targetSize, height: targetSize)
-                .foregroundStyle(prominent ? Color.white : AegisTheme.secondary)
-                .background(prominent ? AegisTheme.navy : hovering ? AegisTheme.inset : Color.clear, in: RoundedRectangle(cornerRadius: 11))
+                .foregroundStyle(enabled ? (prominent ? Color.white : AegisTheme.secondary) : AegisTheme.disabledText.opacity(0.55))
+                .background(!enabled && prominent ? AegisTheme.disabledFill : prominent ? AegisTheme.navy : hovering && enabled ? AegisTheme.inset : Color.clear, in: RoundedRectangle(cornerRadius: 11))
                 .contentShape(RoundedRectangle(cornerRadius: 11))
-        }.buttonStyle(.plain).onHover { hovering = $0 }.help(label).accessibilityLabel(label)
+        }.buttonStyle(.plain).onHover { hovering = enabled && $0 }.help(label).accessibilityLabel(label)
+            .onChange(of: enabled) { _, value in if !value { hovering = false } }
     }
 }
 
@@ -146,7 +167,7 @@ struct ItemIcon: View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.29).fill(tint.opacity(isSelected ? 0.14 : 0.08))
             if item.kind == .login {
-                Text(String(item.title.prefix(1)).uppercased()).font(.system(size: size * 0.40, weight: .semibold, design: .rounded))
+                Text(String(item.title.prefix(1)).uppercased()).aegisFont(size: size * 0.40, weight: .semibold, design: .rounded)
             } else { Image(systemName: item.kind.symbol).font(.system(size: size * 0.40, weight: .medium)) }
         }.foregroundStyle(tint).frame(width: size, height: size).accessibilityHidden(true)
     }
@@ -159,7 +180,7 @@ struct AegisPill: View {
     var body: some View {
         HStack(spacing: 5) {
             if let symbol { Image(systemName: symbol).font(.system(size: 10, weight: .semibold)) }
-            Text(title).font(.system(size: 11, weight: .medium))
+            Text(title).aegisFont(size: 11, weight: .medium)
         }.foregroundStyle(tint).padding(.horizontal, 9).padding(.vertical, 5)
             .background(tint.opacity(0.08), in: Capsule())
     }
@@ -172,8 +193,8 @@ struct AegisSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(AegisTheme.text)
-                if let subtitle { Text(subtitle).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary).lineSpacing(3) }
+                Text(title).aegisFont(size: 13, weight: .semibold).foregroundStyle(AegisTheme.text)
+                if let subtitle { Text(subtitle).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary).lineSpacing(3) }
             }.padding(.horizontal, 2)
             VStack(spacing: 0, content: content).aegisSurface()
         }
@@ -187,10 +208,10 @@ struct AegisInput<Content: View>: View {
     @FocusState private var focused: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(AegisTheme.secondary)
+            Text(title).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
             HStack(spacing: 10) {
                 if let icon { Image(systemName: icon).font(.system(size: 15)).foregroundStyle(AegisTheme.secondary) }
-                content().textFieldStyle(.plain).font(.system(size: 15)).focused($focused)
+                content().textFieldStyle(.plain).aegisFont(size: 15).focused($focused)
                     .frame(minHeight: 22).foregroundStyle(AegisTheme.text)
             }.padding(.horizontal, 14).padding(.vertical, 13)
                 .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: 11))
@@ -204,6 +225,7 @@ struct AegisSheetHeader: View {
     var subtitle: String? = nil
     var symbol: String? = nil
     var close: (() -> Void)? = nil
+    var closeDisabled = false
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
             if let symbol {
@@ -211,11 +233,11 @@ struct AegisSheetHeader: View {
                     .frame(width: 46, height: 46).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 14))
             }
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.system(size: 23, weight: .semibold)).tracking(-0.5).foregroundStyle(AegisTheme.text)
-                if let subtitle { Text(subtitle).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary) }
+                Text(title).aegisFont(size: 23, weight: .semibold).tracking(-0.5).foregroundStyle(AegisTheme.text)
+                if let subtitle { Text(subtitle).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary) }
             }
             Spacer(minLength: 8)
-            if let close { AegisIconButton(symbol: "xmark", label: L10n.text("action.close"), action: close) }
+            if let close { AegisIconButton(symbol: "xmark", label: L10n.text("action.close"), action: close).disabled(closeDisabled) }
         }.padding(24)
     }
 }
@@ -231,14 +253,17 @@ struct AegisEmptyState: View {
                 Image(systemName: symbol).font(.system(size: 32, weight: .light)).foregroundStyle(AegisTheme.teal)
             }
             VStack(spacing: 8) {
-                Text(title).font(.system(size: 20, weight: .semibold)).foregroundStyle(AegisTheme.text)
-                Text(message).font(.system(size: 13)).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                Text(title).aegisFont(size: 20, weight: .semibold).foregroundStyle(AegisTheme.text)
+                Text(message).aegisFont(size: 13).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
             }.multilineTextAlignment(.center).frame(maxWidth: 300)
         }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 extension View {
+    func aegisFont(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        modifier(AegisScaledFont(size: size, weight: weight, design: design))
+    }
     func aegisSurface(radius: CGFloat = 16) -> some View {
         background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: radius))
             .overlay(RoundedRectangle(cornerRadius: radius).stroke(AegisTheme.border.opacity(0.8)))
@@ -258,4 +283,16 @@ extension View {
         self
         #endif
     }
+}
+
+private struct AegisScaledFont: ViewModifier {
+    @ScaledMetric private var size: CGFloat
+    let weight: Font.Weight
+    let design: Font.Design
+    init(size: CGFloat, weight: Font.Weight, design: Font.Design) {
+        let style: Font.TextStyle = size >= 28 ? .title : size >= 20 ? .title2 : size >= 15 ? .body : .caption
+        _size = ScaledMetric(wrappedValue: size, relativeTo: style)
+        self.weight = weight; self.design = design
+    }
+    func body(content: Content) -> some View { content.font(.system(size: size, weight: weight, design: design)) }
 }

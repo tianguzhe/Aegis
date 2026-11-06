@@ -16,14 +16,14 @@ struct MarkdownComposer: View {
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var focused = false
     @State private var command: MarkdownEditorCommand?
-    @State private var expanded = false
+    @Binding var expanded: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "text.alignleft").font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.teal)
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(AegisTheme.text)
+                Text(title).aegisFont(size: 13, weight: .semibold).foregroundStyle(AegisTheme.text)
                 Spacer()
                 ComposerModePicker(mode: $mode)
             }
@@ -32,15 +32,13 @@ struct MarkdownComposer: View {
                     command = MarkdownEditorCommand(action: .format(action))
                 }
                 Rectangle().fill(AegisTheme.border.opacity(0.75)).frame(height: 1)
-                Group {
-                    if mode == .write {
-                        ZStack(alignment: .topLeading) {
-                            MarkdownSourceEditor(text: $text, selection: $selection, isFocused: $focused, command: command, identifier: "markdownNotes", fontSize: 15)
-                            if text.isEmpty { ComposerPlaceholder().padding(.horizontal, 20).padding(.top, 22).allowsHitTesting(false) }
-                        }
-                    } else {
-                        ComposerPreview(text: text, compact: true)
+                ZStack(alignment: .topLeading) {
+                    ZStack(alignment: .topLeading) {
+                        MarkdownSourceEditor(text: $text, selection: $selection, isFocused: $focused, command: command, identifier: "markdownNotes", fontSize: 15)
+                        if text.isEmpty { ComposerPlaceholder().padding(.horizontal, 20).padding(.top, 22).allowsHitTesting(false) }
                     }
+                    .opacity(mode == .write ? 1 : 0).allowsHitTesting(mode == .write).accessibilityHidden(mode != .write)
+                    if mode == .preview { ComposerPreview(text: text, compact: true) }
                 }.frame(height: 220)
                 HStack(spacing: 8) {
                     ComposerStatistics(text: text)
@@ -51,7 +49,7 @@ struct MarkdownComposer: View {
                     } label: {
                         HStack(spacing: 7) {
                             Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 11, weight: .semibold))
-                            Text(L10n.text("composer.expand")).font(.system(size: 12, weight: .semibold))
+                            Text(L10n.text("composer.expand")).aegisFont(size: 12, weight: .semibold)
                         }.foregroundStyle(AegisTheme.teal).padding(.horizontal, 13).frame(height: expandHeight)
                             .background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 10))
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(AegisTheme.teal.opacity(0.10)))
@@ -68,6 +66,9 @@ struct MarkdownComposer: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(focused && mode == .write ? AegisTheme.teal.opacity(0.45) : AegisTheme.border, lineWidth: 1))
             .shadow(color: AegisTheme.navy.opacity(0.035), radius: 12, x: 0, y: 5)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: mode)
+        }
+        .onChange(of: mode) { _, value in
+            if value == .preview { command = MarkdownEditorCommand(action: .dismissKeyboard) }
         }
         .accessibilityHidden(expanded)
         #if os(macOS)
@@ -102,7 +103,7 @@ private struct ComposerModePicker: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: value.symbol).font(.system(size: 12, weight: .medium))
-                        Text(value.title).font(.system(size: 12, weight: .semibold))
+                        Text(value.title).aegisFont(size: 12, weight: .semibold)
                     }.foregroundStyle(mode == value ? AegisTheme.teal : AegisTheme.secondary)
                         .padding(.horizontal, 12).frame(height: controlHeight)
                         .background(mode == value ? AegisTheme.surface : Color.clear, in: RoundedRectangle(cornerRadius: 9))
@@ -116,7 +117,7 @@ private struct ComposerModePicker: View {
     }
     private var controlHeight: CGFloat {
         #if os(iOS)
-        36
+        44
         #else
         30
         #endif
@@ -133,7 +134,7 @@ private struct ComposerFormatBar: View {
         HStack(spacing: 0) {
             if previewing {
                 Label(L10n.text("composer.previewHint"), systemImage: "eye")
-                    .font(.system(size: 11)).foregroundStyle(AegisTheme.secondary).padding(.horizontal, 12)
+                    .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.horizontal, 12)
                 Spacer()
             } else {
                 ScrollView(.horizontal) {
@@ -172,7 +173,7 @@ private struct ComposerToolButton: View {
     var body: some View {
         Button(action: apply) {
             Group {
-                if action == .heading { Text("H₂").font(.system(size: 14, weight: .semibold, design: .rounded)) }
+                if action == .heading { Text("H₂").aegisFont(size: 14, weight: .semibold, design: .rounded) }
                 else { Image(systemName: symbol).font(.system(size: 14, weight: .medium)) }
             }.foregroundStyle(hovering ? AegisTheme.teal : AegisTheme.text.opacity(0.75))
                 .frame(width: targetSize, height: targetSize)
@@ -220,9 +221,9 @@ private struct ComposerStatistics: View {
     let text: String
     var body: some View {
         HStack(spacing: 8) {
-            Text("Markdown").font(.system(size: 10, weight: .medium, design: .monospaced)).foregroundStyle(AegisTheme.secondary.opacity(0.8))
+            Text("Markdown").aegisFont(size: 10, weight: .medium, design: .monospaced).foregroundStyle(AegisTheme.secondary.opacity(0.8))
             Circle().fill(AegisTheme.border).frame(width: 3, height: 3)
-            Text(L10n.format("composer.characterCount", Int64(text.count))).font(.system(size: 10)).monospacedDigit().foregroundStyle(AegisTheme.secondary)
+            Text(L10n.format("composer.characterCount", Int64(text.count))).aegisFont(size: 10).monospacedDigit().foregroundStyle(AegisTheme.secondary)
         }.lineLimit(1)
     }
 }
@@ -230,8 +231,8 @@ private struct ComposerStatistics: View {
 private struct ComposerPlaceholder: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(L10n.text("composer.placeholder")).font(.system(size: 15)).foregroundStyle(AegisTheme.secondary.opacity(0.8))
-            Text(L10n.text("composer.placeholderHint")).font(.system(size: 12)).foregroundStyle(AegisTheme.secondary.opacity(0.55))
+            Text(L10n.text("composer.placeholder")).aegisFont(size: 15).foregroundStyle(AegisTheme.secondary.opacity(0.8))
+            Text(L10n.text("composer.placeholderHint")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary.opacity(0.55))
         }
     }
 }
@@ -243,7 +244,7 @@ private struct ComposerPreview: View {
         if text.isEmpty {
             VStack(spacing: 12) {
                 Image(systemName: "doc.richtext").font(.system(size: 30, weight: .ultraLight)).foregroundStyle(AegisTheme.teal.opacity(0.6))
-                Text(L10n.text("markdown.empty")).font(.system(size: 13)).foregroundStyle(AegisTheme.secondary)
+                Text(L10n.text("markdown.empty")).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary)
             }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
@@ -279,7 +280,7 @@ private struct ExpandedMarkdownEditor: View {
                     Spacer()
                     #if os(macOS)
                     Label(L10n.text("composer.focusHint"), systemImage: "text.alignleft")
-                        .font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
+                        .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                     #endif
                 }.padding(.horizontal, pagePadding).padding(.bottom, 18)
                 VStack(spacing: 0) {
@@ -287,17 +288,20 @@ private struct ExpandedMarkdownEditor: View {
                         command = MarkdownEditorCommand(action: .format(action))
                     }, dismissKeyboard: { command = MarkdownEditorCommand(action: .dismissKeyboard) })
                     Rectangle().fill(AegisTheme.border).frame(height: 1)
-                    if mode == .split && wide {
+                    ZStack {
                         HStack(spacing: 0) {
                             sourceColumn
-                            Rectangle().fill(AegisTheme.border).frame(width: 1)
-                            VStack(spacing: 0) {
-                                columnLabel(L10n.text("markdown.preview"), symbol: "eye")
-                                ComposerPreview(text: text)
-                            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                            if mode == .split && wide {
+                                Rectangle().fill(AegisTheme.border).frame(width: 1)
+                                VStack(spacing: 0) {
+                                    columnLabel(L10n.text("markdown.preview"), symbol: "eye")
+                                    ComposerPreview(text: text)
+                                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
                         }
-                    } else if mode == .preview { ComposerPreview(text: text) }
-                    else { sourceColumn }
+                        .opacity(mode == .preview ? 0 : 1).allowsHitTesting(mode != .preview).accessibilityHidden(mode == .preview)
+                        if mode == .preview { ComposerPreview(text: text) }
+                    }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: 18))
                     .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -307,7 +311,7 @@ private struct ExpandedMarkdownEditor: View {
                     ComposerStatistics(text: text)
                     Spacer(minLength: 0)
                     #if os(macOS)
-                    Text(L10n.text("composer.draftHint")).font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
+                    Text(L10n.text("composer.draftHint")).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                     #endif
                 }.padding(.horizontal, pagePadding + 2).padding(.vertical, 16)
             }.background(AegisTheme.background)
@@ -316,7 +320,7 @@ private struct ExpandedMarkdownEditor: View {
         #if os(macOS)
         .frame(minWidth: 860, idealWidth: 1040, maxWidth: .infinity, minHeight: 580, idealHeight: 760, maxHeight: .infinity)
         #endif
-        .privacySensitive()
+        .privacySensitive().vaultErrorPresenter()
         .onChange(of: mode) { _, value in
             if value == .preview { command = MarkdownEditorCommand(action: .dismissKeyboard) }
             session.touch()
@@ -343,9 +347,9 @@ private struct ExpandedMarkdownEditor: View {
             Image(systemName: "square.and.pencil").font(.system(size: 20, weight: .medium)).foregroundStyle(AegisTheme.teal)
                 .frame(width: 44, height: 44).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 14))
             VStack(alignment: .leading, spacing: 5) {
-                Text(L10n.text("composer.focusTitle")).font(.system(size: wide ? 23 : 20, weight: .semibold)).foregroundStyle(AegisTheme.text)
+                Text(L10n.text("composer.focusTitle")).aegisFont(size: wide ? 23 : 20, weight: .semibold).foregroundStyle(AegisTheme.text)
                 Text(recordTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fieldTitle : recordTitle)
-                    .font(.system(size: 12)).foregroundStyle(AegisTheme.secondary).lineLimit(1)
+                    .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             Button { dismiss() } label: {
@@ -368,7 +372,7 @@ private struct ExpandedMarkdownEditor: View {
     private func columnLabel(_ title: String, symbol: String) -> some View {
         HStack(spacing: 7) {
             Image(systemName: symbol).font(.system(size: 10))
-            Text(title).font(.system(size: 10, weight: .semibold))
+            Text(title).aegisFont(size: 10, weight: .semibold)
             Spacer()
         }.foregroundStyle(AegisTheme.secondary).padding(.horizontal, 22).padding(.top, 18).padding(.bottom, 4)
     }

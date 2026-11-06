@@ -47,6 +47,7 @@
 		C014764EF3FF0F19709458B1 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = F3412176344C155CFD770F8E /* AegisCore */; };
 		C571EA6FF7B0BB2A62F9B158 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 31CA42221F0FA9CD3431589A /* AegisCore */; };
 		C8F73B194A5E9FC5EAA4038D /* AegisAutoFill-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6BC737346E27498A6FF75A71 /* AegisAutoFill-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C9043B9B4DF50F00515F5F31 /* VaultErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */; };
 		D18D04C4AEB63B0987393277 /* VaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE2C72ED9D7AD9EFB812781 /* VaultView.swift */; };
 		DA8F235AF731207F6F932023 /* AegisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C95D9FBB75A06A7C6E66716 /* AegisApp.swift */; };
 		E3CE2CF71C4336BC28C3A762 /* MarkdownComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD59CC099F3F977414466610 /* MarkdownComposer.swift */; };
@@ -54,6 +55,7 @@
 		EA8D099C1FC7C03EEE80CFD3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7FBBE134DCDC6CFC425AB6A /* Assets.xcassets */; };
 		EB5EF04F9A02C3478827F33A /* MarkdownSourceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */; };
 		EBAADAE48EC66F76718B7168 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
+		F2E9681402EC6ED9100FA492 /* VaultErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -126,6 +128,7 @@
 		BD59CC099F3F977414466610 /* MarkdownComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownComposer.swift; sourceTree = "<group>"; };
 		BFFC6D8F6011546414CDEBE2 /* CredentialProviderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialProviderViewController.swift; sourceTree = "<group>"; };
 		C2C4F7B0E5F43F8DB33CBA41 /* AegisKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AegisKit; path = Packages/AegisKit; sourceTree = SOURCE_ROOT; };
+		CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultErrorPresenter.swift; sourceTree = "<group>"; };
 		DA17041A55CDE95D6E7867DB /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		F2EBCD5B20BEEAED0DF46652 /* Aegis-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Aegis-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -255,6 +258,7 @@
 				72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */,
 				60916A488A0BC3C065A08819 /* UnlockView.swift */,
 				B52948473B7BD2DE48D206B0 /* UtilityViews.swift */,
+				CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */,
 				7CE2C72ED9D7AD9EFB812781 /* VaultView.swift */,
 			);
 			path = Views;
@@ -488,6 +492,7 @@
 				34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */,
 				97F69E08DA586AC8A6F024B7 /* UnlockView.swift in Sources */,
 				0E9D7D42577A6613BB0E522F /* UtilityViews.swift in Sources */,
+				C9043B9B4DF50F00515F5F31 /* VaultErrorPresenter.swift in Sources */,
 				3BC758D4B50613C7BF04DDE1 /* VaultSession.swift in Sources */,
 				D18D04C4AEB63B0987393277 /* VaultView.swift in Sources */,
 			);
@@ -526,6 +531,7 @@
 				9A2BC60CBE1CBE7BE20FC985 /* PreviewFixtures.swift in Sources */,
 				7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */,
 				0E3631179C3B7B6D4C8E02A7 /* UtilityViews.swift in Sources */,
+				F2E9681402EC6ED9100FA492 /* VaultErrorPresenter.swift in Sources */,
 				30E37A62375BE1D5E66120DC /* VaultSession.swift in Sources */,
 				A44B269C740B59520D532BC7 /* VaultView.swift in Sources */,
 			);

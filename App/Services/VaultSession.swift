@@ -9,6 +9,7 @@ final class VaultSession {
     enum Phase { case loading, setup, locked, unlocked }
     var phase: Phase = .loading
     var entries: [VaultEntry] = []
+    let presentationStack = VaultPresentationStack()
     var error: String?
     var isBusy = false
     var recoveryKey: String?
@@ -17,6 +18,7 @@ final class VaultSession {
     var header: VaultHeader?
     var biometricEnabled = false
     var storageAvailable = true
+    var recoverableDrafts: [VaultDraft] = []
     var passwordOptions = PasswordPreferences.load() {
         didSet { PasswordPreferences.save(passwordOptions) }
     }
@@ -27,13 +29,16 @@ final class VaultSession {
     @ObservationIgnored private var idleTask: Task<Void, Never>?
     @ObservationIgnored private var lockingTask: Task<Void, Never>?
     @ObservationIgnored private var syncTask: Task<Void, Never>?
+    @ObservationIgnored private var localState: LocalVaultStateStore?
+    @ObservationIgnored private var draftSnapshots: [UUID: () -> VaultDraft] = [:]
 
     var cloudConfigured: Bool { !isPreview && Bundle.main.object(forInfoDictionaryKey: "AegisCloudEnabled") as? String == "YES" }
     var cloudContainer: String { Bundle.main.object(forInfoDictionaryKey: "AegisCloudContainer") as? String ?? "" }
     var appGroup: String { Bundle.main.object(forInfoDictionaryKey: "AegisAppGroup") as? String ?? "" }
     private var isPreview: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("--preview-vault")
+        ProcessInfo.processInfo.arguments.contains("--preview-vault") ||
+        ProcessInfo.processInfo.arguments.contains("--preview-onboarding")
         #else
         false
         #endif
@@ -55,8 +60,14 @@ final class VaultSession {
             #if DEBUG
             if isPreview {
                 store = try VaultStore.make(inMemory: true)
+                localState = LocalVaultStateStore(directory: nil)
+                if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
+                    phase = .setup
+                    return
+                }
                 let result = try await crypto.create(password: "Aegis preview fixture only")
                 try await store?.saveHeader(result.header)
+                try await unlockLocalState(header: result.header)
                 for item in PreviewFixtures.items {
                     try await store?.saveRevision(crypto.encrypt(item, parents: []))
                 }
@@ -75,6 +86,7 @@ final class VaultSession {
                 directory = URL.applicationSupportDirectory.appendingPathComponent("Aegis", isDirectory: true)
             }
             store = try VaultStore.make(directory: directory)
+            localState = LocalVaultStateStore(directory: directory)
             try await refresh()
             phase = header == nil ? .setup : .locked
             if cloudConfigured { await connectCloud() }
@@ -124,13 +136,24 @@ final class VaultSession {
             await lockingTask?.value
             let result = try await crypto.create(password: password)
             guard token == generation else { await crypto.lock(); return }
+            try await unlockLocalState(header: result.header)
+            guard token == generation else { localState?.lock(); await crypto.lock(); return }
+            guard let localState else { throw VaultError.locked }
+            var pending = localState.state
+            pending.pendingRecoveryKey = result.recoveryKey
+            // Persist recovery setup before committing the header, so interruption is recoverable.
+            try localState.write(pending)
             try await store.saveHeader(result.header)
             guard token == generation else { self.header = result.header; phase = .locked; await crypto.lock(); return }
             header = result.header; recoveryKey = result.recoveryKey; recoveryAcknowledged = false
             phase = .unlocked
             try await refresh(); touch()
             scheduleSync()
-        } catch { await crypto.lock(); self.error = error.localizedDescription }
+        } catch {
+            phase = header == nil ? .setup : .locked
+            entries = []; recoveryKey = nil; recoverableDrafts = []; localState?.lock()
+            await crypto.lock(); self.error = error.localizedDescription
+        }
     }
 
     func unlock(password: String, recovery: Bool = false) async {
@@ -142,9 +165,11 @@ final class VaultSession {
             if recovery { try await crypto.recover(recoveryKey: password, header: header) }
             else { try await crypto.unlock(password: password, header: header) }
             guard token == generation else { await crypto.lock(); return }
+            try await unlockLocalState(header: header)
+            guard token == generation else { localState?.lock(); await crypto.lock(); return }
             phase = .unlocked
             try await refresh(); touch()
-        } catch { phase = .locked; entries = []; await crypto.lock(); self.error = error.localizedDescription }
+        } catch { phase = .locked; entries = []; recoveryKey = nil; recoverableDrafts = []; localState?.lock(); await crypto.lock(); self.error = error.localizedDescription }
     }
 
     func unlockWithBiometrics() async {
@@ -158,8 +183,10 @@ final class VaultSession {
             guard token == generation else { return }
             try await crypto.unlock(deviceKey: key, header: header)
             guard token == generation else { await crypto.lock(); return }
+            try await unlockLocalState(header: header)
+            guard token == generation else { localState?.lock(); await crypto.lock(); return }
             phase = .unlocked; try await refresh(); touch()
-        } catch { phase = .locked; entries = []; await crypto.lock(); self.error = error.localizedDescription }
+        } catch { phase = .locked; entries = []; recoveryKey = nil; recoverableDrafts = []; localState?.lock(); await crypto.lock(); self.error = error.localizedDescription }
     }
 
     func setBiometrics(_ enabled: Bool) async {
@@ -175,8 +202,16 @@ final class VaultSession {
         } catch { self.error = error.localizedDescription }
     }
 
-    func lock() {
-        generation = UUID(); entries = []; recoveryKey = nil; idleTask?.cancel(); SecureClipboard.clear()
+    enum LockReason { case manual, background, idle, system }
+
+    func lock(reason: LockReason = .manual) {
+        // Capture the latest bindings even if SwiftUI has not delivered onChange yet.
+        for snapshot in draftSnapshots.values { retainDraft(snapshot()) }
+        draftSnapshots.removeAll()
+        generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel()
+        localState?.lock()
+        // iOS already enforces the local-only clipboard expiration while suspended.
+        if reason != .background { SecureClipboard.clear() }
         if phase == .unlocked { phase = .locked }
         let crypto = self.crypto
         lockingTask = Task { await crypto.lock() }
@@ -188,7 +223,7 @@ final class VaultSession {
         idleTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(300))
             guard !Task.isCancelled else { return }
-            self?.lock()
+            self?.lock(reason: .idle)
         }
     }
 
@@ -262,5 +297,50 @@ final class VaultSession {
     private func scheduleSync() {
         guard let sync else { return }
         syncTask = Task { await sync.synchronize() }
+    }
+
+    private func unlockLocalState(header: VaultHeader) async throws {
+        let token = generation
+        var key = try await crypto.deviceKey()
+        defer { key.resetBytes(in: 0..<key.count) }
+        guard token == generation else { throw VaultError.locked }
+        try localState?.unlock(key: key, vaultID: header.vaultID)
+        recoverableDrafts = localState?.state.drafts ?? []
+        recoveryKey = localState?.state.pendingRecoveryKey
+        recoveryAcknowledged = false
+    }
+
+    func retainDraft(_ draft: VaultDraft) {
+        guard phase == .unlocked, let localState else { return }
+        do {
+            var updated = localState.state
+            updated.retain(draft)
+            try localState.write(updated)
+            recoverableDrafts = updated.drafts
+        } catch { self.error = error.localizedDescription }
+    }
+
+    func observeDraft(_ id: UUID, snapshot: @escaping () -> VaultDraft) { draftSnapshots[id] = snapshot }
+    func stopObservingDraft(_ id: UUID) { draftSnapshots.removeValue(forKey: id) }
+
+    func discardDraft(_ id: UUID) {
+        guard phase == .unlocked, let localState else { return }
+        do {
+            var updated = localState.state
+            updated.drafts.removeAll { $0.id == id }
+            try localState.write(updated)
+            recoverableDrafts = updated.drafts
+        } catch { self.error = error.localizedDescription }
+    }
+
+    func confirmRecovery() {
+        guard recoveryAcknowledged, let localState else { return }
+        do {
+            var updated = localState.state
+            updated.pendingRecoveryKey = nil
+            try localState.write(updated)
+            recoveryKey = nil
+            touch()
+        } catch { self.error = error.localizedDescription }
     }
 }

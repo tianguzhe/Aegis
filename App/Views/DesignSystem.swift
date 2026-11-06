@@ -164,12 +164,16 @@ struct ItemIcon: View {
         }
     }
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.29).fill(tint.opacity(isSelected ? 0.14 : 0.08))
-            if item.kind == .login {
-                Text(String(item.title.prefix(1)).uppercased()).aegisFont(size: size * 0.40, weight: .semibold, design: .rounded)
-            } else { Image(systemName: item.kind.symbol).font(.system(size: size * 0.40, weight: .medium)) }
-        }.foregroundStyle(tint).frame(width: size, height: size).accessibilityHidden(true)
+        if item.kind == .card {
+            CardThumbnail(item: item, size: size)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: size * 0.29).fill(tint.opacity(isSelected ? 0.14 : 0.08))
+                if item.kind == .login {
+                    Text(String(item.title.prefix(1)).uppercased()).aegisFont(size: size * 0.40, weight: .semibold, design: .rounded)
+                } else { Image(systemName: item.kind.symbol).font(.system(size: size * 0.40, weight: .medium)) }
+            }.foregroundStyle(tint).frame(width: size, height: size).accessibilityHidden(true)
+        }
     }
 }
 

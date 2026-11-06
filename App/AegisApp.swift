@@ -7,6 +7,11 @@ import AppKit
 @main
 struct AegisApp: App {
     @State private var session = VaultSession()
+    init() {
+        #if DEBUG && os(macOS)
+        CardDesignGallery.renderIfRequested()
+        #endif
+    }
     var body: some Scene {
         WindowGroup {
             RootView().environment(session)

@@ -1,6 +1,9 @@
 import AegisCore
 import AegisMarkdown
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct ItemEditorView: View {
     @Environment(VaultSession.self) private var session
@@ -16,6 +19,11 @@ struct ItemEditorView: View {
     @State private var expandedEditorActive = false
     @Environment(\.dynamicTypeSize) private var typeSize
     private var isDirty: Bool { item != baseline }
+    private var cardNumberValidation: CardNumberValidation { CardNumberRules.validate(item.cardNumber) }
+    private var canSave: Bool {
+        !item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            (item.kind != .card || cardNumberValidation.allowsSaving)
+    }
 
     init(item: VaultItem, parents: [UUID]) {
         _item = State(initialValue: item)
@@ -31,13 +39,19 @@ struct ItemEditorView: View {
                 VStack(alignment: .leading, spacing: 26) {
                     typeChoiceLayout {
                         ForEach(ItemKind.allCases) { kind in
-                            Button { item.kind = kind } label: {
+                            Button {
+                                if kind == .card && item.kind != .card && item.cardBrand == nil && item.cardType == nil {
+                                    item.cardBrand = .unionPay; item.cardType = .debit
+                                }
+                                item.kind = kind
+                            } label: {
                                 Label(kind.title, systemImage: kind.symbol).aegisFont(size: 12, weight: .medium)
                                     .frame(maxWidth: .infinity).padding(.vertical, 13)
                                     .foregroundStyle(item.kind == kind ? AegisTheme.teal : AegisTheme.secondary)
                                     .background(item.kind == kind ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 11))
                                     .overlay(RoundedRectangle(cornerRadius: 11).stroke(item.kind == kind ? AegisTheme.teal.opacity(0.24) : AegisTheme.border))
                             }.buttonStyle(.plain).accessibilityAddTraits(item.kind == kind ? [.isSelected] : [])
+                                .accessibilityIdentifier("itemKind-\(kind.rawValue)")
                         }
                     }
                     AegisInput(title: L10n.text("field.title")) {
@@ -54,21 +68,22 @@ struct ItemEditorView: View {
                         Label(L10n.text("field.favorite"), systemImage: "star").aegisFont(size: 13).foregroundStyle(AegisTheme.text)
                     }.toggleStyle(.switch).tint(AegisTheme.teal).padding(16).aegisSurface()
                 }.padding(24)
-            }.scrollDismissesKeyboard(.interactively).disabled(saving)
+            }.scrollDismissesKeyboard(.interactively).disabled(saving).accessibilityIdentifier("itemEditorScroll")
             Divider().overlay(AegisTheme.border)
             footerLayout {
                 Label(L10n.text(isDirty ? "draft.protected" : "ui.savedEncrypted"), systemImage: "lock").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                 if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
                 Button(L10n.text("action.cancel"), action: requestClose).buttonStyle(AegisButtonStyle()).disabled(saving)
                 Button {
-                    guard !saving, !item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                    guard !saving, canSave else { return }
                     saving = true
                     item.title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if item.kind == .card { item.cardNumber = CardNumberRules.digits(from: item.cardNumber) }
                     Task { if await session.save(item, parents: parents) { baseline = item; session.discardDraft(item.id); dismiss() }; saving = false }
                 } label: {
                     HStack(spacing: 8) { if saving { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(saving ? "action.saving" : "action.save")) }
                 }.buttonStyle(AegisButtonStyle(primary: true))
-                    .disabled(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || saving)
+                    .disabled(!canSave || saving)
                     .accessibilityIdentifier("saveItemButton")
             }.padding(20).background(AegisTheme.surface)
         }.background(AegisTheme.background).aegisSheetSize(width: 620, height: 760)
@@ -98,6 +113,15 @@ struct ItemEditorView: View {
             .vaultErrorPresenter()
             #if os(macOS)
             .onExitCommand(perform: requestClose)
+            #else
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(L10n.text("composer.hideKeyboard")) {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }.accessibilityIdentifier("dismissEditorKeyboard")
+                }
+            }
             #endif
     }
     private func requestClose() {
@@ -137,13 +161,32 @@ struct ItemEditorView: View {
     }
     private var cardFields: some View {
         VStack(spacing: 18) {
+            CardAppearancePicker(item: $item)
             AegisInput(title: L10n.text("field.cardholder"), icon: "person") { TextField(L10n.text("field.cardholder"), text: $item.cardholder) }
-            AegisInput(title: L10n.text("field.cardNumber"), icon: "creditcard") { TextField(L10n.text("field.cardNumber"), text: $item.cardNumber).textContentType(.creditCardNumber) }
-            HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                AegisInput(title: L10n.text("field.cardNumber"), icon: "creditcard") {
+                    CardNumberField(text: $item.cardNumber)
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Label(cardNumberValidation.message, systemImage: cardNumberValidation == .valid ? "checkmark.circle.fill" :
+                            cardNumberValidation == .empty ? "info.circle" : "exclamationmark.circle")
+                        .foregroundStyle(cardNumberValidation == .valid ? AegisTheme.teal :
+                                            cardNumberValidation == .empty ? AegisTheme.secondary : Color.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Text(L10n.format("card.number.count", Int64(CardNumberRules.digits(from: item.cardNumber).count), Int64(CardNumberRules.maximumLength)))
+                        .monospacedDigit().foregroundStyle(cardNumberValidation == .tooLong ? Color.red : AegisTheme.secondary)
+                        .fixedSize().accessibilityIdentifier("cardNumberCount")
+                }.aegisFont(size: 11)
+            }
+            cardFieldLayout {
                 AegisInput(title: L10n.text("field.expiry")) { TextField(L10n.text("field.expiry"), text: $item.expiry) }
                 AegisInput(title: L10n.text("field.securityCode")) { SecureField(L10n.text("field.securityCode"), text: $item.securityCode) }
             }
         }
+    }
+    private var cardFieldLayout: AnyLayout {
+        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 18)) : AnyLayout(HStackLayout(spacing: 14))
     }
     private var markdownEditor: some View {
         MarkdownComposer(text: $item.notes,

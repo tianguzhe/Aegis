@@ -76,6 +76,9 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var cardNumber: String
     public var expiry: String
     public var securityCode: String
+    // Optional fields keep previously encrypted records and drafts decodable.
+    public var cardBrand: CardBrand?
+    public var cardType: PaymentCardType?
     public var isFavorite: Bool
     public var deletedAt: Date?
     public var modifiedAt: Date
@@ -85,6 +88,8 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
         self.id = id; self.kind = kind; self.title = title; self.username = username; self.password = password
         self.website = website; self.notes = notes; self.isFavorite = isFavorite
         cardholder = ""; cardNumber = ""; expiry = ""; securityCode = ""; deletedAt = nil; modifiedAt = Date()
+        cardBrand = kind == .card ? .unionPay : nil
+        cardType = kind == .card ? .debit : nil
     }
 }
 

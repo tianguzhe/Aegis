@@ -22,7 +22,9 @@ struct ItemDetailView: View {
                         Button(L10n.text("list.resolve")) { confirmResolution = true }.buttonStyle(AegisButtonStyle())
                     }.foregroundStyle(AegisTheme.text).aegisCard()
                 }
-                if entry.item.kind == .card { cardPreview }
+                if entry.item.kind == .card {
+                    BankCardView(item: entry.item).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if entry.item.kind != .note {
                     AegisSection(title: L10n.text("field.details")) {
                         if entry.item.kind == .login {
@@ -51,7 +53,7 @@ struct ItemDetailView: View {
                 }
             }.padding(.horizontal, horizontalPadding).padding(.vertical, 30)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
-        }.background(AegisTheme.background)
+        }.background(AegisTheme.background).accessibilityIdentifier("itemDetailScroll")
         #if os(iOS)
         .navigationTitle(entry.item.kind.title).navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -95,7 +97,10 @@ struct ItemDetailView: View {
                         .foregroundStyle(AegisTheme.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     if let host = displayHost {
                         Text(host).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary).lineLimit(1)
-                    } else { Text(L10n.text("ui.privateItem")).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary) }
+                    } else {
+                        Text(entry.item.kind == .card ? entry.item.cardDescription : L10n.text("ui.privateItem"))
+                            .aegisFont(size: 13).foregroundStyle(AegisTheme.secondary)
+                    }
                 }
             }
             HStack(spacing: 10) {
@@ -128,23 +133,6 @@ struct ItemDetailView: View {
             }.padding(.horizontal, 2)
             MarkdownContent(entry.item.notes, accent: AegisTheme.teal).padding(24).aegisSurface()
         }
-    }
-    private var cardPreview: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            HStack {
-                Image(systemName: "simcard").font(.system(size: 28, weight: .ultraLight)).foregroundStyle(Color(red: 0.85, green: 0.73, blue: 0.48))
-                Spacer()
-                Text("Aegis").aegisFont(size: 19, weight: .medium, design: .serif).foregroundStyle(.white.opacity(0.6))
-            }
-            Text("••••  ••••  ••••  " + (entry.item.cardNumber.isEmpty ? "••••" : String(entry.item.cardNumber.filter(\.isNumber).suffix(4))))
-                .aegisFont(size: 20, weight: .medium, design: .monospaced).foregroundStyle(.white)
-                .minimumScaleFactor(0.65).lineLimit(1)
-            HStack {
-                Text(entry.item.cardholder.isEmpty ? L10n.text("field.cardholder") : entry.item.cardholder).lineLimit(1)
-                Spacer()
-                Text(entry.item.expiry)
-            }.aegisFont(size: 12, weight: .medium).foregroundStyle(.white.opacity(0.72))
-        }.padding(26).background(LinearGradient(colors: [AegisTheme.navy, Color(red: 0.19, green: 0.33, blue: 0.29)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20))
     }
 }
 

@@ -70,6 +70,7 @@ targetTemplates:
     sources:
       - path: AutoFill
       - path: App/Views/DesignSystem.swift
+      - path: App/Views/BankCardView.swift
     settings:
       base:
         PRODUCT_NAME: AegisAutoFill

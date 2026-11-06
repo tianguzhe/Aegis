@@ -74,3 +74,14 @@ CloudKit 跨设备同步、生物识别和系统自动填充仍需要签名设�
 - 22 项 Python 测试通过，新增旧目录完整迁移、幂等性、运行进程保护和符号链接保护验证；251 个中文资源键及生成资源一致性检查通过。
 - 重复图标来自仍被 Spotlight 索引的旧 `build/preview`、Mac 和 iOS 模拟器产物。已增加显式 `archive-legacy` 命令，完整保留旧构建文件并移入 `.noindex`；普通构建清理不执行迁移。
 - 本机保留更新版本 `~/Applications/Aegis.app`，签名验证通过，已正常启动并识别现有保险库。Spotlight 查询 `app.aegis.*` 只返回该应用；没有删除保险库或重置全局系统索引。
+
+
+## 八种银行卡卡面与卡号输入
+
+- 银联、Visa、Mastercard、百夫长分别提供借记／信用两种卡面，编辑实时预览、列表缩略图和详情共用组件；选择由用户手动设置，不使用卡号前缀识别。
+- 卡面采用 85.60 × 53.98 比例；实际 SwiftUI 总览图首卡为 880 × 555 像素，比例 1.58559，与目标 1.58577 的差异来自像素取整。总览保存为 Docs/Previews/card-designs.png。
+- 5 项 PaymentCardTests 通过，覆盖旧记录、新字段加密往返、遮罩、Luhn、混合数字输入和长度边界。中文资源及生成一致性检查通过。
+- Mac / iOS 主应用与扩展构建通过。Mac 签名验证通过，已更新 ~/Applications/Aegis.app，正常识别已有保险库。
+- Duo 卡面选择、保存、重开与遮罩回归通过，记录位于 CardDesigns-isolated.xcresult 的 testAppearancePersistsAndCardFaceStaysMasked；最终原生输入回归通过结果为 .build/artifacts.noindex/results/CardDesigns-input-verified.xcresult。两项用例分别验证通过，未将包含早期失败的整套结果标为成功。
+- 最终输入回归使用独立 Duo，避免与备份测试竞争；确认连续混合字符输入不丢数字、16 / 19 位计数、Luhn 错误禁止保存、修正后允许保存，以及卡号不改变手选卡组织。
+- 卡号使用 NSTextField / UITextField 原生编辑回调过滤，避免 SwiftUI 异步清洗回写覆盖后续输入；iOS 编辑器提供收起键盘入口。

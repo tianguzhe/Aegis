@@ -2761,6 +2761,303 @@
           }
         }
       }
+    },
+    "card.brand.unionPay": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银联"
+          }
+        }
+      }
+    },
+    "card.brand.visa": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visa"
+          }
+        }
+      }
+    },
+    "card.brand.mastercard": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mastercard"
+          }
+        }
+      }
+    },
+    "card.brand.centurion": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百夫长"
+          }
+        }
+      }
+    },
+    "card.type.debit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "借记卡"
+          }
+        }
+      }
+    },
+    "card.type.credit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信用卡"
+          }
+        }
+      }
+    },
+    "card.type.unspecified": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置卡类型"
+          }
+        }
+      }
+    },
+    "card.style.jade": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青瓷"
+          }
+        }
+      }
+    },
+    "card.style.vermilion": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "朱砂"
+          }
+        }
+      }
+    },
+    "card.style.ocean": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "海蓝"
+          }
+        }
+      }
+    },
+    "card.style.champagne": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香槟金"
+          }
+        }
+      }
+    },
+    "card.style.copper": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赤铜"
+          }
+        }
+      }
+    },
+    "card.style.obsidian": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曜石"
+          }
+        }
+      }
+    },
+    "card.style.platinum": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "铂银"
+          }
+        }
+      }
+    },
+    "card.style.blackGold": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黑金"
+          }
+        }
+      }
+    },
+    "card.style.classic": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经典"
+          }
+        }
+      }
+    },
+    "card.previewTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的银行卡"
+          }
+        }
+      }
+    },
+    "card.appearance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡面系列"
+          }
+        }
+      }
+    },
+    "card.clearAppearance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中性卡面"
+          }
+        }
+      }
+    },
+    "card.galleryTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "四个系列，八种卡面"
+          }
+        }
+      }
+    },
+    "card.gallerySubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "借记卡 · 信用卡"
+          }
+        }
+      }
+    },
+    "card.number.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅输入数字，支持粘贴卡号"
+          }
+        }
+      }
+    },
+    "card.number.tooShort": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡号至少需要 %lld 位"
+          }
+        }
+      }
+    },
+    "card.number.tooLong": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡号最多支持 %lld 位，请检查输入"
+          }
+        }
+      }
+    },
+    "card.number.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luhn 校验未通过，请检查卡号"
+          }
+        }
+      }
+    },
+    "card.number.valid": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luhn 校验通过"
+          }
+        }
+      }
+    },
+    "card.number.count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld 位"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

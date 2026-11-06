@@ -1,11 +1,14 @@
 #if DEBUG
 import AegisCore
+import Foundation
 
 /// Synthetic in-memory data for visual QA; never used by a release build or synchronized.
 enum PreviewFixtures {
     static var items: [VaultItem] {
+        if ProcessInfo.processInfo.arguments.contains("--preview-cards") { return cards }
         var card = VaultItem(kind: .card, title: L10n.text("preview.cardTitle"), notes: L10n.text("preview.cardNotes"))
         card.cardholder = "AEGIS DEMO"; card.cardNumber = "4242 4242 4242 4242"; card.expiry = "12/30"; card.securityCode = "123"
+        card.cardBrand = .visa; card.cardType = .debit
         return [
             VaultItem(title: "Apple", username: "hello@example.com", password: "Preview-Only-Not-A-Credential", website: "https://apple.com", isFavorite: true),
             VaultItem(title: "GitHub", username: "aegis-demo", password: "Preview-Only-Not-A-Credential", website: "https://github.com", isFavorite: true),
@@ -15,6 +18,18 @@ enum PreviewFixtures {
             card,
             VaultItem(kind: .note, title: L10n.text("preview.noteTitle"), notes: L10n.text("preview.noteBody"))
         ]
+    }
+
+    static var cards: [VaultItem] {
+        CardBrand.allCases.flatMap { brand in
+            PaymentCardType.allCases.map { type in
+                var card = VaultItem(kind: .card, title: brand.title + " · " + type.title)
+                card.cardBrand = brand; card.cardType = type
+                card.cardholder = "AEGIS DEMO"; card.expiry = "12/30"; card.securityCode = "123"
+                card.cardNumber = "4242424242424242"
+                return card
+            }
+        }
     }
 }
 #endif

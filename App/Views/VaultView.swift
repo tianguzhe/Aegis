@@ -310,7 +310,7 @@ private struct VaultRecordRow: View {
                 ItemIcon(item: entry.item, isSelected: selected, size: 42)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(entry.item.title).font(.system(size: titleSize, weight: .semibold)).foregroundStyle(AegisTheme.text).lineLimit(1)
-                    Text(entry.item.kind == .login && !entry.item.username.isEmpty ? entry.item.username : entry.item.kind.title)
+                    Text(subtitle)
                         .font(.system(size: subtitleSize)).foregroundStyle(selected ? AegisTheme.teal : AegisTheme.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -322,5 +322,10 @@ private struct VaultRecordRow: View {
                 .contentShape(RoundedRectangle(cornerRadius: 13))
         }.buttonStyle(.plain).onHover { hovered = $0 }.accessibilityAddTraits(selected ? [.isSelected] : [])
             .accessibilityIdentifier("record-\(entry.item.title)")
+    }
+    private var subtitle: String {
+        if entry.item.kind == .card { return entry.item.cardDescription }
+        if entry.item.kind == .login && !entry.item.username.isEmpty { return entry.item.username }
+        return entry.item.kind.title
     }
 }

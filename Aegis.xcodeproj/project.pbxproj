@@ -10,6 +10,8 @@
 		030FABB9FDBF3119CC8373E7 /* ItemEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F75C7D3D0D321FFE69C28ECE /* ItemEditorView.swift */; };
 		035E3832EA0742C6BD26F6A9 /* DeviceKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86521A9F7EBF1B236D738BB /* DeviceKeyStore.swift */; };
 		04BDA3D0DDDFD82B0B1117AC /* AegisSync in Frameworks */ = {isa = PBXBuildFile; productRef = 2C70A843039CDF6AF335C4FE /* AegisSync */; };
+		07A8242B9E68BE4664E61AD2 /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
+		0AB8727937E89093F356EF1A /* CardDesignGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A16E9005556C9AA4D07B0FE /* CardDesignGallery.swift */; };
 		0C75F9A6F38F17B8DAC7D0B0 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2587B062E6ED5E64C6A7F3 /* ItemDetailView.swift */; };
 		0E3631179C3B7B6D4C8E02A7 /* UtilityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52948473B7BD2DE48D206B0 /* UtilityViews.swift */; };
 		0E9D7D42577A6613BB0E522F /* UtilityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52948473B7BD2DE48D206B0 /* UtilityViews.swift */; };
@@ -21,15 +23,19 @@
 		349057ADB5046E3363AA0CEF /* DeviceKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86521A9F7EBF1B236D738BB /* DeviceKeyStore.swift */; };
 		3BC758D4B50613C7BF04DDE1 /* VaultSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */; };
 		3F15AE05370CF9ADDA90D1CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7FBBE134DCDC6CFC425AB6A /* Assets.xcassets */; };
+		42C33D8C598DD2F6D04DF13F /* CardDesignGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A16E9005556C9AA4D07B0FE /* CardDesignGallery.swift */; };
 		4F6B0DCFBE9E12EC55FDAD8E /* MarkdownSourceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */; };
 		528E91BEBBEC3943BBC6BCD7 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8B61936DCC1498862B96D113 /* AegisCore */; };
 		5716EB9007B45E1E7A8F23ED /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9D6B2F7F668B7E0F36E40B19 /* InfoPlist.xcstrings */; };
+		57FFB32234178CBD4E678A47 /* CardNumberField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */; };
 		5B9F4DFEFA86A345E53E3DA2 /* AegisStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 707F77412DC2855880B99112 /* AegisStorage */; };
 		5E55248E96C8AE155223771D /* CredentialProviderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFC6D8F6011546414CDEBE2 /* CredentialProviderViewController.swift */; };
 		60ED916F650B7298B0510CF3 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 38A6421934D871FB675F48E5 /* AegisCore */; };
+		727A0C7B591159B76345CE3E /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
 		77871B14476010CA4481EC11 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2587B062E6ED5E64C6A7F3 /* ItemDetailView.swift */; };
 		7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916A488A0BC3C065A08819 /* UnlockView.swift */; };
 		7FDFD11A2A3851F5D5633717 /* AegisAutoFill-macOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4624AE0E27BEBF0BFB1A2E62 /* AegisAutoFill-macOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		83B0A6A731FDE8C5076F4956 /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
 		91DD32FC58752B666244B9EA /* Clipboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BBA07A5D702F2A215B486C4 /* Clipboard.swift */; };
 		91EFEDF66F6AFF7649339A18 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9D6B2F7F668B7E0F36E40B19 /* InfoPlist.xcstrings */; };
 		97F69E08DA586AC8A6F024B7 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916A488A0BC3C065A08819 /* UnlockView.swift */; };
@@ -42,15 +48,18 @@
 		AC46EECB63B3261C5F787634 /* AegisSync in Frameworks */ = {isa = PBXBuildFile; productRef = 89A9E9C676E0D597F7F98006 /* AegisSync */; };
 		B020C35E1E3FD4284F2491D6 /* InterfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70EF2C1A21D0DAFFCAA8101E /* InterfaceTests.swift */; };
 		B78FEE950A628CB41E3B755C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
+		B7DD16456486DF6F86539B28 /* CardInterfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1EF954C05D7A3D5583102B /* CardInterfaceTests.swift */; };
 		BB85C8A96D3D23E6B6A09948 /* Clipboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BBA07A5D702F2A215B486C4 /* Clipboard.swift */; };
 		BD29129F36A9DE322A9C87BA /* AegisStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 03C58AA7516D23DF7BB7E841 /* AegisStorage */; };
 		C014764EF3FF0F19709458B1 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = F3412176344C155CFD770F8E /* AegisCore */; };
 		C571EA6FF7B0BB2A62F9B158 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 31CA42221F0FA9CD3431589A /* AegisCore */; };
 		C8F73B194A5E9FC5EAA4038D /* AegisAutoFill-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6BC737346E27498A6FF75A71 /* AegisAutoFill-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C9043B9B4DF50F00515F5F31 /* VaultErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */; };
+		CB96943B347B9C2704FBD0AC /* CardNumberField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */; };
 		D18D04C4AEB63B0987393277 /* VaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE2C72ED9D7AD9EFB812781 /* VaultView.swift */; };
 		DA8F235AF731207F6F932023 /* AegisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C95D9FBB75A06A7C6E66716 /* AegisApp.swift */; };
 		E3CE2CF71C4336BC28C3A762 /* MarkdownComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD59CC099F3F977414466610 /* MarkdownComposer.swift */; };
+		E442B4500EE9F7EB47194DC0 /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
 		E5C29B43A877433515F8C459 /* AegisMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 9049EA186F721F92F4C681D2 /* AegisMarkdown */; };
 		EA8D099C1FC7C03EEE80CFD3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7FBBE134DCDC6CFC425AB6A /* Assets.xcassets */; };
 		EB5EF04F9A02C3478827F33A /* MarkdownSourceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */; };
@@ -109,8 +118,11 @@
 
 /* Begin PBXFileReference section */
 		04269AA33697E609C24EA10F /* PreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFixtures.swift; sourceTree = "<group>"; };
+		29D89D8A28EF1AFE82A37110 /* BankCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankCardView.swift; sourceTree = "<group>"; };
 		39572A60EB59172506D03265 /* AegisUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AegisUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4624AE0E27BEBF0BFB1A2E62 /* AegisAutoFill-macOS.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AegisAutoFill-macOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4A16E9005556C9AA4D07B0FE /* CardDesignGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardDesignGallery.swift; sourceTree = "<group>"; };
+		4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNumberField.swift; sourceTree = "<group>"; };
 		60916A488A0BC3C065A08819 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
 		6BC737346E27498A6FF75A71 /* AegisAutoFill-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "AegisAutoFill-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		70EF2C1A21D0DAFFCAA8101E /* InterfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceTests.swift; sourceTree = "<group>"; };
@@ -130,6 +142,7 @@
 		C2C4F7B0E5F43F8DB33CBA41 /* AegisKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AegisKit; path = Packages/AegisKit; sourceTree = SOURCE_ROOT; };
 		CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultErrorPresenter.swift; sourceTree = "<group>"; };
 		DA17041A55CDE95D6E7867DB /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		DC1EF954C05D7A3D5583102B /* CardInterfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardInterfaceTests.swift; sourceTree = "<group>"; };
 		EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		F2EBCD5B20BEEAED0DF46652 /* Aegis-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Aegis-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F75C7D3D0D321FFE69C28ECE /* ItemEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemEditorView.swift; sourceTree = "<group>"; };
@@ -177,12 +190,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		12165008254C96EDC45FCFDA /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				4A16E9005556C9AA4D07B0FE /* CardDesignGallery.swift */,
+			);
+			path = Preview;
+			sourceTree = "<group>";
+		};
 		23981FB645F9820ABBBDB3B8 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				7C95D9FBB75A06A7C6E66716 /* AegisApp.swift */,
 				B7FBBE134DCDC6CFC425AB6A /* Assets.xcassets */,
 				9D6B2F7F668B7E0F36E40B19 /* InfoPlist.xcstrings */,
+				12165008254C96EDC45FCFDA /* Preview */,
 				57AB5717C948E2482186E7D7 /* Services */,
 				B80C0854C1A111FC565D59B2 /* Views */,
 			);
@@ -192,6 +214,7 @@
 		4FDE9874F5B0ECC431D490BA /* AegisUITests */ = {
 			isa = PBXGroup;
 			children = (
+				DC1EF954C05D7A3D5583102B /* CardInterfaceTests.swift */,
 				70EF2C1A21D0DAFFCAA8101E /* InterfaceTests.swift */,
 			);
 			path = AegisUITests;
@@ -251,6 +274,8 @@
 		B80C0854C1A111FC565D59B2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				29D89D8A28EF1AFE82A37110 /* BankCardView.swift */,
+				4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */,
 				EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */,
 				7E2587B062E6ED5E64C6A7F3 /* ItemDetailView.swift */,
 				F75C7D3D0D321FFE69C28ECE /* ItemEditorView.swift */,
@@ -473,6 +498,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B7DD16456486DF6F86539B28 /* CardInterfaceTests.swift in Sources */,
 				B020C35E1E3FD4284F2491D6 /* InterfaceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -482,6 +508,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				DA8F235AF731207F6F932023 /* AegisApp.swift in Sources */,
+				07A8242B9E68BE4664E61AD2 /* BankCardView.swift in Sources */,
+				0AB8727937E89093F356EF1A /* CardDesignGallery.swift in Sources */,
+				57FFB32234178CBD4E678A47 /* CardNumberField.swift in Sources */,
 				91DD32FC58752B666244B9EA /* Clipboard.swift in Sources */,
 				EBAADAE48EC66F76718B7168 /* DesignSystem.swift in Sources */,
 				349057ADB5046E3363AA0CEF /* DeviceKeyStore.swift in Sources */,
@@ -502,6 +531,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E442B4500EE9F7EB47194DC0 /* BankCardView.swift in Sources */,
 				A0387E16217376C95637A7BD /* CredentialProviderViewController.swift in Sources */,
 				11F02DE9B5212A0FB0E48752 /* DesignSystem.swift in Sources */,
 			);
@@ -511,6 +541,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				83B0A6A731FDE8C5076F4956 /* BankCardView.swift in Sources */,
 				5E55248E96C8AE155223771D /* CredentialProviderViewController.swift in Sources */,
 				1CBF1BA77F1B2803DBFA4F7C /* DesignSystem.swift in Sources */,
 			);
@@ -521,6 +552,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6EAFFE45DAA35A76C1B60A3 /* AegisApp.swift in Sources */,
+				727A0C7B591159B76345CE3E /* BankCardView.swift in Sources */,
+				42C33D8C598DD2F6D04DF13F /* CardDesignGallery.swift in Sources */,
+				CB96943B347B9C2704FBD0AC /* CardNumberField.swift in Sources */,
 				BB85C8A96D3D23E6B6A09948 /* Clipboard.swift in Sources */,
 				B78FEE950A628CB41E3B755C /* DesignSystem.swift in Sources */,
 				035E3832EA0742C6BD26F6A9 /* DeviceKeyStore.swift in Sources */,

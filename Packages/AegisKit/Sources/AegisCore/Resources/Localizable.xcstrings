@@ -1558,7 +1558,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "版本 0.2.0"
+            "value": "版本 0.1.3"
           }
         }
       }
@@ -2828,17 +2828,6 @@
         }
       }
     },
-    "card.brand.centurion": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "百夫长"
-          }
-        }
-      }
-    },
     "card.type.debit": {
       "extractionState": "manual",
       "localizations": {
@@ -2867,106 +2856,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未设置卡类型"
-          }
-        }
-      }
-    },
-    "card.style.jade": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "青瓷"
-          }
-        }
-      }
-    },
-    "card.style.vermilion": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "朱砂"
-          }
-        }
-      }
-    },
-    "card.style.ocean": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "海蓝"
-          }
-        }
-      }
-    },
-    "card.style.champagne": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "香槟金"
-          }
-        }
-      }
-    },
-    "card.style.copper": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "赤铜"
-          }
-        }
-      }
-    },
-    "card.style.obsidian": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "曜石"
-          }
-        }
-      }
-    },
-    "card.style.platinum": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "铂银"
-          }
-        }
-      }
-    },
-    "card.style.blackGold": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "黑金"
-          }
-        }
-      }
-    },
-    "card.style.classic": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "经典"
+            "value": "未选择卡类型"
           }
         }
       }
@@ -2988,7 +2878,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "卡面系列"
+            "value": "卡片外观"
           }
         }
       }
@@ -3539,6 +3429,83 @@
           "stringUnit": {
             "state": "translated",
             "value": "已恢复到本机，但后续步骤未完成：%@"
+          }
+        }
+      }
+    },
+    "card.network": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡组织"
+          }
+        }
+      }
+    },
+    "card.fundingType": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡类型"
+          }
+        }
+      }
+    },
+    "card.pickerGalleryTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "银行卡设置"
+          }
+        }
+      }
+    },
+    "card.network.unspecified": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未选择卡组织"
+          }
+        }
+      }
+    },
+    "card.brand.americanExpress": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运通"
+          }
+        }
+      }
+    },
+    "card.face.credit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CREDIT CARD"
+          }
+        }
+      }
+    },
+    "card.face.debit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEBIT CARD"
           }
         }
       }

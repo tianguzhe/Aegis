@@ -34,9 +34,11 @@ struct ItemEditorView: View {
     var body: some View {
         VStack(spacing: 0) {
             AegisSheetHeader(title: L10n.text(parents.isEmpty ? "editor.new" : "editor.edit"), subtitle: L10n.text("ui.editorSubtitle"), symbol: item.kind.symbol, close: requestClose, closeDisabled: saving)
+                .background(AegisTheme.background)
+                .zIndex(1)
             Divider().overlay(AegisTheme.border)
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
+                VStack(alignment: .leading, spacing: item.kind == .card ? 20 : 26) {
                     typeChoiceLayout {
                         ForEach(ItemKind.allCases) { kind in
                             Button {

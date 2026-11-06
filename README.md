@@ -66,7 +66,7 @@ bash Scripts/package.sh dmg --build-number 7 # 只打 DMG，并指定构建号
 发布版本：
 
 1. 修改 `project.yml` 的 `MARKETING_VERSION`，运行 `xcodegen generate` 并提交。
-2. 推送 tag `v<MARKETING_VERSION>`，例如 `git tag -a v0.2.0 -m "Aegis 0.2.0" && git push origin v0.2.0`。
+2. 推送 tag `v<MARKETING_VERSION>`，例如 `git tag -a v0.1.3 -m "Aegis 0.1.3" && git push origin v0.1.3`。
 3. `.github/workflows/package.yml` 核对 tag 与 `project.yml` 一致并运行完整测试，然后并行构建 DMG 与 IPA、生成 GitHub 构建来源证明，最后确认 tag 未移动、校验 SHA-256 并创建 Release。tag 与版本号不一致时不会构建。
 
 下载的安装包可用 `gh attestation verify <文件> --repo tianguzhe/Aegis` 核实来源。

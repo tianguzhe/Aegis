@@ -7,6 +7,9 @@ import SwiftUI
 enum CardDesignGallery {
     @MainActor static func renderIfRequested() {
         let args = ProcessInfo.processInfo.arguments
+        if let index = args.firstIndex(of: "--render-card-picker"), args.indices.contains(index + 1) {
+            renderPicker(to: URL(fileURLWithPath: args[index + 1]), dark: args.contains("--dark"))
+        }
         guard let index = args.firstIndex(of: "--render-card-gallery"), args.indices.contains(index + 1) else { return }
         let destination = URL(fileURLWithPath: args[index + 1])
         let content = VStack(alignment: .leading, spacing: 34) {
@@ -27,8 +30,6 @@ enum CardDesignGallery {
                                 HStack {
                                     Text(item.cardDescription).font(.system(size: 13, weight: .semibold))
                                     Spacer()
-                                    Text(L10n.text(CardPalette(brand: brand, type: type).nameKey))
-                                        .font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
                                 }
                                 BankCardView(item: item)
                             }.frame(width: 440)
@@ -52,6 +53,48 @@ enum CardDesignGallery {
         } catch {
             fputs("Could not render card gallery: \(error.localizedDescription)\n", stderr)
             exit(1)
+        }
+    }
+
+    @MainActor private static func renderPicker(to destination: URL, dark: Bool) {
+        NSApplication.shared.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        let item = PreviewFixtures.cards.first { $0.cardBrand == .unionPay && $0.cardType == .debit }!
+        let content = VStack(alignment: .leading, spacing: 28) {
+            Text(L10n.text("card.pickerGalleryTitle")).font(.system(size: 24, weight: .semibold))
+            HStack(alignment: .top, spacing: 32) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("macOS").font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.secondary)
+                    CardAppearancePicker(item: .constant(item)).frame(width: 572)
+                    sampleFields
+                }.frame(width: 572)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("iPhone").font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.secondary)
+                    CardAppearancePicker(item: .constant(item)).frame(width: 327)
+                    sampleFields
+                }.frame(width: 327)
+            }
+        }.padding(32).background(AegisTheme.background).foregroundStyle(AegisTheme.text)
+            .environment(\.colorScheme, dark ? .dark : .light)
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 2
+        guard let image = renderer.cgImage,
+              let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { exit(1) }
+        do {
+            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try png.write(to: destination, options: .atomic)
+            print("Rendered card picker: \(destination.path)")
+            exit(0)
+        } catch { exit(1) }
+    }
+
+    @MainActor private static var sampleFields: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            AegisInput(title: L10n.text("field.cardholder"), icon: "person") {
+                Text("AEGIS DEMO").frame(maxWidth: .infinity, alignment: .leading)
+            }
+            AegisInput(title: L10n.text("field.cardNumber"), icon: "creditcard") {
+                Text("••••  ••••  ••••  4242").frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }

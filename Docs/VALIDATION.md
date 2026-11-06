@@ -79,9 +79,29 @@ CloudKit 跨设备同步、生物识别和系统自动填充仍需要签名设�
 ## 八种银行卡卡面与卡号输入
 
 - 银联、Visa、Mastercard、百夫长分别提供借记／信用两种卡面，编辑实时预览、列表缩略图和详情共用组件；选择由用户手动设置，不使用卡号前缀识别。
-- 卡面采用 85.60 × 53.98 比例；实际 SwiftUI 总览图首卡为 880 × 555 像素，比例 1.58559，与目标 1.58577 的差异来自像素取整。总览保存为 Docs/Previews/card-designs.png。
+- 卡面采用 85.60 × 53.98 比例；实际 SwiftUI 总览图首卡为 880 × 555 像素，比例 1.58559，与目标 1.58577 的差异来自像素取整。总览保存为 Docs/Previews/card-designs.webp。
 - 5 项 PaymentCardTests 通过，覆盖旧记录、新字段加密往返、遮罩、Luhn、混合数字输入和长度边界。中文资源及生成一致性检查通过。
 - Mac / iOS 主应用与扩展构建通过。Mac 签名验证通过，已更新 ~/Applications/Aegis.app，正常识别已有保险库。
 - Duo 卡面选择、保存、重开与遮罩回归通过，记录位于 CardDesigns-isolated.xcresult 的 testAppearancePersistsAndCardFaceStaysMasked；最终原生输入回归通过结果为 .build/artifacts.noindex/results/CardDesigns-input-verified.xcresult。两项用例分别验证通过，未将包含早期失败的整套结果标为成功。
 - 最终输入回归使用独立 Duo，避免与备份测试竞争；确认连续混合字符输入不丢数字、16 / 19 位计数、Luhn 错误禁止保存、修正后允许保存，以及卡号不改变手选卡组织。
 - 卡号使用 NSTextField / UITextField 原生编辑回调过滤，避免 SwiftUI 异步清洗回写覆盖后续输入；iOS 编辑器提供收起键盘入口。
+
+
+## 银行卡编辑布局与统一卡面（2026-11-06）
+
+- 卡片设置改为自适应紧凑面板：Mac 210pt 预览与选项并列；窄屏 140pt 预览与卡组织／类型摘要并列，下方两列卡组织和分段卡类型。标题区增加不透明背景，详情卡面限制最大 380pt。
+- 两端均移除配色名称和“实时预览”文案，选项整行可点击并保留至少 44pt 高度、选中勾号和无障碍状态。真实卡片比例仍为 85.60 / 53.98。
+- 根据参考图统一八种卡面：金属渐变、左上品牌与卡类型、底部弧光、右侧淡纹标识；同步用于小预览、列表和详情。卡组织“百夫长”修正为“运通”，兼容读取旧 centurion 标识，重新保存为 americanExpress。
+- 6 项银行卡核心测试通过；独立 Duo 的 2 项界面回归通过，覆盖重置、运通选择、类型切换、保存重开、卡号遮罩、输入过滤与 Luhn。结果：.build/artifacts.noindex/results/CardUnified.xcresult。
+- macOS 主应用与自动填充扩展构建及签名验证通过，iOS 主应用与扩展随模拟器测试构建通过；本地化检查通过。当前运行时不支持创建普通 iPhone 型号，窄屏额外用实际 SwiftUI 组件在 327pt 宽度渲染核对；浅色／深色均检查。
+- 实际组件对照：Docs/Previews/card-picker-compact.webp；八种卡面总览：Docs/Previews/card-designs.webp。全部使用合成示例数据。
+
+
+## 卡面预览空间调整（2026-11-06）
+
+- 窄屏去掉右侧重复的卡组织／类型摘要，卡面改为居中并自适应宽度，最大 260pt；Mac 并列布局的预览宽度改为 240pt。始终保持 85.60 / 53.98 的实体卡比例。
+- 实际 SwiftUI 浅色／深色对照图已核对，Mac 构建和签名检查通过。Duo 卡面重置、组织／类型切换、保存重开和遮罩回归通过：.build/artifacts.noindex/results/CardPreviewCentered-final.xcresult。
+- 本机唯一安装副本 ~/Applications/Aegis.app 已更新并正常识别已有保险库。
+
+
+预览资源以 WebP 保存，保留原始像素尺寸；两张银行卡预览合计从 5826983 字节压缩到 267224 字节，已视觉核对文字、卡面比例与版式。PNG 原图仅保留在本机构建目录。

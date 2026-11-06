@@ -1,15 +1,27 @@
 import Foundation
 
-/// User-selected visual family. A Centurion appearance does not infer a card product from its PAN.
+/// User-selected card network; no issuer or product is inferred from the PAN.
 public enum CardBrand: String, Codable, CaseIterable, Identifiable, Sendable {
-    case unionPay, visa, mastercard, centurion
+    case unionPay, visa, mastercard, americanExpress
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .unionPay: L10n.text("card.brand.unionPay")
         case .visa: L10n.text("card.brand.visa")
         case .mastercard: L10n.text("card.brand.mastercard")
-        case .centurion: L10n.text("card.brand.centurion")
+        case .americanExpress: L10n.text("card.brand.americanExpress")
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+        if value == "centurion" {
+            self = .americanExpress
+        } else if let brand = Self(rawValue: value) {
+            self = brand
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported card network")
         }
     }
 }

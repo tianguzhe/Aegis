@@ -6,25 +6,22 @@ struct CardPalette {
     let bottom: Color
     let ink: Color
     let foil: Color
-    let isLight: Bool
-    let nameKey: String
 
     init(brand: CardBrand?, type: PaymentCardType?) {
-        let colors: (UInt32, UInt32, UInt32, UInt32, Bool, String)
+        let colors: (UInt32, UInt32, UInt32, UInt32)
         switch (brand, type) {
-        case (.unionPay, .debit): colors = (0x113F38, 0x286154, 0xF3F3DD, 0xB7D5B9, false, "card.style.jade")
-        case (.unionPay, .credit): colors = (0x4F1828, 0x863D43, 0xFFF1DF, 0xE2B681, false, "card.style.vermilion")
-        case (.visa, .debit): colors = (0x102F63, 0x215A91, 0xF0F6FF, 0x96CDEA, false, "card.style.ocean")
-        case (.visa, .credit): colors = (0xF1DDB2, 0xD1AD70, 0x302A24, 0x765C35, true, "card.style.champagne")
-        case (.mastercard, .debit): colors = (0x663225, 0xA34E35, 0xFFF0E1, 0xE8B487, false, "card.style.copper")
-        case (.mastercard, .credit): colors = (0x1C242E, 0x394553, 0xF1F3F6, 0xB6C2D0, false, "card.style.obsidian")
-        case (.centurion, .debit): colors = (0xE4E9E5, 0xABBDB9, 0x253D39, 0x4C6A60, true, "card.style.platinum")
-        case (.centurion, .credit): colors = (0x14191D, 0x2B2C2D, 0xEEDBB6, 0xC6A66B, false, "card.style.blackGold")
-        default: colors = (0x203D38, 0x3D5950, 0xF4F1E5, 0xC5CBB9, false, "card.style.classic")
+        case (.unionPay, .debit): colors = (0x294D7B, 0x152440, 0xF2F6FF, 0x7FB8F6)
+        case (.unionPay, .credit): colors = (0x303B50, 0x171D2A, 0xF2F4FA, 0xA9BAD6)
+        case (.visa, .debit): colors = (0x24528D, 0x112A51, 0xF0F5FF, 0x6BB5FF)
+        case (.visa, .credit): colors = (0x2C3D68, 0x121B30, 0xF2F4FF, 0x9DB8F5)
+        case (.mastercard, .debit): colors = (0x514747, 0x2B282D, 0xF7F3F0, 0xDFC2A3)
+        case (.mastercard, .credit): colors = (0x34343A, 0x171A22, 0xF5F4F1, 0xDCC7A8)
+        case (.americanExpress, .debit): colors = (0x738092, 0x3B475A, 0xFFFFFF, 0xD4E0F1)
+        case (.americanExpress, .credit): colors = (0x38414F, 0x151B24, 0xF2F5FA, 0xA9B7CD)
+        default: colors = (0x35424D, 0x18242D, 0xF2F5F7, 0xB1C3CE)
         }
         top = Self.color(colors.0); bottom = Self.color(colors.1)
         ink = Self.color(colors.2); foil = Self.color(colors.3)
-        isLight = colors.4; nameKey = colors.5
     }
 
     var gradient: LinearGradient {
@@ -47,17 +44,18 @@ struct BankCardView: View {
         GeometryReader { geometry in
             face
                 .frame(width: canvasWidth, height: canvasWidth / Self.aspectRatio)
-                .background { CardArtwork(brand: item.cardBrand, type: item.cardType, palette: palette) }
+                .background { CardArtwork(brand: item.cardBrand, palette: palette) }
                 .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .strokeBorder(palette.ink.opacity(palette.isLight ? 0.13 : 0.18), lineWidth: 0.7)
+                        .strokeBorder(LinearGradient(colors: [palette.foil.opacity(0.65), .white.opacity(0.07), palette.foil.opacity(0.2)],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.6)
                 }
                 .scaleEffect(geometry.size.width / canvasWidth, anchor: .topLeading)
         }
         .aspectRatio(Self.aspectRatio, contentMode: .fit)
         .frame(maxWidth: 540)
-        .shadow(color: palette.bottom.opacity(0.16), radius: 16, x: 0, y: 9)
+        .shadow(color: palette.bottom.opacity(0.2), radius: 12, x: 0, y: 7)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([item.title, item.cardDescription, item.maskedCardNumber].joined(separator: ", "))
         .accessibilityIdentifier("bankCardPreview")
@@ -67,29 +65,34 @@ struct BankCardView: View {
     // The card is a proportional graphic; scalable, selectable values remain in the detail fields.
     private var face: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(item.title.isEmpty ? L10n.text("card.previewTitle") : item.title)
-                        .font(.system(size: 14, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
-                    Text(item.cardType?.title ?? L10n.text("card.type.unspecified"))
-                        .font(.system(size: 8, weight: .semibold)).tracking(1)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(palette.ink.opacity(0.09), in: Capsule())
-                }.frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .center, spacing: 14) {
                 CardBrandMark(brand: item.cardBrand, ink: palette.ink)
-                    .frame(width: 74, height: 32, alignment: .trailing).accessibilityHidden(true)
+                    .frame(width: 74, height: 36, alignment: .leading).accessibilityHidden(true)
+                Rectangle().fill(palette.ink.opacity(0.6)).frame(width: 0.5, height: 27)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.cardType?.title ?? L10n.text("card.type.unspecified"))
+                        .font(.system(size: 13, weight: .medium)).tracking(1.1).lineLimit(1)
+                    if let type = item.cardType {
+                        Text(L10n.text(type == .credit ? "card.face.credit" : "card.face.debit"))
+                            .font(.system(size: 6.5, weight: .regular)).tracking(1.7).opacity(0.85)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 16)
+            Text(item.title.isEmpty ? L10n.text("card.previewTitle") : item.title)
+                .font(.system(size: 10, weight: .medium)).lineLimit(1).opacity(0.8).padding(.top, 9)
+            Spacer(minLength: 8)
             HStack(spacing: 11) {
-                CardChip().fill(palette.foil.opacity(0.8)).frame(width: 32, height: 24)
+                CardChip().fill(LinearGradient(colors: [palette.foil.opacity(0.8), palette.foil.opacity(0.4)],
+                                              startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 28, height: 21)
                     .overlay { CardChipLines().stroke(palette.top.opacity(0.65), lineWidth: 0.7) }
-                Image(systemName: "wave.3.right").font(.system(size: 17, weight: .light)).opacity(0.65)
+                Image(systemName: "wave.3.right").font(.system(size: 15, weight: .light)).opacity(0.55)
                 Spacer()
             }.accessibilityHidden(true)
-            Spacer(minLength: 16)
-            Text(item.maskedCardNumber).font(.system(size: 20, weight: .medium, design: .monospaced))
+            Spacer(minLength: 10)
+            Text(item.maskedCardNumber).font(.system(size: 19, weight: .medium, design: .monospaced))
                 .tracking(0.4).lineLimit(1).minimumScaleFactor(0.65)
-            Spacer(minLength: 18)
+            Spacer(minLength: 14)
             HStack(alignment: .bottom, spacing: 18) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(L10n.text("field.cardholder")).font(.system(size: 8, weight: .medium)).opacity(0.82)
@@ -114,8 +117,7 @@ struct CardThumbnail: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.21).fill(palette.gradient)
-            CardMotif(brand: item.cardBrand, credit: item.cardType == .credit)
-                .stroke(palette.foil.opacity(0.24), lineWidth: 0.6)
+            CardArc().stroke(palette.foil.opacity(0.6), lineWidth: 0.5)
             CardBrandMark(brand: item.cardBrand, ink: palette.ink, compact: true)
                 .padding(size * 0.13)
         }
@@ -131,38 +133,82 @@ struct CardAppearancePicker: View {
     @Binding var item: VaultItem
     @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            BankCardView(item: item).frame(maxWidth: .infinity)
-                .padding(.bottom, 6)
-            HStack {
-                Text(L10n.text("card.appearance")).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
-                Spacer()
-                if item.cardBrand != nil || item.cardType != nil {
-                    Button(L10n.text("card.clearAppearance")) { item.cardBrand = nil; item.cardType = nil }
-                        .aegisFont(size: 11).buttonStyle(.plain).foregroundStyle(AegisTheme.teal)
-                        .frame(minHeight: 44)
-                }
-            }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 180 : 115), spacing: 10)], spacing: 10) {
-                ForEach(CardBrand.allCases) { brand in
-                    brandButton(brand)
-                }
-            }
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                ForEach(PaymentCardType.allCases) { type in
-                    Button { item.cardType = type } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: type == .debit ? "banknote" : "creditcard")
-                            Text(type.title)
-                        }.aegisFont(size: 13, weight: .medium)
-                            .frame(maxWidth: .infinity, minHeight: 46)
-                            .foregroundStyle(item.cardType == type ? AegisTheme.teal : AegisTheme.secondary)
-                            .background(item.cardType == type ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 11))
-                            .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(item.cardType == type ? AegisTheme.teal.opacity(0.4) : AegisTheme.border) }
-                            .contentShape(RoundedRectangle(cornerRadius: 11))
-                    }.buttonStyle(.plain).accessibilityAddTraits(item.cardType == type ? [.isSelected] : [])
-                        .accessibilityIdentifier("cardType-\(type.rawValue)")
+                Label(L10n.text("card.appearance"), systemImage: "rectangle.on.rectangle")
+                    .aegisFont(size: 12, weight: .semibold).foregroundStyle(AegisTheme.text)
+                Spacer(minLength: 0)
+                Button {
+                    item.cardBrand = nil; item.cardType = nil
+                } label: {
+                    Image(systemName: "arrow.counterclockwise").font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .disabled(item.cardBrand == nil && item.cardType == nil)
+                .opacity(item.cardBrand == nil && item.cardType == nil ? 0.4 : 1)
+                .accessibilityLabel(L10n.text("card.clearAppearance"))
+                .accessibilityIdentifier("resetCardAppearance")
+                .help(L10n.text("card.clearAppearance"))
+            }
+            .padding(.top, -8).padding(.trailing, -8).padding(.bottom, -8)
+
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 18) {
+                    centeredPreview
+                    controls
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 20) {
+                        preview(width: 240)
+                        controls.frame(minWidth: 270)
+                    }
+                    VStack(alignment: .leading, spacing: 18) {
+                        centeredPreview
+                        controls
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(AegisTheme.border) }
+    }
+
+    private func preview(width: CGFloat) -> some View {
+        BankCardView(item: item)
+            .frame(width: width, height: width / BankCardView.aspectRatio)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+
+    private var centeredPreview: some View {
+        BankCardView(item: item)
+            .frame(maxWidth: 260)
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.text("card.network")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8),
+                                         count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 8) {
+                    ForEach(CardBrand.allCases) { brand in brandButton(brand) }
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.text("card.fundingType")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                typeLayout {
+                    ForEach(PaymentCardType.allCases) { type in
+                        typeButton(type)
+                    }
+                }
+                .padding(3).background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 11))
             }
         }
     }
@@ -170,42 +216,87 @@ struct CardAppearancePicker: View {
     private func brandButton(_ brand: CardBrand) -> some View {
         let selected = item.cardBrand == brand
         return Button { item.cardBrand = brand } label: {
-            VStack(spacing: 8) {
-                CardBrandMark(brand: brand, ink: AegisTheme.text).frame(height: 30)
-                Text(brand.title).aegisFont(size: 11, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
-            }.foregroundStyle(AegisTheme.text)
-                .frame(maxWidth: .infinity).padding(.vertical, 15).padding(.horizontal, 8)
-                .background(selected ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 12))
-                .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? AegisTheme.teal.opacity(0.5) : AegisTheme.border, lineWidth: selected ? 1.5 : 1) }
-                .overlay(alignment: .topTrailing) {
-                    if selected {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(AegisTheme.teal)
-                            .padding(7).accessibilityHidden(true)
-                    }
-                }.contentShape(RoundedRectangle(cornerRadius: 12))
+            HStack(spacing: 8) {
+                Text(brand.title).aegisFont(size: 12, weight: selected ? .semibold : .medium)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(selected ? AegisTheme.teal : AegisTheme.secondary.opacity(0.5))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(selected ? AegisTheme.teal : AegisTheme.text)
+            .padding(.horizontal, 12).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 44)
+            .background(selected ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(selected ? AegisTheme.teal.opacity(0.45) : AegisTheme.border, lineWidth: 1)
+            }.contentShape(RoundedRectangle(cornerRadius: 10))
         }.buttonStyle(.plain).accessibilityLabel(brand.title)
             .accessibilityAddTraits(selected ? [.isSelected] : []).accessibilityIdentifier("cardBrand-\(brand.rawValue)")
+    }
+
+    private var typeLayout: AnyLayout {
+        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 3)) : AnyLayout(HStackLayout(spacing: 3))
+    }
+
+    private func typeButton(_ type: PaymentCardType) -> some View {
+        let selected = item.cardType == type
+        return Button { item.cardType = type } label: {
+            HStack(spacing: 6) {
+                Image(systemName: type == .debit ? "banknote" : "creditcard").font(.system(size: 12, weight: .medium))
+                Text(type.title).aegisFont(size: 12, weight: selected ? .semibold : .medium)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(selected ? AegisTheme.teal : AegisTheme.secondary)
+            .padding(.horizontal, 8).padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 44)
+            .background(selected ? AegisTheme.surface : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? AegisTheme.teal.opacity(0.2) : .clear)
+            }.contentShape(RoundedRectangle(cornerRadius: 8))
+        }.buttonStyle(.plain).accessibilityAddTraits(selected ? [.isSelected] : [])
+            .accessibilityIdentifier("cardType-\(type.rawValue)")
     }
 }
 
 private struct CardArtwork: View {
     let brand: CardBrand?
-    let type: PaymentCardType?
     let palette: CardPalette
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 palette.gradient
-                LinearGradient(colors: [.white.opacity(0.12), .clear, .black.opacity(0.08)], startPoint: .top, endPoint: .bottom)
-                CardMotif(brand: brand, credit: type == .credit)
-                    .stroke(palette.foil.opacity(brand == .centurion ? 0.16 : 0.23), lineWidth: 0.8)
-                if brand == .centurion {
-                    CenturionMedallion().stroke(palette.foil.opacity(0.19), style: StrokeStyle(lineWidth: 1.1, lineCap: .round, lineJoin: .round))
-                        .frame(width: proxy.size.height * 0.8, height: proxy.size.height * 0.8)
-                        .position(x: proxy.size.width * 0.73, y: proxy.size.height * 0.58)
-                }
+                LinearGradient(colors: [.white.opacity(0.07), .clear, .black.opacity(0.13)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                CardArc(fill: true).fill(LinearGradient(colors: [palette.foil.opacity(0.05), palette.foil.opacity(0.29)],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+                CardArc().stroke(LinearGradient(colors: [palette.foil.opacity(0.05), palette.foil.opacity(0.8), .white.opacity(0.2)],
+                                                startPoint: .leading, endPoint: .trailing), lineWidth: 0.55)
+                watermark
+                    .foregroundStyle(LinearGradient(colors: [palette.foil.opacity(0.26), palette.foil.opacity(0.04)],
+                                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: proxy.size.width * 0.51, height: proxy.size.height * 0.84)
+                    .position(x: proxy.size.width * 0.83, y: proxy.size.height * 0.69)
             }
         }.accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var watermark: some View {
+        switch brand {
+        case .unionPay:
+            HStack(spacing: -15) {
+                SlantedCardTile().opacity(0.7).frame(height: 92).offset(y: 12)
+                SlantedCardTile().frame(height: 105)
+            }.padding(.horizontal, 8)
+        case .visa:
+            Text("VISA").font(.system(size: 64, weight: .black)).italic().tracking(-3)
+                .minimumScaleFactor(0.6).lineLimit(1)
+        case .mastercard:
+            HStack(spacing: -32) { Circle(); Circle().opacity(0.65) }
+        case .americanExpress:
+            CenturionMedallion().stroke(style: StrokeStyle(lineWidth: 0.8, lineCap: .round, lineJoin: .round))
+        case nil:
+            Image(systemName: "shield.lefthalf.filled").resizable().scaledToFit().padding(28)
+        }
     }
 }
 
@@ -218,24 +309,28 @@ struct CardBrandMark: View {
             switch brand {
             case .unionPay:
                 ZStack {
-                    HStack(spacing: -2) {
-                        ForEach([UInt32(0xB52C42), 0x126484, 0x147567], id: \.self) { hex in
-                            RoundedRectangle(cornerRadius: 4).fill(CardPalette.color(hex))
+                    HStack(spacing: -6) {
+                        ForEach([UInt32(0xD72035), 0x063E79, 0x086179], id: \.self) { hex in
+                            SlantedCardTile().fill(CardPalette.color(hex))
                         }
-                    }.rotationEffect(.degrees(-8))
-                    Text(compact ? L10n.text("card.brand.unionPay") : "UnionPay")
-                        .font(.system(size: compact ? 10 : 11, weight: .heavy, design: .rounded)).italic().foregroundStyle(.white)
-                        .minimumScaleFactor(0.6).lineLimit(1).padding(.horizontal, 3)
-                }.frame(maxWidth: compact ? 36 : 74, maxHeight: compact ? 18 : 30)
+                    }
+                    VStack(spacing: 0) {
+                        Text(L10n.text("card.brand.unionPay")).font(.system(size: compact ? 9 : 13, weight: .heavy)).italic()
+                        if !compact { Text("UnionPay").font(.system(size: 10, weight: .bold)).italic() }
+                    }.foregroundStyle(.white).minimumScaleFactor(0.6).lineLimit(1).padding(.horizontal, 3)
+                }.frame(maxWidth: compact ? 36 : 70, maxHeight: compact ? 18 : 36)
             case .visa:
                 Text("VISA").font(.system(size: compact ? 15 : 28, weight: .black)).italic().tracking(-1)
                     .foregroundStyle(ink).minimumScaleFactor(0.6).lineLimit(1)
             case .mastercard:
-                HStack(spacing: compact ? -7 : -11) {
-                    Circle().fill(CardPalette.color(0xEB3E36))
-                    Circle().fill(CardPalette.color(0xF7AA32)).opacity(0.94)
-                }.frame(width: compact ? 31 : 57, height: compact ? 19 : 34)
-            case .centurion:
+                VStack(spacing: 2) {
+                    HStack(spacing: compact ? -7 : -9) {
+                        Circle().fill(CardPalette.color(0xEB302C))
+                        Circle().fill(CardPalette.color(0xF5A21A)).opacity(0.94)
+                    }.frame(width: compact ? 31 : 47, height: compact ? 19 : 28)
+                    if !compact { Text("mastercard").font(.system(size: 8, weight: .medium)).foregroundStyle(ink) }
+                }
+            case .americanExpress:
                 if compact {
                     CenturionMedallion().stroke(ink, style: StrokeStyle(lineWidth: 0.8, lineCap: .round, lineJoin: .round))
                         .frame(width: 24, height: 24)
@@ -243,9 +338,7 @@ struct CardBrandMark: View {
                     VStack(spacing: 0) {
                         Text("AMERICAN")
                         Text("EXPRESS")
-                    }.font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(-0.3)
-                        .foregroundStyle(ink).padding(.horizontal, 6).padding(.vertical, 4)
-                        .overlay { RoundedRectangle(cornerRadius: 3).stroke(ink.opacity(0.7), lineWidth: 0.7) }
+                    }.font(.system(size: 11, weight: .black)).tracking(-0.5).foregroundStyle(ink)
                 }
             case nil:
                 Text("Aegis").font(.system(size: compact ? 11 : 21, weight: .medium, design: .serif)).foregroundStyle(ink)
@@ -271,48 +364,27 @@ private struct CardChipLines: Shape {
     }
 }
 
-private struct CardMotif: Shape {
-    let brand: CardBrand?
-    let credit: Bool
+private struct SlantedCardTile: Shape {
     func path(in rect: CGRect) -> Path {
-        var p = Path()
+        let shape = Path(roundedRect: CGRect(x: 0, y: 0, width: rect.width * 0.76, height: rect.height), cornerRadius: rect.height * 0.12)
+        return shape.applying(CGAffineTransform(a: 1, b: 0, c: -rect.width * 0.24 / max(1, rect.height), d: 1, tx: rect.width * 0.24, ty: 0))
+    }
+}
+
+private struct CardArc: Shape {
+    var fill = false
+    func path(in rect: CGRect) -> Path {
         let w = rect.width, h = rect.height
-        switch brand {
-        case .unionPay:
-            for i in 0..<13 {
-                let shift = CGFloat(i) * w * 0.035
-                p.move(to: CGPoint(x: w * 0.34 + shift, y: h * 1.1))
-                p.addCurve(to: CGPoint(x: w * 1.1, y: -h * 0.2 + shift * 0.4),
-                           control1: CGPoint(x: w * (credit ? 0.95 : 0.4) + shift, y: h * 0.7),
-                           control2: CGPoint(x: w * 0.62 + shift, y: h * 0.05))
+        return Path { p in
+            p.move(to: CGPoint(x: -w * 0.06, y: h * 0.79))
+            p.addCurve(to: CGPoint(x: w * 0.75, y: h * 1.12),
+                       control1: CGPoint(x: w * 0.26, y: h * 0.64),
+                       control2: CGPoint(x: w * 0.55, y: h * 0.85))
+            if fill {
+                p.addLine(to: CGPoint(x: -w * 0.06, y: h * 1.12))
+                p.closeSubpath()
             }
-        case .visa:
-            for i in 0..<15 {
-                let y = CGFloat(i) * h * 0.042
-                p.move(to: CGPoint(x: w * 0.28, y: h * 1.25 - y))
-                p.addCurve(to: CGPoint(x: w * 1.15, y: h * 0.56 - y),
-                           control1: CGPoint(x: w * 0.6, y: h * (credit ? 0.3 : 1.28) - y),
-                           control2: CGPoint(x: w * 0.76, y: h * (credit ? 1.05 : 0.34) - y))
-            }
-        case .mastercard:
-            for i in 0..<12 {
-                let diameter = h * 0.72 + CGFloat(i) * h * 0.07
-                for center in [CGFloat(0.67), 0.91] {
-                    p.addEllipse(in: CGRect(x: w * center - diameter / 2, y: h * 0.62 - diameter / 2,
-                                            width: diameter, height: diameter))
-                }
-            }
-        case .centurion:
-            p.addRoundedRect(in: rect.insetBy(dx: 10, dy: 10), cornerSize: CGSize(width: 11, height: 11))
-            p.addRoundedRect(in: rect.insetBy(dx: 14, dy: 14), cornerSize: CGSize(width: 8, height: 8))
-            for i in 0..<30 {
-                let x = CGFloat(i) * w / 20
-                p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x - h * 0.7, y: h))
-            }
-        case nil:
-            p.addEllipse(in: CGRect(x: w * 0.48, y: -h * 0.4, width: w, height: w))
         }
-        return p
     }
 }
 
@@ -336,6 +408,25 @@ private struct CenturionMedallion: Shape {
         p.addLine(to: v(0.39, 0.58)); p.addLine(to: v(0.32, 0.55)); p.addLine(to: v(0.34, 0.46))
         p.move(to: v(0.39, 0.32)); p.addCurve(to: v(0.59, 0.27), control1: v(0.44, 0.24), control2: v(0.55, 0.23))
         p.move(to: v(0.56, 0.5)); p.addLine(to: v(0.61, 0.5))
+        // Fine engraved rays and helmet ribs echo the relief on a metal card.
+        for i in 0..<23 {
+            let angle = Double(i) / 22 * Double.pi * 1.24 + Double.pi * 0.82
+            p.move(to: v(0.5 + CGFloat(cos(angle)) * 0.35, 0.5 + CGFloat(sin(angle)) * 0.4))
+            p.addLine(to: v(0.5 + CGFloat(cos(angle)) * 0.39, 0.5 + CGFloat(sin(angle)) * 0.445))
+        }
+        for i in 0..<7 {
+            let y = CGFloat(i) * 0.014
+            p.move(to: v(0.34, 0.38 + y))
+            p.addQuadCurve(to: v(0.68, 0.34 + y), control: v(0.52, 0.23 + y))
+        }
+        p.move(to: v(0.29, 0.46)); p.addLine(to: v(0.24, 0.74)); p.addLine(to: v(0.35, 0.68))
+        p.move(to: v(0.32, 0.49)); p.addLine(to: v(0.29, 0.7))
+        p.addEllipse(in: CGRect(x: rect.minX + rect.width * 0.39, y: rect.minY + rect.height * 0.49,
+                               width: rect.width * 0.055, height: rect.height * 0.095))
+        for i in 0..<5 {
+            let y = CGFloat(i) * 0.019
+            p.move(to: v(0.47, 0.59 + y)); p.addLine(to: v(0.57, 0.67 + y))
+        }
         return p
     }
 }

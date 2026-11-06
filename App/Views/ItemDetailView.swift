@@ -23,7 +23,8 @@ struct ItemDetailView: View {
                     }.foregroundStyle(AegisTheme.text).aegisCard()
                 }
                 if entry.item.kind == .card {
-                    BankCardView(item: entry.item).frame(maxWidth: .infinity, alignment: .leading)
+                    BankCardView(item: entry.item).frame(maxWidth: 380)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if entry.item.kind != .note {
                     AegisSection(title: L10n.text("field.details")) {

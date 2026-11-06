@@ -17,6 +17,7 @@
 | `swift/` | Swift Package 编译、依赖 checkout 与测试产物 |
 | `cache/` | SwiftPM 与编译器缓存 |
 | `logs/` | 按执行批次命名的完整日志 |
+| `legacy-build-*/build/` | 显式迁入的旧构建目录，保留原文件 |
 
 `.noindex` 后缀用于排除 Spotlight 索引；`.metadata_never_index` 是辅助标记。项目源码、签名配置、保险库数据库和备份不在清理范围内。
 
@@ -47,6 +48,18 @@ python3 Scripts/build_isolation.py exec --lane macos-custom -- \
 不会根据名字或 Bundle ID 扫除系统所有同名应用。不会越过指向外部路径的符号链接，也不会处理 `/Applications`、用户 Applications 或其他工程的 DerivedData。不会删除任何 App、卸载设备应用或清理保险库。
 
 构建失败、运行异常和 SIGINT/SIGTERM 时仍执行清理，并保留原始退出码。清理失败不会伪装成成功。LaunchServices 可能保留 launch-disabled 记录，其他启动器也有自己的缓存；注销成功不等于所有搜索结果立即消失。
+
+## 旧开发图标仍出现在搜索中
+
+Spotlight 会重新发现仍位于普通 `build/` 路径下的预览应用，因此仅执行 LaunchServices 注销不能解决物理文件持续被索引的问题。退出从旧目录运行的开发应用后，执行：
+
+```sh
+python3 Scripts/build_isolation.py archive-legacy
+```
+
+该操作先检查旧路径下的运行进程、注销已知开发应用，再将整个 `build/` 原子迁入唯一的 `.build/artifacts.noindex/legacy-build-*/build/`。不删除文件、不覆盖已有归档、不结束应用进程；运行中的旧应用和符号链接会阻止迁移。普通 `cleanup` 仍只注销注册，不自动移动目录。
+
+供日常使用的应用保留一份到 `/Applications/Aegis.app` 或 `~/Applications/Aegis.app`，开发预览继续由 `Scripts/preview.sh` 从隔离目录启动。安装副本不在清理范围内。迁移后用系统搜索验证结果；不重置全局 Spotlight 或 LaunchServices 数据库。
 
 ## CI
 

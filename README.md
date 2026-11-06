@@ -64,7 +64,7 @@ python3 Scripts/build_isolation.py cleanup --dry-run
 python3 Scripts/build_isolation.py cleanup
 ```
 
-`AEGIS_BUILD_DIR` 可指定 `.build/artifacts.noindex/` 内的 DerivedData 子目录。首次解析依赖需要访问 GitHub；后续构建复用缓存。旧 `build/` 下的产物保留原位，清理只处理所属路径的注册。`/Applications` 中的安装副本和其他工程的 DerivedData 不会被处理。
+`AEGIS_BUILD_DIR` 可指定 `.build/artifacts.noindex/` 内的 DerivedData 子目录。首次解析依赖需要访问 GitHub；后续构建复用缓存。仅注销 LaunchServices 无法阻止 Spotlight 重新索引旧 `build/` 中的应用；退出从该目录运行的开发应用后，可执行 `python3 Scripts/build_isolation.py archive-legacy`，将旧目录完整迁入 `.build/artifacts.noindex/legacy-build-*/build/`。迁移保留全部应用和日志，不覆盖已有归档；运行中的旧应用会阻止迁移。`/Applications`、`~/Applications` 中的安装副本和其他工程的 DerivedData 不会被处理。
 
 流程参考 [ProcScope 最新提交 2e46736](https://github.com/tianguzhe/ProcScope/commit/2e4673654533756748e30a985d6e9e7cd0291f73)，增加了 Aegis 的 iOS、嵌入扩展和 Swift Package 验证。完整路径、CI 和边界说明见 [构建隔离](Docs/BUILD_ISOLATION.md)。push / PR 的 GitHub Actions 会运行核心测试和两端构建，完整诊断日志保留 7 天。
 

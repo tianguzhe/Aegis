@@ -66,3 +66,11 @@ CloudKit 跨设备同步、生物识别和系统自动填充仍需要签名设�
 - macOS 主应用／扩展构建、临时签名与 `codesign --verify --deep --strict` 通过。
 - GitHub Actions 失败运行 `42138301319` 的根因为原生 SwiftPM 未编译 `.xcstrings`，3 个本地化断言返回键名，后续两端构建被跳过。已从 Catalog 生成 `.strings`，添加生成一致性校验，并强制本地测试使用 native build system 对齐 CI。
 - 本地重复清理时发现 LaunchServices `-10814`（应用已不可用）被误判为失败，已作为幂等清理处理，其他清理错误仍返回失败。
+
+## 待办对齐与重复开发图标
+
+- 待办图标按当前平台字体的 cap height 对齐首行文字中心，移除固定行高造成的下移；有序和无序列表统一使用首行基线。Mac 实际检查了中文已完成／未完成项目；Duo 回归截图检查了英文待办。
+- Mac 主应用及扩展构建、临时签名验证通过；Duo 的大编辑器编辑、预览、返回与保存回归通过，结果为 `.build/artifacts.noindex/results/TodoAlignment-final.xcresult`。
+- 22 项 Python 测试通过，新增旧目录完整迁移、幂等性、运行进程保护和符号链接保护验证；251 个中文资源键及生成资源一致性检查通过。
+- 重复图标来自仍被 Spotlight 索引的旧 `build/preview`、Mac 和 iOS 模拟器产物。已增加显式 `archive-legacy` 命令，完整保留旧构建文件并移入 `.noindex`；普通构建清理不执行迁移。
+- 本机保留更新版本 `~/Applications/Aegis.app`，签名验证通过，已正常启动并识别现有保险库。Spotlight 查询 `app.aegis.*` 只返回该应用；没有删除保险库或重置全局系统索引。

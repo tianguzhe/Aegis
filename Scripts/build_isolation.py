@@ -161,6 +161,30 @@ class BuildArea:
         result = subprocess.run([str(LSREGISTER), "-dump"], capture_output=True, text=True, timeout=45, check=True)
         return sorted(path for path in registered_paths(result.stdout) if self.owns(path))
 
+    def archive_legacy(self):
+        """Move the old indexed build tree intact; unregister alone does not remove Spotlight results."""
+        source = self.root / "build"
+        if source.is_symlink():
+            raise ValueError(f"Legacy build directory must not be a symlink: {source}")
+        if not source.exists():
+            print("[build-isolation] No legacy build directory to archive.", flush=True)
+            return None
+        if not source.is_dir():
+            raise ValueError(f"Legacy build path must be a directory: {source}")
+        processes = subprocess.run(["/bin/ps", "-axo", "comm="], capture_output=True, text=True, timeout=15, check=True)
+        active = [line.strip() for line in processes.stdout.splitlines()
+                  if line.strip().startswith(str(source) + "/")]
+        if active:
+            raise RuntimeError("Quit the legacy development apps before archiving:\n" + "\n".join(active))
+        self.prepare()
+        self.cleanup()
+        # A unique destination preserves every bundle and log, and never overwrites an earlier archive.
+        directory = Path(tempfile.mkdtemp(prefix="legacy-build-", dir=self.work))
+        destination = directory / "build"
+        source.rename(destination)
+        print(f"[build-isolation] Archived legacy builds without deleting files: {destination}", flush=True)
+        return destination
+
     def cleanup(self, dry_run=False):
         paths = self.registered()
         failures = []
@@ -311,7 +335,7 @@ def execute(area, arguments, lane):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="operation", required=True)
-    for name in ("prepare", "status", "cleanup", "exec"):
+    for name in ("prepare", "status", "cleanup", "archive-legacy", "exec"):
         command = commands.add_parser(name)
         command.add_argument("--root", type=Path, default=Path.cwd(), help="Project directory (default: current directory)")
         command.add_argument("--extra-build-dir", action="append", default=[], help="Additional explicit legacy build cache")
@@ -333,6 +357,8 @@ def main(argv=None):
             area.cleanup(dry_run=True)
         elif args.operation == "cleanup":
             area.cleanup(dry_run=args.dry_run)
+        elif args.operation == "archive-legacy":
+            area.archive_legacy()
         else:
             arguments = args.command[1:] if args.command[:1] == ["--"] else args.command
             return execute(area, arguments, args.lane)

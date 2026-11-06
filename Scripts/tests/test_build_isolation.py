@@ -153,6 +153,41 @@ class BuildIsolationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "denied"):
                 self.area.cleanup()
 
+    def test_archive_legacy_preserves_files_outside_the_index_and_is_idempotent(self):
+        legacy = self.root / "build/preview/AegisPreview.app/Contents/keep.txt"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_bytes(b"preview artifact")
+        installed = self.root / "Installed.app/keep.txt"
+        installed.parent.mkdir()
+        installed.write_bytes(b"leave alone")
+        with patch.object(self.area, "cleanup") as cleanup, patch.object(
+            isolation.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/Applications/Other.app/Contents/MacOS/Other\n", "")
+        ):
+            destination = self.area.archive_legacy()
+            self.assertTrue(isolation.is_inside(destination, self.area.work))
+            self.assertEqual((destination / "preview/AegisPreview.app/Contents/keep.txt").read_bytes(), b"preview artifact")
+            self.assertFalse((self.root / "build").exists())
+            self.assertEqual(installed.read_bytes(), b"leave alone")
+            self.assertIsNone(self.area.archive_legacy())
+            cleanup.assert_called_once()
+
+    def test_archive_legacy_refuses_a_running_bundle_or_changed_symlink(self):
+        legacy = self.root / "build"
+        legacy.mkdir()
+        with patch.object(self.area, "cleanup") as cleanup, patch.object(
+            isolation.subprocess, "run", return_value=subprocess.CompletedProcess(
+                [], 0, str(legacy / "mac/Aegis.app/Contents/MacOS/Aegis") + "\n", ""
+            )
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Quit the legacy"):
+                self.area.archive_legacy()
+            cleanup.assert_not_called()
+            self.assertTrue(legacy.is_dir())
+        legacy.rmdir()
+        legacy.symlink_to(self.base)
+        with self.assertRaises(ValueError):
+            self.area.archive_legacy()
+
     def test_cleanup_is_idempotent_for_unavailable_registration(self):
         with patch.object(self.area, "registered", return_value=[self.area.work / "Old.app"]), \
              patch.object(isolation.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", "failed to scan: -10814")):

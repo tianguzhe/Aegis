@@ -1,0 +1,30 @@
+{
+  "_comment": "Inputs for abb-v1-crypto.bin. BackupCryptoTests builds the vault and seals it with an injected random stream and must match the file byte for byte; Scripts/backup_format_reference.py opens the file with each credential independently.",
+  "randomStream": "the k-th random byte requested by BackupCryptor.seal (k from 0) is (k + 1) mod 256",
+  "masterPassword": "correct horse battery staple 2026",
+  "backupPassword": "Café backup 2026",
+  "recoveryKey": "60616263-64656667-68696A6B-6C6D6E6F-70717273-74757677-78797A7B-7C7D7E7F",
+  "vault": {
+    "vaultID": "3F2504E0-4F89-41D3-9A0C-0305E82C3301",
+    "vaultKey": "4242424242424242424242424242424242424242424242424242424242424242",
+    "salt": "10101010101010101010101010101010",
+    "memoryKiB": 65536,
+    "iterations": 3,
+    "parallelism": 1,
+    "masterWrapNonce": "212121212121212121212121",
+    "recoveryWrapNonce": "222222222222222222222222"
+  },
+  "payload": {
+    "exportedAtMillis": 1793923200123,
+    "incompleteHistory": false
+  },
+  "revision": {
+    "itemID": "7C9E6679-7425-40DE-944B-E07FC1F90AE7",
+    "revisionID": "9B2C1F00-0000-4000-8000-0000000000AA",
+    "nonce": "232323232323232323232323",
+    "title": "Golden login",
+    "username": "alice",
+    "password": "s3cret-pass",
+    "modifiedAtReferenceSeconds": 815000000
+  }
+}

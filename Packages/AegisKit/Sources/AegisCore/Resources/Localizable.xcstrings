@@ -403,7 +403,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入前会验证主密码和所有记录的完整性。已有保险库时，只能合并同一保险库的备份。"
+            "value": "导入前会验证备份的完整性。已有保险库时，只能合并同一保险库的备份。"
           }
         }
       }
@@ -437,17 +437,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "恢复你的保险库"
-          }
-        }
-      }
-    },
-    "backup.password": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "备份对应的主密码"
           }
         }
       }
@@ -1448,7 +1437,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "备份包含密文和被包裹的密钥。恢复时需要对应的主密码。"
+            "value": "备份整体加密，可用主密码、恢复密钥或你设置的备份密码打开。"
           }
         }
       }
@@ -2630,17 +2619,6 @@
         }
       }
     },
-    "backup.passwordHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "输入备份对应的主密码后即可导入。"
-          }
-        }
-      }
-    },
     "action.creating": {
       "extractionState": "manual",
       "localizations": {
@@ -2758,6 +2736,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "继续未完成的编辑（%lld）"
+          }
+        }
+      }
+    },
+    "backup.error.notABackup": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这不是受支持的 Aegis 备份文件。"
+          }
+        }
+      }
+    },
+    "backup.error.unsupportedVersion": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此备份需要更新版本的 Aegis。"
+          }
+        }
+      }
+    },
+    "backup.error.malformed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份文件已损坏或不完整。"
+          }
+        }
+      }
+    },
+    "backup.error.unsupportedParameters": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此备份的加密参数暂不受支持。"
+          }
+        }
+      }
+    },
+    "backup.error.limitExceeded": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份超过当前版本可处理的范围。"
           }
         }
       }
@@ -2993,6 +3026,50 @@
         }
       }
     },
+    "backup.error.wrongCredential": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码或恢复密钥不正确，或文件已被修改。"
+          }
+        }
+      }
+    },
+    "backup.error.tampered": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份文件已损坏或被修改。"
+          }
+        }
+      }
+    },
+    "backup.error.invalidContent": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份内容未通过完整性检查。"
+          }
+        }
+      }
+    },
+    "backup.error.passwordPolicy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份密码需至少 12 个字符，且不超过 4096 字节。"
+          }
+        }
+      }
+    },
     "card.number.empty": {
       "extractionState": "manual",
       "localizations": {
@@ -3055,6 +3132,413 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld / %lld 位"
+          }
+        }
+      }
+    },
+    "backup.exportTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出加密备份"
+          }
+        }
+      }
+    },
+    "backup.mode.vault.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库保护（推荐）"
+          }
+        }
+      }
+    },
+    "backup.mode.vault.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用主密码或恢复密钥即可打开，导出时无需另设密码。"
+          }
+        }
+      }
+    },
+    "backup.mode.password.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置备份密码"
+          }
+        }
+      }
+    },
+    "backup.mode.password.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另设一个密码保护此文件。它能打开完整保险库，请像主密码一样妥善保管。"
+          }
+        }
+      }
+    },
+    "backup.newPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份密码"
+          }
+        }
+      }
+    },
+    "backup.confirmPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再次输入备份密码"
+          }
+        }
+      }
+    },
+    "backup.passwordRequirement": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少 12 个字符。"
+          }
+        }
+      }
+    },
+    "backup.passwordMismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两次输入的备份密码不一致。"
+          }
+        }
+      }
+    },
+    "backup.passwordOnly": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅允许备份密码打开"
+          }
+        }
+      }
+    },
+    "backup.passwordOnlyDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启后，主密码和恢复密钥都无法打开此文件；忘记备份密码将无法恢复。"
+          }
+        }
+      }
+    },
+    "backup.exportAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
+          }
+        }
+      }
+    },
+    "backup.exporting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加密…"
+          }
+        }
+      }
+    },
+    "backup.masterFallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此设备未设置锁屏密码，请输入主密码以确认导出。"
+          }
+        }
+      }
+    },
+    "backup.exportReason": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证身份以导出加密备份"
+          }
+        }
+      }
+    },
+    "backup.incompleteTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份不完整"
+          }
+        }
+      }
+    },
+    "backup.incompleteMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分历史版本尚未同步到本设备，此备份不包含它们。"
+          }
+        }
+      }
+    },
+    "backup.saveAnyway": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍然保存"
+          }
+        }
+      }
+    },
+    "backup.credential.vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码或恢复密钥"
+          }
+        }
+      }
+    },
+    "backup.credential.any": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份密码、主密码或恢复密钥"
+          }
+        }
+      }
+    },
+    "backup.credential.password": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份密码"
+          }
+        }
+      }
+    },
+    "backup.credentialHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入密码或恢复密钥后即可验证。"
+          }
+        }
+      }
+    },
+    "backup.verifyAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证备份"
+          }
+        }
+      }
+    },
+    "backup.verifying": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证…"
+          }
+        }
+      }
+    },
+    "backup.preview.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复预览"
+          }
+        }
+      }
+    },
+    "backup.preview.exportedAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出时间"
+          }
+        }
+      }
+    },
+    "backup.preview.items": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条目"
+          }
+        }
+      }
+    },
+    "backup.preview.trashed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站"
+          }
+        }
+      }
+    },
+    "backup.preview.conflicts": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冲突"
+          }
+        }
+      }
+    },
+    "backup.preview.revisions": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史版本"
+          }
+        }
+      }
+    },
+    "backup.preview.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将新增的版本"
+          }
+        }
+      }
+    },
+    "backup.preview.incomplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此备份的历史不完整，缺少导出设备当时未同步的版本。"
+          }
+        }
+      }
+    },
+    "backup.preview.passwordNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此密码仅用于打开备份。恢复后仍使用原保险库的主密码或恢复密钥进行日常解锁。"
+          }
+        }
+      }
+    },
+    "backup.confirmRestore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认恢复"
+          }
+        }
+      }
+    },
+    "backup.error.unlockFirst": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先解锁保险库再导入。"
+          }
+        }
+      }
+    },
+    "backup.error.sessionChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库状态已变化，请重新验证备份。"
+          }
+        }
+      }
+    },
+    "backup.restoredWithIssue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢复到本机，但后续步骤未完成：%@"
           }
         }
       }

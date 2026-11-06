@@ -131,23 +131,72 @@ public actor VaultStore {
         return try encode(VaultBackup(header: header, revisions: revisions()))
     }
 
-    public func importBackup(_ backup: VaultBackup) throws {
-        try backup.validate()
-        if let existing = try header(), existing != backup.header { throw VaultError.differentVault }
-        let existing = Dictionary(uniqueKeysWithValues: try revisions().map { ($0.id, $0) })
-        var incoming: [UUID: EncryptedRevision] = [:]
-        for revision in backup.revisions {
-            if let previous = existing[revision.id] ?? incoming[revision.id], previous != revision { throw VaultError.damagedData }
-            incoming[revision.id] = revision
-        }
-        // Validate the complete import before mutating the store.
-        if try header() == nil {
-            modelContext.insert(StoredObject(name: "header", kind: "header", payload: try encode(backup.header), pending: true))
-        }
-        for revision in incoming.values where existing[revision.id] == nil {
-            modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
-                                            payload: try encode(revision), pending: true))
-        }
-        try modelContext.save()
+    /// The header and every stored revision, read in one actor turn so they are mutually consistent.
+    /// Throws `VaultError.locked` when no vault exists yet.
+    public func snapshot() throws -> VaultSnapshot {
+        guard let header = try header() else { throw VaultError.locked }
+        return VaultSnapshot(header: header, revisions: try revisions())
     }
+
+    /// Merges authenticated backup contents in one transaction (Docs/BACKUP_FORMAT_DESIGN_V1.md §10.3).
+    ///
+    /// Immutable revisions are unioned: nothing local is deleted, a repeated restore inserts nothing,
+    /// and a revision ID already stored with different contents rejects the whole restore. Callers
+    /// must authenticate `revisions` first; this only re-checks identity against the current store.
+    /// - Throws: `VaultError.differentVault` when another header is stored, `VaultError.damagedData`
+    ///   for conflicting or foreign revisions, or the save error. On any error nothing is written.
+    @discardableResult
+    public func restore(header: VaultHeader, revisions incoming: [EncryptedRevision]) throws -> RestoreResult {
+        try restore(header: header, revisions: incoming, beforeSave: {})
+    }
+
+    /// `beforeSave` lets tests fail the commit after rows are inserted; production passes a no-op.
+    func restore(header: VaultHeader, revisions incoming: [EncryptedRevision],
+                 beforeSave: @Sendable () throws -> Void) throws -> RestoreResult {
+        try header.validate()
+        guard incoming.allSatisfy({ $0.vaultID == header.vaultID && $0.formatVersion == 1 }) else { throw VaultError.damagedData }
+        let localHeader = try self.header()
+        if let localHeader, localHeader != header { throw VaultError.differentVault }
+        let existing = Dictionary(uniqueKeysWithValues: try revisions().map { ($0.id, $0) })
+        var additions: [UUID: EncryptedRevision] = [:]
+        for revision in incoming {
+            if let previous = existing[revision.id] ?? additions[revision.id], previous != revision { throw VaultError.damagedData }
+            if existing[revision.id] == nil { additions[revision.id] = revision }
+        }
+        // Everything is validated before the store is mutated.
+        do {
+            if localHeader == nil {
+                modelContext.insert(StoredObject(name: "header", kind: "header", payload: try encode(header), pending: true))
+            }
+            for revision in additions.values {
+                modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
+                                                payload: try encode(revision), pending: true))
+            }
+            try beforeSave()
+            try modelContext.save()
+        } catch {
+            // Unsaved inserts would otherwise be committed by the next unrelated save().
+            modelContext.rollback()
+            throw error
+        }
+        return RestoreResult(createdHeader: localHeader == nil, insertedRevisions: additions.count)
+    }
+}
+
+/// A consistent copy of the stored vault used for export.
+public struct VaultSnapshot: Sendable {
+    public let header: VaultHeader
+    public let revisions: [EncryptedRevision]
+
+    /// True when a revision names a parent this device never received, so the history is not closed.
+    public var hasIncompleteHistory: Bool {
+        let ids = Set(revisions.map(\.id))
+        return revisions.contains { $0.parents.contains { !ids.contains($0) } }
+    }
+}
+
+/// What a restore actually wrote, which may differ from the preview if the store changed meanwhile.
+public struct RestoreResult: Sendable, Equatable {
+    public let createdHeader: Bool
+    public let insertedRevisions: Int
 }

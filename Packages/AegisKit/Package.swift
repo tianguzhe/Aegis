@@ -19,7 +19,7 @@ let package = Package(
         .target(name: "AegisStorage", dependencies: ["AegisCore"]),
         .target(name: "AegisSync", dependencies: ["AegisCore", "AegisStorage"]),
         .target(name: "AegisMarkdown", dependencies: ["AegisCore", .product(name: "Markdown", package: "swift-markdown")]),
-        .testTarget(name: "AegisCoreTests", dependencies: ["AegisCore", "AegisStorage", "AegisMarkdown", "CArgon2"])
+        .testTarget(name: "AegisCoreTests", dependencies: ["AegisCore", "AegisStorage", "AegisMarkdown", "CArgon2"], exclude: ["Fixtures"])
     ],
     swiftLanguageModes: [.v6]
 )

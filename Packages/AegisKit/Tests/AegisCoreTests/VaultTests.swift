@@ -1,5 +1,5 @@
 import AegisCore
-import AegisStorage
+@testable import AegisStorage
 import CArgon2
 import CryptoKit
 import Foundation
@@ -90,22 +90,40 @@ struct VaultTests {
         #expect(try await crypto.entries(from: history + [resolution, restored]).first?.item.deletedAt == nil)
     }
 
-    @Test func backupImportAndSyncAcknowledgement() async throws {
+    @Test func restoreAndSyncAcknowledgement() async throws {
         let crypto = VaultCrypto(), first = try VaultStore.make(inMemory: true), second = try VaultStore.make(inMemory: true)
         let created = try await crypto.create(password: password)
         try await first.saveHeader(created.header)
         let revision = try await crypto.encrypt(VaultItem(title: "Saved"), parents: [])
         try await first.saveRevision(revision)
-        let data = try await first.backup()
-        let backup = try JSONDecoder().decode(VaultBackup.self, from: data)
-        try await second.importBackup(backup)
-        try await second.importBackup(backup)
+        let snapshot = try await first.snapshot()
+        try await second.restore(header: snapshot.header, revisions: snapshot.revisions)
+        try await second.restore(header: snapshot.header, revisions: snapshot.revisions)
         #expect(try await second.revisions().count == 1)
         for pending in try await first.pendingObjects() {
             try await first.acknowledge(name: pending.name, payload: pending.payload)
         }
         #expect(try await first.pendingObjects().isEmpty)
         #expect(try await second.pendingObjects().count == 2)
+    }
+
+    @Test func failedImportSaveDoesNotLeakIntoLaterSaves() async throws {
+        let crypto = VaultCrypto(), source = try VaultStore.make(inMemory: true)
+        let created = try await crypto.create(password: password)
+        try await source.saveHeader(created.header)
+        try await source.saveRevision(try await crypto.encrypt(VaultItem(title: "Imported"), parents: []))
+        let backup = try JSONDecoder().decode(VaultBackup.self, from: try await source.backup())
+
+        struct InjectedCommitFailure: Error {}
+        let target = try VaultStore.make(inMemory: true)
+        await #expect(throws: InjectedCommitFailure.self) {
+            try await target.restore(header: backup.header, revisions: backup.revisions, beforeSave: { throw InjectedCommitFailure() })
+        }
+
+        try await target.setMetadata("probe", data: Data([1]))
+        #expect(try await target.header() == nil)
+        #expect(try await target.revisions().isEmpty)
+        #expect(try await target.pendingObjects().isEmpty)
     }
 
     @Test func differentVaultCannotReplaceHeader() async throws {

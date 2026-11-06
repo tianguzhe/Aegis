@@ -1,0 +1,61 @@
+{
+  "_comment": "Inputs for the ABB v1 golden fixtures. BackupFormatTests encodes these and must match the .bin files byte for byte; Scripts/backup_format_reference.py parses the .bin files independently and must recover these values.",
+  "vault": {
+    "vaultID": "6F9619FF-8B86-D011-B42D-00C04FC964FF",
+    "salt": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "memoryKiB": 131072,
+    "iterations": 4,
+    "parallelism": 2,
+    "wrappedKey": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+    "recoveryWrappedKey": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+  },
+  "header": {
+    "payloadLength": 65536,
+    "payloadNonce": "c0c0c0c0c0c0c0c0c0c0c0c0",
+    "commitment": "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+    "passwordSlot": {
+      "salt": "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+      "wrapNonce": "d1d1d1d1d1d1d1d1d1d1d1d1",
+      "wrappedFileKey": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "wrapTag": "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3"
+    },
+    "vaultSlot": {
+      "hkdfSalt": "e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0",
+      "wrapNonce": "e1e1e1e1e1e1e1e1e1e1e1e1",
+      "wrappedFileKey": "e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+      "wrapTag": "e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
+    }
+  },
+  "ciphertext": "byte i of the payload ciphertext is i % 251",
+  "tag": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0",
+  "payload": {
+    "exportedAtMillis": 1793923200123,
+    "incompleteHistory": true,
+    "vaultKey": "9999999999999999999999999999999999999999999999999999999999999999",
+    "revisions": [
+      {
+        "itemID": "11111111-1111-4111-8111-111111111111",
+        "revisionID": "F0000000-0000-4000-8000-000000000003",
+        "parents": [
+          "A0000000-0000-4000-8000-000000000002",
+          "0A000000-0000-4000-8000-000000000009"
+        ],
+        "sealed": "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c"
+      },
+      {
+        "itemID": "11111111-1111-4111-8111-111111111111",
+        "revisionID": "0B000000-0000-4000-8000-000000000001",
+        "parents": [],
+        "sealed": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+      },
+      {
+        "itemID": "11111111-1111-4111-8111-111111111111",
+        "revisionID": "A0000000-0000-4000-8000-000000000002",
+        "parents": [
+          "0B000000-0000-4000-8000-000000000001"
+        ],
+        "sealed": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b"
+      }
+    ]
+  }
+}

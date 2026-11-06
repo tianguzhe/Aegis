@@ -64,17 +64,32 @@ public actor VaultCrypto {
     }
 
     public func unlock(password: String, header: VaultHeader) throws {
-        try header.validate()
-        let kek = try Argon2id.derive(password: password, salt: header.salt, parameters: header.kdf)
-        do {
-            var raw = try AES.GCM.open(AES.GCM.SealedBox(combined: header.wrappedKey), using: kek,
-                                      authenticating: Self.keyAAD(header.vaultID, "master"))
-            defer { raw.resetBytes(in: 0..<raw.count) }
-            key = SymmetricKey(data: raw); vaultID = header.vaultID
-        } catch { throw VaultError.invalidPassword }
+        var raw = try Self.unwrapVaultKey(password: password, header: header)
+        defer { raw.resetBytes(in: 0..<raw.count) }
+        key = SymmetricKey(data: raw); vaultID = header.vaultID
     }
 
     public func recover(recoveryKey: String, header: VaultHeader) throws {
+        var raw = try Self.unwrapVaultKey(recoveryKey: recoveryKey, header: header)
+        defer { raw.resetBytes(in: 0..<raw.count) }
+        key = SymmetricKey(data: raw); vaultID = header.vaultID
+    }
+
+    /// Returns the raw vault key wrapped by the master password without unlocking this actor.
+    /// Throws `VaultError.invalidPassword` when the password does not open `header.wrappedKey`.
+    static func unwrapVaultKey(password: String, header: VaultHeader) throws -> Data {
+        try header.validate()
+        let kek = try Argon2id.derive(password: password, salt: header.salt, parameters: header.kdf)
+        do {
+            return try AES.GCM.open(AES.GCM.SealedBox(combined: header.wrappedKey), using: kek,
+                                    authenticating: keyAAD(header.vaultID, "master"))
+        } catch { throw VaultError.invalidPassword }
+    }
+
+    /// Returns the raw vault key wrapped by the recovery key without unlocking this actor.
+    /// Throws `VaultError.invalidRecoveryKey` for text that is not 64 hex digits (whitespace and
+    /// hyphens ignored), and `VaultError.invalidPassword` when a well-formed key does not match.
+    static func unwrapVaultKey(recoveryKey: String, header: VaultHeader) throws -> Data {
         try header.validate()
         let hex = recoveryKey.filter { !$0.isWhitespace && $0 != "-" }
         guard hex.count == 64 else { throw VaultError.invalidRecoveryKey }
@@ -85,11 +100,8 @@ public actor VaultCrypto {
         }
         defer { recovery.resetBytes(in: 0..<recovery.count) }
         do {
-            var raw = try AES.GCM.open(AES.GCM.SealedBox(combined: header.recoveryWrappedKey),
-                                      using: SymmetricKey(data: recovery),
-                                      authenticating: Self.keyAAD(header.vaultID, "recovery"))
-            defer { raw.resetBytes(in: 0..<raw.count) }
-            key = SymmetricKey(data: raw); vaultID = header.vaultID
+            return try AES.GCM.open(AES.GCM.SealedBox(combined: header.recoveryWrappedKey),
+                                    using: SymmetricKey(data: recovery), authenticating: keyAAD(header.vaultID, "recovery"))
         } catch { throw VaultError.invalidPassword }
     }
 

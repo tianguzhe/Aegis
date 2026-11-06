@@ -55,10 +55,10 @@ targetTemplates:
         AegisCloudEnabled: $(AEGIS_CLOUD_ENABLED)
         AegisAppGroup: $(AEGIS_APP_GROUP)
         UTExportedTypeDeclarations:
-          - UTTypeIdentifier: app.aegis.encrypted-backup
+          - UTTypeIdentifier: app.aegis.backup
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification:
-              public.filename-extension: [aegisbackup]
+              public.filename-extension: [aegis]
     entitlements:
       path: Config/${target_name}.entitlements
       properties:

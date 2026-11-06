@@ -223,6 +223,63 @@ final class InterfaceTests: XCTestCase {
         capture("12-accessibility-layout")
     }
 
+    func testBackupPasswordMustMeetPolicyBeforeExport() throws {
+        launchVault()
+        openBackupExport()
+        app.buttons["exportModePassword"].tap()
+        let export = app.buttons["exportBackupButton"]
+        let password = app.secureTextFields["backupPassword"]
+        let confirmation = app.secureTextFields["backupPasswordConfirmation"]
+        XCTAssertTrue(password.waitForExistence(timeout: 5))
+        replaceText(in: password, with: "eleven char")
+        replaceText(in: confirmation, with: "eleven char")
+        XCTAssertFalse(export.isEnabled, "11 characters is below the backup password minimum")
+        replaceText(in: password, with: "backup passphrase 2026")
+        replaceText(in: confirmation, with: "backup passphrase 2025")
+        XCTAssertFalse(export.isEnabled, "mismatched confirmation must block export")
+        replaceText(in: confirmation, with: "backup passphrase 2026")
+        XCTAssertTrue(export.isEnabled)
+        capture("09-backup-export-password")
+    }
+
+    func testExportAuthorizesBeforeOfferingTheFile() throws {
+        launchVault()
+        openBackupExport()
+        let export = app.buttons["exportBackupButton"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        export.tap()
+        let master = app.secureTextFields["exportMasterPassword"]
+        let picker = app.buttons["取消"]
+        if master.waitForExistence(timeout: 5) {
+            // No passcode or biometrics: the device-owner check falls back to the master password.
+            XCTAssertFalse(export.isEnabled)
+            master.tap()
+            master.typeText("Aegis preview fixture only")
+            export.tap()
+        } else if !picker.waitForExistence(timeout: 30) {
+            // The system prompt lives outside the app; a simulated match must come from the host:
+            // xcrun simctl spawn <udid> notifyutil -p com.apple.BiometricKit_Sim.pearl.match
+            throw XCTSkip("device-owner prompt was not answered; simulate a biometric match to cover this path")
+        }
+        XCTAssertTrue(picker.waitForExistence(timeout: 20), "the system export picker should appear")
+        capture("10-backup-export-picker")
+    }
+
+    private func openBackupExport() {
+        let settings = app.buttons["设置"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.tap()
+        let export = app.buttons["导出加密备份"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        reveal(export)
+        export.tap()
+        XCTAssertTrue(app.buttons["exportModeVault"].waitForExistence(timeout: 5))
+    }
+    /// Secure fields may clear on re-focus; deleting first makes the result independent of that.
+    private func replaceText(in field: XCUIElement, with text: String) {
+        field.tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40) + text)
+    }
     private func reveal(_ element: XCUIElement) {
         for _ in 0..<6 {
             if element.isHittable { return }

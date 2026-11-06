@@ -1,0 +1,178 @@
+name: Package DMG and unsigned IPA
+
+# Tag pushes (v<MARKETING_VERSION>) build, attest and publish a release. Manual runs build and
+# attest packages from the selected branch without publishing. The version always comes from
+# project.yml; a tag that disagrees with it is rejected before anything is built.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: Check version and run tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    outputs:
+      source_commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Record source and toolchain
+        id: source
+        run: |
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          xcodebuild -version
+
+      - name: Require tag to match project.yml
+        if: github.ref_type == 'tag'
+        run: python3 Scripts/packaging/artifact_utils.py check-tag "$GITHUB_REF_NAME"
+
+      # Scripts/test.sh runs the ABB crypto cross-check through uv; runner images do not ship it.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: false
+
+      - name: Run tests
+        run: bash Scripts/ci-annotate.sh Test bash Scripts/test.sh
+
+  build:
+    name: Package ${{ matrix.package }}
+    needs: verify
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [dmg, ipa]
+    steps:
+      - name: Check out the verified commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.source_commit }}
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: matrix.package == 'dmg'
+        with:
+          enable-cache: false
+
+      - name: Build package
+        env:
+          PACKAGE_KIND: ${{ matrix.package }}
+        run: bash Scripts/package.sh "$PACKAGE_KIND" --build-number "$GITHUB_RUN_NUMBER"
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.${{ matrix.package }}
+
+      - name: Upload package and checksum
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Aegis-package-${{ matrix.package }}
+          path: |
+            dist/*.${{ matrix.package }}
+            dist/*.${{ matrix.package }}.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: true
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Aegis-build-logs-${{ matrix.package }}
+          path: |
+            .build/artifacts.noindex/package/logs/
+            .build/artifacts.noindex/logs/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
+      - name: Add download link to run summary
+        env:
+          PACKAGE_KIND: ${{ matrix.package }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          printf '### %s package\n\n[Download package and SHA-256 checksum](%s)\n' \
+            "$PACKAGE_KIND" "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish tagged release
+    if: github.ref_type == 'tag'
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download both packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: Aegis-package-*
+          merge-multiple: true
+          path: dist
+
+      - name: Verify and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          EXPECTED_COMMIT: ${{ needs.verify.outputs.source_commit }}
+        run: |
+          # Do not publish stale binaries if the tag moved while the packages were building.
+          actual_commit=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq '.sha')
+          if [[ "$actual_commit" != "$EXPECTED_COMMIT" ]]; then
+            echo '::error::The release tag no longer points to the commit used for these packages.'
+            exit 1
+          fi
+
+          shopt -s nullglob
+          dmgs=(dist/Aegis-*-macOS-universal.dmg)
+          ipas=(dist/Aegis-*-iOS-unsigned.ipa)
+          checksums=(dist/*.sha256)
+          if [[ ${#dmgs[@]} -ne 1 || ${#ipas[@]} -ne 1 || ${#checksums[@]} -ne 2 ]]; then
+            echo '::error::Expected one DMG, one unsigned IPA, and their two checksums.'
+            exit 1
+          fi
+          (cd dist && sha256sum --check --strict -- *.sha256)
+
+          cat > release-notes.md <<'NOTES'
+          未经 Apple 公证的独立分发版：
+
+          - macOS：DMG 内的 App 为 ad-hoc 签名。首次打开如被拦截，请在“系统设置 › 隐私与安全性”中选择“仍要打开”。
+          - iOS：IPA 未签名，需要用你自己的证书重新签名后安装。
+          - 两个平台均未启用 iCloud 同步和系统自动填充，它们需要开发者描述文件授予的受限权限。
+          - 每个安装包都附带 SHA-256，并带有 GitHub 构建来源证明，可用 `gh attestation verify <文件> --repo tianguzhe/Aegis` 核实。
+          NOTES
+
+          assets=("${dmgs[@]}" "${ipas[@]}" "${checksums[@]}")
+          if gh release view "$RELEASE_TAG" --json tagName --jq '.tagName' >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" --verify-tag \
+              --title "Aegis $RELEASE_TAG" --notes-file release-notes.md --generate-notes
+          fi

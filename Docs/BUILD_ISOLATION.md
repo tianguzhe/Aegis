@@ -65,4 +65,4 @@ python3 Scripts/build_isolation.py archive-legacy
 
 `.github/workflows/ci.yml` 在 main 的 push / PR 以及手动触发时运行：脚本与 Swift 测试、Mac Debug 构建、iOS Simulator Debug 构建。诊断包含 `.build/artifacts.noindex/logs/` 与测试结果，使用 `include-hidden-files: true` 上传，保留 7 天。
 
-本次没有添加自动发布流程或推送版本标签。签名、CloudKit schema 部署与实际发行仍需单独完成。
+推送 `v<MARKETING_VERSION>` tag 时，`.github/workflows/package.yml` 运行完整测试，并行构建 ad-hoc 签名的 macOS DMG 与无签名 iOS IPA，生成构建来源证明后发布 GitHub Release；手动触发只构建不发布。打包产物与日志位于 `.build/artifacts.noindex/package/`，最终文件位于 `dist/`。Apple 签名、公证、CloudKit schema 部署与 App Store 发行仍需单独完成。

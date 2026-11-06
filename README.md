@@ -54,6 +54,23 @@ Debug 构建可带 `--preview-vault` 启动，使用独立内存保险库和合�
 
 首次进入流程的 UI 测试使用 `--preview-onboarding`，从空的内存保险库开始，验证创建条件、恢复密钥确认和禁用态反馈；此模式同样不会访问现有保险库或 iCloud。
 
+## 打包与发布
+
+```sh
+bash Scripts/package.sh                      # dist/ 下生成 macOS 通用版 DMG 与无签名 iOS IPA，各附 SHA-256
+bash Scripts/package.sh dmg --build-number 7 # 只打 DMG，并指定构建号
+```
+
+无需 Apple 开发者账号：Mac App 为 ad-hoc 签名并保留 App Sandbox，未经公证；IPA 未签名，需自行重新签名。iCloud 同步与系统自动填充依赖描述文件授予的受限权限，这两类包中均不可用。打包时用命令行设置覆盖 `Config/Local.xcconfig`，开发者团队、Bundle 前缀、App Group 与 iCloud 容器不会进入安装包。DMG 需要 `uv`，用于按固定版本运行 `dmgbuild`。
+
+发布版本：
+
+1. 修改 `project.yml` 的 `MARKETING_VERSION`，运行 `xcodegen generate` 并提交。
+2. 推送 tag `v<MARKETING_VERSION>`，例如 `git tag -a v0.2.0 -m "Aegis 0.2.0" && git push origin v0.2.0`。
+3. `.github/workflows/package.yml` 核对 tag 与 `project.yml` 一致并运行完整测试，然后并行构建 DMG 与 IPA、生成 GitHub 构建来源证明，最后确认 tag 未移动、校验 SHA-256 并创建 Release。tag 与版本号不一致时不会构建。
+
+下载的安装包可用 `gh attestation verify <文件> --repo tianguzhe/Aegis` 核实来源。
+
 ## 构建隔离与开发副本
 
 构建、测试、预览和日志集中到 `.build/artifacts.noindex/`，避免应用搜索中积累同名开发副本。两个共享 Scheme 在构建、测试、运行、性能分析和归档结束后按路径注销开发应用的 LaunchServices 注册；清理不删除文件、不结束运行中的应用、不重置系统索引。

@@ -2,6 +2,11 @@ import AegisCore
 import Foundation
 import Markdown
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 public struct MarkdownListEntry: Sendable, Equatable {
     public let marker: String
@@ -127,18 +132,31 @@ public struct MarkdownContent: View {
         }
     }
 
+    private var bodyCapHeight: CGFloat {
+        #if os(macOS)
+        NSFont.systemFont(ofSize: bodySize).capHeight
+        #else
+        UIFont.systemFont(ofSize: bodySize).capHeight
+        #endif
+    }
+
     @ViewBuilder
     private func listMarker(_ marker: String) -> some View {
         if marker == "☑" || marker == "☐" {
+            let capHeight = bodyCapHeight
             Image(systemName: marker == "☑" ? "checkmark.square.fill" : "square")
                 .font(.system(size: taskSize, weight: .medium))
                 .foregroundStyle(marker == "☑" ? accent : Color.secondary.opacity(0.8))
-                .frame(width: taskSize + 4, height: bodySize * 1.5)
+                .frame(width: taskSize + 4, height: taskSize)
+                // Align the symbol's visual center to the first line's cap center.
+                // An SF Symbol's own baseline sits below the adjacent text's glyphs.
+                .alignmentGuide(.firstTextBaseline) { dimensions in
+                    dimensions[VerticalAlignment.center] + capHeight / 2
+                }
                 .accessibilityLabel(L10n.text(marker == "☑" ? "markdown.taskDone" : "markdown.taskPending"))
         } else {
             SwiftUI.Text(marker).font(.system(size: bodySize, weight: .medium).monospacedDigit())
                 .foregroundStyle(.secondary).frame(minWidth: taskSize + 4, alignment: .trailing)
-                .padding(.top, 1)
         }
     }
 
@@ -172,7 +190,7 @@ public struct MarkdownContent: View {
         case .list(let entries):
             return AnyView(VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
                         listMarker(entry.marker)
                         blockStack(entry.blocks)
                     }.accessibilityElement(children: .combine)

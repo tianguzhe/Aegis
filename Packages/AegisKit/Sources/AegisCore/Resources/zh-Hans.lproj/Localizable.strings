@@ -266,7 +266,7 @@
 "settings.lockDescription.mac" = "5 分钟无操作后锁定；系统休眠或切换系统用户时锁定。切换普通窗口不会立即锁定。";
 "settings.lockTitle" = "自动锁定";
 "settings.security" = "安全";
-"settings.version" = "版本 0.1.0";
+"settings.version" = "版本 0.2.0";
 "sync.accountChanged" = "iCloud 账号已变更";
 "sync.accountChangedDetail" = "检测到 iCloud 账号变更。已锁定保险库并停止同步，避免不同账号的数据混合。请切回原账号并重新启动应用。";
 "sync.description" = "只有加密后的保险库数据会同步到你的 iCloud 私有数据库。";

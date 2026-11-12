@@ -22,7 +22,7 @@ struct MarkdownComposer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "text.alignleft").font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.teal)
+                Image(systemName: "text.alignleft").font(.system(size: 13, weight: .medium)).foregroundStyle(AegisTheme.secondary)
                 Text(title).aegisFont(size: 13, weight: .semibold).foregroundStyle(AegisTheme.text)
                 Spacer()
                 ComposerModePicker(mode: $mode)
@@ -51,8 +51,8 @@ struct MarkdownComposer: View {
                             Image(systemName: "arrow.up.left.and.arrow.down.right").font(.system(size: 11, weight: .semibold))
                             Text(L10n.text("composer.expand")).aegisFont(size: 12, weight: .semibold)
                         }.foregroundStyle(AegisTheme.teal).padding(.horizontal, 13).frame(height: expandHeight)
-                            .background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 10))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(AegisTheme.teal.opacity(0.10)))
+                            .background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
+                            .overlay(RoundedRectangle(cornerRadius: AegisMetrics.controlRadius).stroke(AegisTheme.teal.opacity(0.10)))
                     }.buttonStyle(.plain).accessibilityIdentifier("expandMarkdownEditor")
                         #if os(macOS)
                         .help(L10n.text("composer.expandHint"))
@@ -61,10 +61,9 @@ struct MarkdownComposer: View {
                 }.padding(.leading, 16).padding(.trailing, 12).padding(.vertical, 10)
                     .background(AegisTheme.surface)
             }
-            .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: 16))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(focused && mode == .write ? AegisTheme.teal.opacity(0.45) : AegisTheme.border, lineWidth: 1))
-            .shadow(color: AegisTheme.navy.opacity(0.035), radius: 12, x: 0, y: 5)
+            .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: AegisMetrics.panelRadius))
+            .clipShape(RoundedRectangle(cornerRadius: AegisMetrics.panelRadius))
+            .overlay(RoundedRectangle(cornerRadius: AegisMetrics.panelRadius).stroke(focused && mode == .write ? AegisTheme.teal.opacity(0.45) : AegisTheme.border, lineWidth: 1))
             .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: mode)
         }
         .onChange(of: mode) { _, value in
@@ -303,9 +302,9 @@ private struct ExpandedMarkdownEditor: View {
                         if mode == .preview { ComposerPreview(text: text) }
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: 18))
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(AegisTheme.border))
+                    .background(AegisTheme.surface, in: RoundedRectangle(cornerRadius: AegisMetrics.panelRadius))
+                    .clipShape(RoundedRectangle(cornerRadius: AegisMetrics.panelRadius))
+                    .overlay(RoundedRectangle(cornerRadius: AegisMetrics.panelRadius).stroke(AegisTheme.border))
                     .padding(.horizontal, pagePadding)
                 HStack(spacing: 10) {
                     ComposerStatistics(text: text)

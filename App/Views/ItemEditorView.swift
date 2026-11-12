@@ -17,6 +17,7 @@ struct ItemEditorView: View {
     @State private var loaded = false
     @State private var draftObserverID = UUID()
     @State private var expandedEditorActive = false
+    private let onSaved: (UUID) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
     private var isDirty: Bool { item != baseline }
     private var cardNumberValidation: CardNumberValidation { CardNumberRules.validate(item.cardNumber) }
@@ -25,20 +26,27 @@ struct ItemEditorView: View {
             (item.kind != .card || cardNumberValidation.allowsSaving)
     }
 
-    init(item: VaultItem, parents: [UUID]) {
+    init(item: VaultItem, parents: [UUID], onSaved: @escaping (UUID) -> Void = { _ in }) {
         _item = State(initialValue: item)
         _baseline = State(initialValue: item)
         _parents = State(initialValue: parents)
+        self.onSaved = onSaved
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            AegisSheetHeader(title: L10n.text(parents.isEmpty ? "editor.new" : "editor.edit"), subtitle: L10n.text("ui.editorSubtitle"), symbol: item.kind.symbol, close: requestClose, closeDisabled: saving)
+            AegisSheetHeader(title: L10n.text(parents.isEmpty ? "editor.new" : "editor.edit"), subtitle: L10n.text("editor.formHint"), symbol: item.kind.symbol, close: requestClose, closeDisabled: saving)
                 .background(AegisTheme.background)
                 .zIndex(1)
-            Divider().overlay(AegisTheme.border)
             ScrollView {
-                VStack(alignment: .leading, spacing: item.kind == .card ? 20 : 26) {
+                VStack(alignment: .leading, spacing: 20) {
+                    #if os(macOS)
+                    Picker(L10n.text("editor.itemType"), selection: $item.kind) {
+                        ForEach(ItemKind.allCases) { kind in
+                            Label(kind.title, systemImage: kind.symbol).tag(kind)
+                        }
+                    }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("itemTypePicker")
+                    #else
                     typeChoiceLayout {
                         ForEach(ItemKind.allCases) { kind in
                             Button {
@@ -56,6 +64,7 @@ struct ItemEditorView: View {
                                 .accessibilityIdentifier("itemKind-\(kind.rawValue)")
                         }
                     }
+                    #endif
                     AegisInput(title: L10n.text("field.title")) {
                         TextField(L10n.text("editor.titlePlaceholder"), text: $item.title).accessibilityIdentifier("itemTitle")
                     }
@@ -68,7 +77,7 @@ struct ItemEditorView: View {
                     markdownEditor
                     Toggle(isOn: $item.isFavorite) {
                         Label(L10n.text("field.favorite"), systemImage: "star").aegisFont(size: 13).foregroundStyle(AegisTheme.text)
-                    }.toggleStyle(.switch).tint(AegisTheme.teal).padding(16).aegisSurface()
+                    }.toggleStyle(.switch).tint(AegisTheme.accentFill).padding(16).aegisSurface()
                 }.padding(24)
             }.scrollDismissesKeyboard(.interactively).disabled(saving).accessibilityIdentifier("itemEditorScroll")
             Divider().overlay(AegisTheme.border)
@@ -81,14 +90,20 @@ struct ItemEditorView: View {
                     saving = true
                     item.title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
                     if item.kind == .card { item.cardNumber = CardNumberRules.digits(from: item.cardNumber) }
-                    Task { if await session.save(item, parents: parents) { baseline = item; session.discardDraft(item.id); dismiss() }; saving = false }
+                    Task {
+                        if await session.save(item, parents: parents) {
+                            baseline = item; session.discardDraft(item.id); onSaved(item.id); dismiss()
+                        }
+                        saving = false
+                    }
                 } label: {
                     HStack(spacing: 8) { if saving { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(saving ? "action.saving" : "action.save")) }
                 }.buttonStyle(AegisButtonStyle(primary: true))
                     .disabled(!canSave || saving)
                     .accessibilityIdentifier("saveItemButton")
-            }.padding(20).background(AegisTheme.surface)
-        }.background(AegisTheme.background).aegisSheetSize(width: 620, height: 760)
+                    .keyboardShortcut("s", modifiers: .command)
+            }.padding(.horizontal, 24).padding(.vertical, 16).background(AegisTheme.surface)
+        }.background(AegisTheme.background).aegisSheetSize(width: 660, height: 760)
             .interactiveDismissDisabled(saving || isDirty).privacySensitive().autocorrectionDisabled()
             .onAppear {
                 if !loaded {
@@ -105,7 +120,12 @@ struct ItemEditorView: View {
                 session.retainDraft(VaultDraft(item: item, original: baseline, parents: parents))
                 session.touch()
             }
-            .confirmationDialog(L10n.text("draft.closeTitle"), isPresented: $confirmClose, titleVisibility: .visible) {
+            .onChange(of: item.kind) { _, kind in
+                if kind == .card && item.cardBrand == nil && item.cardType == nil {
+                    item.cardBrand = .unionPay; item.cardType = .debit
+                }
+            }
+            .alert(L10n.text("draft.closeTitle"), isPresented: $confirmClose) {
                 Button(L10n.text("draft.keepAndClose")) {
                     session.retainDraft(VaultDraft(item: item, original: baseline, parents: parents)); dismiss()
                 }
@@ -131,9 +151,14 @@ struct ItemEditorView: View {
         if isDirty { confirmClose = true } else { dismiss() }
     }
     private var loginFields: some View {
-        VStack(spacing: 18) {
-            AegisInput(title: L10n.text("field.username"), icon: "person") {
-                TextField(L10n.text("field.username"), text: $item.username).textContentType(.username).aegisNoCapitalization()
+        VStack(spacing: 16) {
+            loginIdentityLayout {
+                AegisInput(title: L10n.text("field.username"), icon: "person") {
+                    TextField(L10n.text("field.username"), text: $item.username).textContentType(.username).aegisNoCapitalization()
+                }
+                AegisInput(title: L10n.text("field.website"), icon: "globe") {
+                    TextField(L10n.text("editor.websitePlaceholder"), text: $item.website).textContentType(.URL).aegisNoCapitalization()
+                }
             }
             VStack(alignment: .leading, spacing: 10) {
                 AegisInput(title: L10n.text("field.password"), icon: "key.horizontal") {
@@ -141,7 +166,7 @@ struct ItemEditorView: View {
                         if showPassword { TextField(L10n.text("field.password"), text: $item.password) }
                         else { SecureField(L10n.text("field.password"), text: $item.password).textContentType(.newPassword) }
                     }.aegisNoCapitalization()
-                    Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye").foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye").foregroundStyle(AegisTheme.secondary).frame(width: AegisMetrics.controlHeight, height: AegisMetrics.controlHeight).contentShape(Rectangle()) }
                         .buttonStyle(.plain).accessibilityLabel(L10n.text(showPassword ? "action.hide" : "action.show"))
                 }
                 Button {
@@ -156,10 +181,14 @@ struct ItemEditorView: View {
                     }.aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.teal)
                 }.buttonStyle(.plain).padding(.horizontal, 3)
             }
-            AegisInput(title: L10n.text("field.website"), icon: "globe") {
-                TextField(L10n.text("editor.websitePlaceholder"), text: $item.website).textContentType(.URL).aegisNoCapitalization()
-            }
         }
+    }
+    private var loginIdentityLayout: AnyLayout {
+        #if os(macOS)
+        AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+        #else
+        AnyLayout(VStackLayout(spacing: 16))
+        #endif
     }
     private var cardFields: some View {
         VStack(spacing: 18) {

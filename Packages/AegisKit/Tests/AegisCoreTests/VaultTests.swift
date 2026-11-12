@@ -90,6 +90,66 @@ struct VaultTests {
         #expect(try await crypto.entries(from: history + [resolution, restored]).first?.item.deletedAt == nil)
     }
 
+    @Test func trashExpiresAfterSevenDaysAndPreservesActiveConflicts() async throws {
+        let crypto = VaultCrypto()
+        _ = try await crypto.create(password: password)
+        let deleted = Date(timeIntervalSince1970: 1_800_000_000)
+        var item = VaultItem(title: "Trash")
+        item.deletedAt = deleted
+        let revision = try await crypto.encrypt(item, parents: [])
+        let entries = try await crypto.entries(from: [revision])
+        let deadline = deleted.addingTimeInterval(7 * 24 * 60 * 60)
+        #expect(TrashPolicy.expirationDate(for: item) == deadline)
+        #expect(TrashPolicy.expiredGroups(in: entries, now: deadline.addingTimeInterval(-1)).isEmpty)
+        #expect(TrashPolicy.expiredGroups(in: entries, now: deadline).count == 1)
+
+        item.deletedAt = nil
+        let active = try await crypto.encrypt(item, parents: [])
+        let conflict = try await crypto.entries(from: [revision, active])
+        #expect(TrashPolicy.expiredGroups(in: conflict, now: deadline).isEmpty)
+        item.deletedAt = deleted.addingTimeInterval(60)
+        let recent = try await crypto.encrypt(item, parents: [])
+        let bothTrashed = try await crypto.entries(from: [revision, recent])
+        #expect(TrashPolicy.expiredGroups(in: bothTrashed, now: deadline).isEmpty)
+        #expect(TrashPolicy.expiredGroups(in: bothTrashed, now: deadline.addingTimeInterval(60)).first?.count == 2)
+    }
+
+    @Test func terminalDeletionSurvivesSyncAndOldBackupMerge() async throws {
+        let crypto = VaultCrypto(), source = try VaultStore.make(inMemory: true), target = try VaultStore.make(inMemory: true)
+        let created = try await crypto.create(password: password)
+        try await source.saveHeader(created.header)
+        var item = VaultItem(title: "Deleted", username: "User", password: "Secret", notes: "Private")
+        let original = try await crypto.encrypt(item, parents: [])
+        item.deletedAt = Date()
+        let trashed = try await crypto.encrypt(item, parents: [original.id])
+        let marker = TrashPolicy.deletionMarker(for: item)
+        #expect(marker.title.isEmpty && marker.username.isEmpty && marker.password.isEmpty && marker.notes.isEmpty)
+        let deleted = try await crypto.encrypt(marker, parents: [trashed.id])
+        for revision in [original, trashed, deleted] { try await source.saveRevision(revision) }
+        for object in try await source.pendingObjects().sorted(by: { $0.kind == "header" && $1.kind != "header" }) {
+            try await target.receive(object)
+        }
+        #expect(try await crypto.entries(from: target.revisions()).isEmpty)
+
+        item.deletedAt = nil
+        let offlineRestore = try await crypto.encrypt(item, parents: [trashed.id])
+        let staleDescendant = try await crypto.encrypt(item, parents: [deleted.id])
+        let unrelated = try await crypto.encrypt(VaultItem(title: "Keep"), parents: [])
+        try await target.restore(header: created.header, revisions: [original, offlineRestore, staleDescendant, unrelated])
+        let remaining = try await crypto.entries(from: target.revisions())
+        #expect(remaining.count == 1)
+        #expect(remaining.first?.item.title == "Keep")
+    }
+
+    @Test func legacyItemsDecodeWithoutTerminalDeletionField() throws {
+        let item = VaultItem(title: "Legacy")
+        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(item)) as? [String: Any])
+        json.removeValue(forKey: "permanentlyDeletedAt")
+        let decoded = try JSONDecoder().decode(VaultItem.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(decoded.permanentlyDeletedAt == nil)
+        #expect(decoded == item)
+    }
+
     @Test func restoreAndSyncAcknowledgement() async throws {
         let crypto = VaultCrypto(), first = try VaultStore.make(inMemory: true), second = try VaultStore.make(inMemory: true)
         let created = try await crypto.create(password: password)

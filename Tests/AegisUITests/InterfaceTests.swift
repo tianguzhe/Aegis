@@ -212,7 +212,7 @@ final class InterfaceTests: XCTestCase {
 
     func testAccessibilitySizeScalesHeadline() throws {
         launchVault()
-        let title = app.staticTexts["我的保险库"]
+        let title = app.staticTexts["vaultListTitle"]
         let normal = title.frame.height
         app.terminate()
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
@@ -221,6 +221,27 @@ final class InterfaceTests: XCTestCase {
         XCTAssertGreaterThan(title.frame.height, normal * 1.2)
         XCTAssertTrue(app.buttons["addItemButton"].isHittable)
         capture("12-accessibility-layout")
+    }
+
+    func testAppearancePersistsAcrossLaunches() throws {
+        launchVault()
+        app.buttons["设置"].tap()
+        app.segmentedControls["settingsTabs"].buttons["外观与关于"].tap()
+        let appearance = app.segmentedControls["appearancePicker"]
+        XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+        appearance.buttons["深色"].tap()
+        XCTAssertTrue(appearance.buttons["深色"].isSelected)
+        capture("13-dark-appearance")
+        app.terminate()
+        app.launch(); app.activate()
+        XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 20))
+        app.buttons["设置"].tap()
+        app.segmentedControls["settingsTabs"].buttons["外观与关于"].tap()
+        XCTAssertTrue(appearance.buttons["深色"].isSelected)
+        appearance.buttons["浅色"].tap()
+        XCTAssertTrue(appearance.buttons["浅色"].isSelected)
+        capture("14-light-appearance")
+        appearance.buttons["跟随系统"].tap()
     }
 
     func testBackupPasswordMustMeetPolicyBeforeExport() throws {
@@ -269,6 +290,9 @@ final class InterfaceTests: XCTestCase {
         let settings = app.buttons["设置"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.tap()
+        let dataTab = app.buttons["同步与备份"]
+        XCTAssertTrue(dataTab.waitForExistence(timeout: 5))
+        dataTab.tap()
         let export = app.buttons["导出加密备份"]
         XCTAssertTrue(export.waitForExistence(timeout: 5))
         reveal(export)

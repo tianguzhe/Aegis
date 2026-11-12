@@ -81,6 +81,7 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var cardType: PaymentCardType?
     public var isFavorite: Bool
     public var deletedAt: Date?
+    public var permanentlyDeletedAt: Date?
     public var modifiedAt: Date
 
     public init(id: UUID = UUID(), kind: ItemKind = .login, title: String = "", username: String = "",
@@ -90,6 +91,30 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
         cardholder = ""; cardNumber = ""; expiry = ""; securityCode = ""; deletedAt = nil; modifiedAt = Date()
         cardBrand = kind == .card ? .unionPay : nil
         cardType = kind == .card ? .debit : nil
+    }
+}
+
+public enum TrashPolicy {
+    public static let retentionDays = 7
+    public static let retentionInterval: TimeInterval = TimeInterval(retentionDays * 24 * 60 * 60)
+
+    public static func expirationDate(for item: VaultItem) -> Date? {
+        item.deletedAt?.addingTimeInterval(retentionInterval)
+    }
+
+    /// Do not expire a conflict while any branch is active or still within its retention period.
+    public static func expiredGroups(in entries: [VaultEntry], now: Date = Date()) -> [[VaultEntry]] {
+        Dictionary(grouping: entries, by: \.item.id).values.filter { group in
+            group.allSatisfy { expirationDate(for: $0.item).map { $0 <= now } ?? false }
+        }
+    }
+
+    public static func deletionMarker(for item: VaultItem, now: Date = Date()) -> VaultItem {
+        var marker = VaultItem(id: item.id, kind: item.kind)
+        marker.deletedAt = item.deletedAt ?? now
+        marker.permanentlyDeletedAt = now
+        marker.modifiedAt = now
+        return marker
     }
 }
 

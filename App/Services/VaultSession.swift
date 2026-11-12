@@ -13,6 +13,10 @@ final class VaultSession {
     let presentationStack = VaultPresentationStack()
     var error: String?
     var isBusy = false
+    private(set) var pendingItemIDs: Set<UUID> = []
+    private(set) var notice: String?
+    private(set) var isUpdatingBiometrics = false
+    private(set) var isConnectingCloud = false
     var recoveryKey: String?
     var recoveryAcknowledged = false
     var syncStatus: SyncStatus = .disabled
@@ -30,8 +34,11 @@ final class VaultSession {
     @ObservationIgnored private var idleTask: Task<Void, Never>?
     @ObservationIgnored private var lockingTask: Task<Void, Never>?
     @ObservationIgnored private var syncTask: Task<Void, Never>?
+    @ObservationIgnored private var trashCleanupTask: Task<Void, Never>?
+    @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var localState: LocalVaultStateStore?
     @ObservationIgnored private var draftSnapshots: [UUID: () -> VaultDraft] = [:]
+    @ObservationIgnored private var permanentlyDeletedItemIDs: Set<UUID> = []
     /// Session generation in which the user last passed the export check (DEC-4); a lock invalidates it.
     @ObservationIgnored private var exportAuthorization: UUID?
 
@@ -97,7 +104,9 @@ final class VaultSession {
     }
 
     func connectCloud() async {
+        guard !isConnectingCloud else { return }
         guard cloudConfigured, let store else { error = L10n.text("sync.setupRequired"); return }
+        isConnectingCloud = true; defer { isConnectingCloud = false }
         if sync == nil {
             sync = CloudSync(containerID: cloudContainer, store: store, update: { [weak self] status in
                 await self?.updateSync(status)
@@ -124,9 +133,30 @@ final class VaultSession {
         if let header { biometricEnabled = UserDefaults.standard.bool(forKey: "biometry.\(header.vaultID)") }
         if phase == .unlocked {
             let token = generation
-            let loaded = try await crypto.entries(from: store.revisions())
+            let revisions = try await store.revisions()
+            var loaded = try await crypto.entries(from: revisions)
             guard token == generation, phase == .unlocked else { return }
+            let expired = TrashPolicy.expiredGroups(in: loaded)
+            for group in expired {
+                guard let first = group.first else { continue }
+                let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id))
+                guard token == generation, phase == .unlocked else { return }
+                try await store.saveRevision(marker)
+            }
+            if !expired.isEmpty {
+                loaded = try await crypto.entries(from: store.revisions())
+                guard token == generation, phase == .unlocked else { return }
+                scheduleSync()
+            }
             entries = loaded
+            permanentlyDeletedItemIDs = Set(revisions.map(\.itemID)).subtracting(loaded.map(\.item.id))
+            if let localState {
+                var state = localState.state
+                state.drafts.removeAll { permanentlyDeletedItemIDs.contains($0.id) }
+                if state != localState.state { try localState.write(state) }
+                recoverableDrafts = state.drafts
+            }
+            scheduleTrashCleanup()
         }
         try await publishAutoFillSnapshot()
     }
@@ -193,7 +223,8 @@ final class VaultSession {
     }
 
     func setBiometrics(_ enabled: Bool) async {
-        guard let header, phase == .unlocked else { return }
+        guard let header, phase == .unlocked, !isUpdatingBiometrics else { return }
+        isUpdatingBiometrics = true; defer { isUpdatingBiometrics = false }
         do {
             if enabled {
                 var key = try await crypto.deviceKey()
@@ -211,7 +242,9 @@ final class VaultSession {
         // Capture the latest bindings even if SwiftUI has not delivered onChange yet.
         for snapshot in draftSnapshots.values { retainDraft(snapshot()) }
         draftSnapshots.removeAll()
-        generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel()
+        generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel(); trashCleanupTask?.cancel()
+        permanentlyDeletedItemIDs = []
+        noticeTask?.cancel(); notice = nil
         localState?.lock()
         // iOS already enforces the local-only clipboard expiration while suspended.
         if reason != .background { SecureClipboard.clear() }
@@ -232,30 +265,92 @@ final class VaultSession {
 
     @discardableResult
     func save(_ item: VaultItem, parents: [UUID]) async -> Bool {
-        guard phase == .unlocked, let store else { return false }
+        guard phase == .unlocked, let store, !pendingItemIDs.contains(item.id) else { return false }
+        pendingItemIDs.insert(item.id)
+        defer { pendingItemIDs.remove(item.id) }
         let token = generation
         do {
+            let revisions = try await store.revisions()
+            let current = try await crypto.entries(from: revisions)
+            // An editor left open on another device must not resurrect a terminally deleted item.
+            if revisions.contains(where: { $0.itemID == item.id }), !current.contains(where: { $0.item.id == item.id }) {
+                self.error = L10n.text("editor.itemUnavailable")
+                return false
+            }
+            let currentItem = current.filter { $0.item.id == item.id }
+            if item.deletedAt == nil, !currentItem.isEmpty, currentItem.allSatisfy({ $0.item.deletedAt != nil }),
+               !parents.contains(where: { parent in currentItem.contains { $0.id == parent } }) {
+                self.error = L10n.text("editor.itemChanged")
+                return false
+            }
             var updated = item; updated.modifiedAt = Date()
             let revision = try await crypto.encrypt(updated, parents: parents)
             guard token == generation else { return false }
             try await store.saveRevision(revision)
             try await refresh(); touch()
             scheduleSync()
+            guard token == generation, phase == .unlocked else { return false }
+            showNotice(L10n.text("notice.saved"))
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
 
     func toggleFavorite(_ entry: VaultEntry) async {
+        guard entry.item.deletedAt == nil else { return }
         var item = entry.item; item.isFavorite.toggle()
         await save(item, parents: [entry.id])
     }
     func trash(_ entry: VaultEntry) async {
+        guard entry.item.deletedAt == nil else { return }
         var item = entry.item; item.deletedAt = Date()
-        await save(item, parents: [entry.id])
+        if await save(item, parents: [entry.id]) { showNotice(L10n.text("notice.trashed")) }
     }
     func restore(_ entry: VaultEntry) async {
+        guard entries.contains(where: { $0.id == entry.id }), let deadline = TrashPolicy.expirationDate(for: entry.item) else { return }
+        guard deadline > Date() else {
+            error = L10n.text("trash.expired")
+            do { try await refresh() } catch { self.error = error.localizedDescription }
+            return
+        }
         var item = entry.item; item.deletedAt = nil
-        await save(item, parents: [entry.id])
+        if await save(item, parents: [entry.id]) { showNotice(L10n.text("notice.restored")) }
+    }
+    func deleteImmediately(_ entry: VaultEntry) async {
+        guard phase == .unlocked, entry.item.deletedAt != nil,
+              entries.contains(where: { $0.id == entry.id }) else { return }
+        let parents = entries.filter { $0.item.id == entry.item.id }.map(\.id)
+        if await save(TrashPolicy.deletionMarker(for: entry.item), parents: parents) {
+            discardDraft(entry.item.id)
+            showNotice(L10n.text("notice.deleted"))
+        }
+    }
+
+    private func showNotice(_ message: String) {
+        noticeTask?.cancel()
+        notice = message
+        noticeTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            self?.notice = nil
+        }
+    }
+
+    private func scheduleTrashCleanup() {
+        trashCleanupTask?.cancel()
+        // A conflict expires only once all its branches have reached their deadlines.
+        let deadlines = Dictionary(grouping: entries, by: \.item.id).values.compactMap { group -> Date? in
+            let dates = group.compactMap { TrashPolicy.expirationDate(for: $0.item) }
+            return dates.count == group.count ? dates.max() : nil
+        }
+        guard let next = deadlines.min() else { return }
+        trashCleanupTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(max(1, next.timeIntervalSinceNow)))
+                guard let self, self.phase == .unlocked else { return }
+                try await self.refresh()
+            } catch is CancellationError {
+                return
+            } catch { self?.error = error.localizedDescription }
+        }
     }
     func resolve(_ entry: VaultEntry) async {
         await save(entry.item, parents: entries.filter { $0.item.id == entry.item.id }.map(\.id))
@@ -467,7 +562,7 @@ final class VaultSession {
     }
 
     func retainDraft(_ draft: VaultDraft) {
-        guard phase == .unlocked, let localState else { return }
+        guard phase == .unlocked, !permanentlyDeletedItemIDs.contains(draft.id), let localState else { return }
         do {
             var updated = localState.state
             updated.retain(draft)

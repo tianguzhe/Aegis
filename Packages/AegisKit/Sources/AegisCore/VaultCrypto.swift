@@ -159,7 +159,10 @@ public actor VaultCrypto {
                 if let parent = known[parentID], parent.itemID != revision.itemID { throw VaultError.damagedData }
             }
         }
-        let heads = RevisionGraph.heads(in: revisions)
+        // A terminal deletion also suppresses late offline branches and stale restores.
+        // Only authenticated markers may suppress an item, even when no longer a graph head.
+        let deletedIDs = Set(items.values.filter { $0.permanentlyDeletedAt != nil }.map(\.id))
+        let heads = RevisionGraph.heads(in: revisions).filter { !deletedIDs.contains($0.itemID) }
         let counts = Dictionary(grouping: heads, by: \.itemID).mapValues(\.count)
         return heads.compactMap { revision in
             items[revision.id].map { VaultEntry(item: $0, revision: revision, isConflict: counts[revision.itemID, default: 0] > 1) }

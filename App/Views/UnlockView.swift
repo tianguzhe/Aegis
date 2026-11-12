@@ -21,9 +21,9 @@ struct UnlockView: View {
         GeometryReader { geometry in
             if geometry.size.width >= 850 {
                 HStack(spacing: 0) {
-                    brandPanel.frame(width: geometry.size.width * 0.43)
+                    brandPanel.frame(width: min(geometry.size.width * 0.38, 420))
                     ScrollView {
-                        unlockForm.padding(48).frame(maxWidth: 520).frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                        unlockForm.padding(40).frame(maxWidth: 500).frame(maxWidth: .infinity, minHeight: geometry.size.height)
                     }
                 }
             } else {
@@ -41,36 +41,39 @@ struct UnlockView: View {
 
     private var brandPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                AegisMark(size: 38)
-                Text("Aegis").aegisFont(size: 28, weight: .medium, design: .serif).foregroundStyle(.white)
+            HStack(spacing: 10) {
+                AegisMark(size: 32)
+                Text("Aegis").aegisFont(size: 22, weight: .semibold).foregroundStyle(.white)
             }
-            Spacer()
-            ZStack {
-                ForEach(0..<3) { index in
-                    RoundedRectangle(cornerRadius: CGFloat(42 + index * 18)).stroke(.white.opacity(0.06), lineWidth: 1)
-                        .frame(width: CGFloat(190 + index * 72), height: CGFloat(190 + index * 72)).rotationEffect(.degrees(-12))
-                }
-                AegisMark(size: 128).rotationEffect(.degrees(-12)).shadow(color: .black.opacity(0.15), radius: 30, y: 20)
-            }.frame(maxWidth: .infinity).frame(height: 310).accessibilityHidden(true)
-            Spacer()
+            Spacer(minLength: 40)
+            AegisMark(size: 84).padding(.bottom, 30)
+            Text(L10n.text("welcome.heroTitle")).aegisFont(size: 30, weight: .semibold)
+                .foregroundStyle(.white).lineSpacing(6).fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("welcome.heroSubtitle")).aegisFont(size: 13)
+                .foregroundStyle(.white.opacity(0.78)).lineSpacing(5).padding(.top, 14)
             VStack(alignment: .leading, spacing: 18) {
-                Text(L10n.text("ui.unlockHero")).aegisFont(size: 35, weight: .medium, design: .serif).foregroundStyle(.white).lineSpacing(8)
-                Text(L10n.text("ui.unlockHeroDetail")).aegisFont(size: 14).lineSpacing(7).foregroundStyle(.white.opacity(0.6))
-            }
-            HStack(spacing: 7) {
-                Image(systemName: "checkmark.shield")
-                Text(L10n.text("app.securityCaption"))
-            }.aegisFont(size: 11).foregroundStyle(.white.opacity(0.45)).padding(.top, 44)
-        }.padding(44).background(LinearGradient(colors: [Color(red: 0.13, green: 0.25, blue: 0.22), AegisTheme.navy], startPoint: .topLeading, endPoint: .bottomTrailing))
+                brandFeature("welcome.feature.local", symbol: "externaldrive")
+                brandFeature("welcome.feature.encrypted", symbol: "lock.shield")
+                brandFeature("welcome.feature.devices", symbol: "macbook.and.iphone")
+            }.padding(.top, 34)
+            Spacer(minLength: 40)
+            Label(L10n.text("ui.personalVault"), systemImage: "checkmark.shield")
+                .aegisFont(size: 11).foregroundStyle(.white.opacity(0.72))
+        }.padding(36).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background(AegisTheme.navy)
+    }
+    private func brandFeature(_ key: String, symbol: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).font(.system(size: 15)).frame(width: 20)
+            Text(L10n.text(key)).aegisFont(size: 12)
+        }.foregroundStyle(.white.opacity(0.86))
     }
 
     private var unlockForm: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            VStack(alignment: .leading, spacing: 14) {
-                AegisPill(title: L10n.text("ui.personalVault"), symbol: "lock.shield")
+        VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.text(creating ? "ui.createTitle" : "unlock.title"))
-                    .aegisFont(size: 32, weight: .semibold).tracking(-0.8).foregroundStyle(AegisTheme.text)
+                    .aegisFont(size: 28, weight: .semibold).tracking(-0.8).foregroundStyle(AegisTheme.text)
                 Text(L10n.text(creating ? "welcome.description" : "unlock.description"))
                     .aegisFont(size: 14).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
             }
@@ -112,9 +115,11 @@ struct UnlockView: View {
             if creating {
                 VStack(spacing: 16) {
                     Rectangle().fill(AegisTheme.border).frame(height: 1)
-                    Button { Task { await session.connectCloud() } } label: { Label(L10n.text("welcome.cloud"), systemImage: "icloud") }
-                        .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy)
-                    Text(L10n.text("welcome.cloudHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                    if session.cloudConfigured {
+                        Button { Task { await session.connectCloud() } } label: { Label(L10n.text("welcome.cloud"), systemImage: "icloud") }
+                            .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy || session.isConnectingCloud)
+                        Text(L10n.text("welcome.cloudHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                    }
                     Button(L10n.text("welcome.import")) { showImport = true }.aegisFont(size: 12).foregroundStyle(session.isBusy ? AegisTheme.disabledText : AegisTheme.teal).buttonStyle(.plain).disabled(session.isBusy)
                 }
             }

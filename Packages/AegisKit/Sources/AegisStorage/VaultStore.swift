@@ -150,6 +150,15 @@ public actor VaultStore {
         try restore(header: header, revisions: incoming, beforeSave: {})
     }
 
+    /// Joins an existing vault only while this store is still empty. The check and write share one
+    /// actor turn, so a concurrent setup or cloud fetch cannot turn onboarding into a merge.
+    @discardableResult
+    public func restoreNewVault(header: VaultHeader, revisions: [EncryptedRevision]) throws -> RestoreResult {
+        guard try self.header() == nil else { throw VaultError.differentVault }
+        guard try self.revisions().isEmpty else { throw VaultError.damagedData }
+        return try restore(header: header, revisions: revisions)
+    }
+
     /// `beforeSave` lets tests fail the commit after rows are inserted; production passes a no-op.
     func restore(header: VaultHeader, revisions incoming: [EncryptedRevision],
                  beforeSave: @Sendable () throws -> Void) throws -> RestoreResult {

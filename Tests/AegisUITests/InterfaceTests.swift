@@ -100,6 +100,7 @@ final class InterfaceTests: XCTestCase {
 
         let master = app.secureTextFields["masterPassword"]
         let confirmation = app.secureTextFields["confirmPassword"]
+        reveal(master)
         master.tap()
         master.typeText("short")
         confirmation.tap()
@@ -113,6 +114,7 @@ final class InterfaceTests: XCTestCase {
         XCTAssertFalse(create.isEnabled, "Different passwords must remain disabled")
         confirmation.typeText(" passphrase")
         XCTAssertTrue(create.isEnabled)
+        reveal(create)
         create.tap()
 
         let enter = app.buttons["enterVaultButton"]
@@ -131,6 +133,34 @@ final class InterfaceTests: XCTestCase {
         acknowledgement.tap()
         enter.tap()
         XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 8))
+    }
+
+    func testOnboardingOffersLocalImportBeforeCreatingAVault() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--preview-onboarding", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        app.activate()
+        let localImport = app.buttons["localImportButton"]
+        XCTAssertTrue(localImport.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["onboardingBackupImportButton"].exists)
+        XCTAssertTrue(localImport.isEnabled, "Joining a vault must not require a new master password")
+        addUIInterruptionMonitor(withDescription: "Local network permission") { alert in
+            for label in ["允许", "好", "Allow", "OK"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+        localImport.tap()
+        let receive = app.buttons["receiveLocalVaultButton"]
+        XCTAssertTrue(receive.waitForExistence(timeout: 10))
+        XCTAssertFalse(receive.isEnabled)
+        capture("onboarding-local-import")
+        app.buttons["关闭"].firstMatch.tap()
+        XCTAssertTrue(localImport.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["unlockButton"].isEnabled)
+        XCTAssertTrue(app.secureTextFields["confirmPassword"].exists, "Cancelling import must leave the device uninitialized")
     }
 
     func testUnnamedRecordCannotSaveAndGeneratorLimitIsDisabled() throws {

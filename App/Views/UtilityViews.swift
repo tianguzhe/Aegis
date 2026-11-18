@@ -131,6 +131,7 @@ struct SettingsView: View {
     @State private var tab: SettingsTab = .security
     @State private var showExport = false
     @State private var showImport = false
+    @State private var showLocalTransfer = false
     @AppStorage("aegis.appearance") private var appearance: AegisAppearance = .system
     private var syncing: Bool {
         if case .syncing = session.syncStatus { return true }
@@ -160,6 +161,7 @@ struct SettingsView: View {
         }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 640)).vaultErrorPresenter()
             .sheet(isPresented: $showImport) { ImportBackupView().environment(session) }
             .sheet(isPresented: $showExport) { ExportBackupView().environment(session) }
+            .sheet(isPresented: $showLocalTransfer) { LocalVaultTransferView(mode: .send).environment(session) }
             .onChange(of: tab) { _, _ in session.touch() }
     }
     private var securitySettings: some View {
@@ -188,6 +190,10 @@ struct SettingsView: View {
     }
     private var dataSettings: some View {
         VStack(alignment: .leading, spacing: 24) {
+            AegisSection(title: L10n.text("lan.settings.title"), subtitle: L10n.text("lan.settings.description")) {
+                settingsAction("lan.send.title", symbol: "wifi") { showLocalTransfer = true }
+                    .accessibilityIdentifier("sendLocalVaultButton")
+            }
             AegisSection(title: L10n.text("sync.title")) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {
@@ -498,7 +504,10 @@ struct ImportBackupView: View {
                 Label(L10n.text("backup.preview.incomplete"), systemImage: "exclamationmark.triangle")
                     .aegisFont(size: 12).foregroundStyle(Color.orange).fixedSize(horizontal: false, vertical: true)
             }
-            if preview.openedWith == .backupPassword {
+            if preview.isCrossVault {
+                Label(L10n.text("backup.preview.crossVault"), systemImage: "info.circle")
+                    .aegisFont(size: 12).lineSpacing(4).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
+            } else if preview.openedWith == .backupPassword {
                 Label(L10n.text("backup.preview.passwordNote"), systemImage: "info.circle")
                     .aegisFont(size: 12).lineSpacing(4).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
             }

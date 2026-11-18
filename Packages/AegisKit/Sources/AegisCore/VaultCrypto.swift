@@ -118,9 +118,9 @@ public actor VaultCrypto {
 
     public func lock() { key = nil; vaultID = nil }
 
-    public func encrypt(_ item: VaultItem, parents: [UUID]) throws -> EncryptedRevision {
+    public func encrypt(_ item: VaultItem, parents: [UUID], revisionID: UUID = UUID()) throws -> EncryptedRevision {
         guard let key, let vaultID else { throw VaultError.locked }
-        let id = UUID()
+        let id = revisionID
         var plaintext = try JSONEncoder().encode(item)
         defer { plaintext.resetBytes(in: 0..<plaintext.count) }
         guard plaintext.count <= 262_144 else { throw VaultError.oversizedRecord }

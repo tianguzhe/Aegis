@@ -11,6 +11,17 @@
           }
         }
       }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

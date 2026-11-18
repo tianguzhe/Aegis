@@ -7,6 +7,7 @@ struct UnlockView: View {
     @State private var confirmation = ""
     @State private var useRecovery = false
     @State private var showImport = false
+    @State private var showLocalImport = false
     private var creating: Bool { session.phase == .setup }
     private var validCreationPassword: Bool { password.count >= 12 && password.utf8.count <= 4096 }
     private var canSubmit: Bool {
@@ -36,6 +37,7 @@ struct UnlockView: View {
             }
         }.background(AegisTheme.background)
             .sheet(isPresented: $showImport) { ImportBackupView().environment(session) }
+            .sheet(isPresented: $showLocalImport) { LocalVaultTransferView(mode: .receive).environment(session) }
             .onDisappear { password = ""; confirmation = "" }
     }
 
@@ -72,10 +74,22 @@ struct UnlockView: View {
     private var unlockForm: some View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.text(creating ? "ui.createTitle" : "unlock.title"))
+                Text(L10n.text(creating ? "welcome.startTitle" : "unlock.title"))
                     .aegisFont(size: 28, weight: .semibold).tracking(-0.8).foregroundStyle(AegisTheme.text)
                 Text(L10n.text(creating ? "welcome.description" : "unlock.description"))
                     .aegisFont(size: 14).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
+            }
+            if creating {
+                VStack(alignment: .leading, spacing: 14) {
+                    Button { showLocalImport = true } label: {
+                        Label(L10n.text("welcome.localImport"), systemImage: "wifi")
+                    }.buttonStyle(AegisButtonStyle(fullWidth: true)).accessibilityIdentifier("localImportButton")
+                    Text(L10n.text("welcome.localImportHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+                    Button { showImport = true } label: {
+                        Label(L10n.text("welcome.import"), systemImage: "square.and.arrow.down")
+                    }.buttonStyle(AegisButtonStyle(fullWidth: true)).accessibilityIdentifier("onboardingBackupImportButton")
+                }.disabled(session.isBusy || !session.storageAvailable)
+                Text(L10n.text("welcome.newVault")).aegisFont(size: 14, weight: .semibold).foregroundStyle(AegisTheme.text)
             }
             VStack(spacing: 18) {
                 AegisInput(title: L10n.text(useRecovery ? "unlock.recoveryPlaceholder" : "welcome.master"), icon: "lock") {
@@ -120,7 +134,6 @@ struct UnlockView: View {
                             .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy || session.isConnectingCloud)
                         Text(L10n.text("welcome.cloudHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
                     }
-                    Button(L10n.text("welcome.import")) { showImport = true }.aegisFont(size: 12).foregroundStyle(session.isBusy ? AegisTheme.disabledText : AegisTheme.teal).buttonStyle(.plain).disabled(session.isBusy)
                 }
             }
             Label(L10n.text("ui.unlockFooter"), systemImage: "lock.shield").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.top, 10)

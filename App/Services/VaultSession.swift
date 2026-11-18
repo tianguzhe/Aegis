@@ -384,8 +384,12 @@ final class VaultSession {
         let trashedCount: Int
         let conflictCount: Int
         let newRevisionCount: Int
+        let destinationHeader: VaultHeader
+        let revisions: [EncryptedRevision]
+        let requiresEmptyVault: Bool
         fileprivate let generation: UUID
         var exportedAt: Date { Date(timeIntervalSince1970: Double(payload.exportedAtMillis) / 1000) }
+        var isCrossVault: Bool { destinationHeader.vaultID != payload.header.vaultID }
     }
 
     /// Every export first passes the device-owner check (DEC-4). Devices without a passcode cannot
@@ -456,30 +460,44 @@ final class VaultSession {
     var backupImportBlockedByLock: Bool { header != nil && phase != .unlocked }
 
     /// Opens and fully validates a backup with the single credential the user typed. Writes nothing.
-    func previewBackup(_ container: BackupContainer, credential: String) async -> BackupImportPreview? {
+    func previewBackup(_ container: BackupContainer, credential: String, requireNewVault: Bool = false) async -> BackupImportPreview? {
         guard let store, !isBusy else { return nil }
         isBusy = true; defer { isBusy = false }
         let token = generation
+        let requiresEmptyVault = requireNewVault || phase == .setup
         do {
+            if requiresEmptyVault, phase != .setup || header != nil { throw BackupFlowError.sessionChanged }
             guard !backupImportBlockedByLock else { throw BackupFlowError.unlockFirst }
             let opened = try await Task.detached(priority: .userInitiated) {
                 try BackupCryptor.open(container, credential: credential)
             }.value
             let payload = opened.payload
             let heads = try await BackupValidator.validate(payload)
+            let localRevisions = try await store.revisions()
+            var destinationHeader = payload.header
+            var revisions = payload.revisions
             if let local = try await store.header() {
-                guard local == payload.header else { throw VaultError.differentVault }
+                guard !requiresEmptyVault else { throw BackupFlowError.sessionChanged }
                 var key = try await crypto.deviceKey()
                 defer { key.resetBytes(in: 0..<key.count) }
-                guard Self.constantTimeEquals(key, payload.vaultKey) else { throw VaultError.differentVault }
+                if local.vaultID == payload.header.vaultID {
+                    guard local == payload.header, Self.constantTimeEquals(key, payload.vaultKey) else {
+                        throw VaultError.differentVault
+                    }
+                } else {
+                    revisions = try await BackupMigration.revisions(from: payload, to: local, key: key, existing: localRevisions)
+                }
+                destinationHeader = local
             }
-            let localIDs = Set(try await store.revisions().map(\.id))
+            let localIDs = Set(localRevisions.map(\.id))
             guard token == generation else { throw BackupFlowError.sessionChanged }
             let items = Dictionary(grouping: heads, by: \.item.id).values
             let trashed = items.filter { group in group.allSatisfy { $0.item.deletedAt != nil } }.count
             return BackupImportPreview(payload: payload, openedWith: opened.openedWith, itemCount: items.count - trashed,
                                        trashedCount: trashed, conflictCount: items.filter { $0.count > 1 }.count,
-                                       newRevisionCount: payload.revisions.filter { !localIDs.contains($0.id) }.count,
+                                       newRevisionCount: revisions.filter { !localIDs.contains($0.id) }.count,
+                                       destinationHeader: destinationHeader, revisions: revisions,
+                                       requiresEmptyVault: requiresEmptyVault,
                                        generation: token)
         } catch {
             self.error = error.localizedDescription
@@ -497,7 +515,12 @@ final class VaultSession {
         do {
             guard preview.generation == token else { throw BackupFlowError.sessionChanged }
             guard !backupImportBlockedByLock else { throw BackupFlowError.unlockFirst }
-            try await store.restore(header: preview.payload.header, revisions: preview.payload.revisions)
+            if preview.requiresEmptyVault {
+                guard phase == .setup, header == nil else { throw BackupFlowError.sessionChanged }
+                try await store.restoreNewVault(header: preview.destinationHeader, revisions: preview.revisions)
+            } else {
+                try await store.restore(header: preview.destinationHeader, revisions: preview.revisions)
+            }
         } catch {
             self.error = error.localizedDescription
             return false

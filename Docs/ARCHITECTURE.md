@@ -4,7 +4,7 @@
 
 - `AegisCore`：纯数据结构、Argon2id / CryptoKit、密钥 Actor、密码生成、资源本地化。
 - `AegisStorage`：SwiftData `@ModelActor`，只存储密文版本、公开密钥包裹元数据与同步状态；显式关闭 SwiftData 自动 CloudKit 同步。
-- `AegisSync`：CloudKit 私有数据库 + CKSyncEngine Delegate Actor。
+- `AegisSync`：CloudKit 私有数据库 + CKSyncEngine Delegate Actor，以及 Bonjour 发现、临时配对和加密保险库单次传输。局域网首次加入协议见 [LOCAL_TRANSFER.md](LOCAL_TRANSFER.md)。
 - `AegisMarkdown`：官方 Swift Markdown 解析器，SwiftUI 原生渲染。
 - `App`：`@MainActor @Observable` 会话、平台 Keychain、SwiftUI 功能视图。
 - `AutoFill`：独立扩展，读取 App Group 的原子写入密文快照，不与主应用并发打开同一 SwiftData 数据库。

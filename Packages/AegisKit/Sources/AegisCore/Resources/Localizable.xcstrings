@@ -403,7 +403,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入前会验证备份的完整性。同一保险库的备份会合并历史；其他保险库的备份会加密导入当前保险库，保留本地已有数据。"
+            "value": "验证备份后，可选择要导入的条目。同一保险库合并历史；其他保险库的数据会加密导入当前保险库，保留本地已有数据。"
           }
         }
       }
@@ -3390,7 +3390,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确认恢复"
+            "value": "导入所选数据"
           }
         }
       }
@@ -4001,7 +4001,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在已有设备打开“设置 → 数据 → 通过局域网连接新设备”，然后选择下方设备并输入它显示的配对码。无需先创建保险库。"
+            "value": "在已有设备打开“设置 → 数据 → 通过局域网连接新设备”，选择设备并输入配对码。验证后可选择要导入的数据，无需先创建保险库。"
           }
         }
       }
@@ -4144,7 +4144,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确认导入并加入保险库"
+            "value": "导入所选数据并加入保险库"
           }
         }
       }
@@ -4266,6 +4266,215 @@
           "stringUnit": {
             "state": "translated",
             "value": "配对码已过期，请重新开始连接。"
+          }
+        }
+      }
+    },
+    "backup.selection.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择要导入的数据"
+          }
+        }
+      }
+    },
+    "backup.selection.count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择 %lld / %lld 项"
+          }
+        }
+      }
+    },
+    "backup.selection.selectAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全选"
+          }
+        }
+      }
+    },
+    "backup.selection.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清空"
+          }
+        }
+      }
+    },
+    "backup.selection.search": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索名称或账号"
+          }
+        }
+      }
+    },
+    "backup.selection.type": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条目类型"
+          }
+        }
+      }
+    },
+    "backup.selection.allTypes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部类型"
+          }
+        }
+      }
+    },
+    "backup.selection.deleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久删除记录"
+          }
+        }
+      }
+    },
+    "backup.selection.deletedItem": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已永久删除的条目"
+          }
+        }
+      }
+    },
+    "backup.selection.conflict": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含冲突版本"
+          }
+        }
+      }
+    },
+    "backup.selection.noResults": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的条目，筛选不会改变已勾选的内容。"
+          }
+        }
+      }
+    },
+    "backup.selection.chooseHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请至少选择一项数据后再导入。"
+          }
+        }
+      }
+    },
+    "backup.selection.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择的数据已失效，请重新验证备份。"
+          }
+        }
+      }
+    },
+    "backup.selection.emptyVault": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此保险库没有条目。确认后仍可恢复保险库身份和解锁凭据。"
+          }
+        }
+      }
+    },
+    "backup.selection.revisions": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将导入 %lld 个历史版本，其中新增 %lld 个"
+          }
+        }
+      }
+    },
+    "backup.selection.historyHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每项包含该条目的全部历史和冲突版本。勾选永久删除记录会应用相应的删除状态。未勾选的数据不会在本次导入中写入。"
+          }
+        }
+      }
+    },
+    "backup.selection.syncHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择仅影响本次导入。之后若开启此保险库的全库同步，其他条目仍可能同步到本机。"
+          }
+        }
+      }
+    },
+    "backup.selection.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择"
+          }
+        }
+      }
+    },
+    "backup.selection.unselected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未选择"
           }
         }
       }

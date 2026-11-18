@@ -163,6 +163,41 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(app.secureTextFields["confirmPassword"].exists, "Cancelling import must leave the device uninitialized")
     }
 
+    func testFileImportOnlyWritesSelectedItems() throws {
+        try exerciseImportSelection(localNetwork: false)
+    }
+
+    func testLocalImportOnlyWritesSelectedItems() throws {
+        try exerciseImportSelection(localNetwork: true)
+    }
+
+    private func exerciseImportSelection(localNetwork: Bool) throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--preview-onboarding", "--preview-import-selection", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch(); app.activate()
+        let open = app.buttons[localNetwork ? "localImportButton" : "onboardingBackupImportButton"]
+        XCTAssertTrue(open.waitForExistence(timeout: 15)); open.tap()
+        let clear = app.buttons["clearImportItems"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 20))
+        reveal(clear); clear.tap()
+        let confirm = app.buttons[localNetwork ? "confirmLocalImportButton" : "confirmRestoreButton"]
+        XCTAssertTrue(confirm.exists)
+        XCTAssertFalse(confirm.isEnabled, "A nonempty vault must not silently import everything when selection is empty")
+        let apple = app.buttons["importItem-00000000-0000-0000-0000-000000000001"]
+        reveal(apple); apple.tap()
+        XCTAssertEqual(apple.value as? String, "已选择")
+        let github = app.buttons["importItem-00000000-0000-0000-0000-000000000002"]
+        XCTAssertEqual(github.value as? String, "未选择")
+        capture(localNetwork ? "local-import-selection" : "file-import-selection")
+        reveal(confirm)
+        XCTAssertTrue(confirm.isEnabled); confirm.tap()
+        XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["record-Apple"].exists)
+        XCTAssertFalse(app.buttons["record-GitHub"].exists)
+        XCTAssertFalse(app.buttons["record-Import note"].exists)
+    }
+
     func testUnnamedRecordCannotSaveAndGeneratorLimitIsDisabled() throws {
         launchVault()
         app.buttons["addItemButton"].tap()

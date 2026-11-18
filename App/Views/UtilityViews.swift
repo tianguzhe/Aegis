@@ -427,6 +427,7 @@ struct ImportBackupView: View {
     @State private var selection: BackupContainer?
     @State private var credential = ""
     @State private var preview: VaultSession.BackupImportPreview?
+    @State private var selectedItemIDs: Set<UUID> = []
 
     private var credentialTitle: String {
         guard let container = selection else { return L10n.text("backup.credential.any") }
@@ -456,6 +457,13 @@ struct ImportBackupView: View {
             }
         }.background(AegisTheme.background).aegisSheetSize(width: 520, height: 620).vaultErrorPresenter()
             .interactiveDismissDisabled(session.isBusy || loadingFile).privacySensitive()
+            .task {
+                #if DEBUG
+                if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
+                    preview = fixture; selectedItemIDs = fixture.selection.itemIDs
+                }
+                #endif
+            }
         .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisVaultBackup]) { result in
                 Task {
                     do {
@@ -464,7 +472,7 @@ struct ImportBackupView: View {
                         defer { loadingFile = false }
                         let loaded = try await Task.detached(priority: .userInitiated) { try Self.load(url) }.value
                         if session.backupImportBlockedByLock { throw VaultSession.BackupFlowError.unlockFirst }
-                        selection = loaded; preview = nil; credential = ""
+                        selection = loaded; preview = nil; selectedItemIDs = []; credential = ""
                     } catch let error as CocoaError where error.code == .userCancelled {
                         return
                     } catch { session.error = error.localizedDescription }
@@ -500,6 +508,10 @@ struct ImportBackupView: View {
                 previewRow("backup.preview.revisions", preview.payload.revisions.count.formatted())
                 previewRow("backup.preview.new", preview.newRevisionCount.formatted())
             }.aegisCard()
+            BackupImportSelectionView(plan: preview.selection, selectedItemIDs: $selectedItemIDs, busy: session.isBusy)
+            if preview.requiresEmptyVault || !preview.isCrossVault {
+                Text(L10n.text("backup.selection.syncHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
+            }
             if preview.payload.incompleteHistory {
                 Label(L10n.text("backup.preview.incomplete"), systemImage: "exclamationmark.triangle")
                     .aegisFont(size: 12).foregroundStyle(Color.orange).fixedSize(horizontal: false, vertical: true)
@@ -513,14 +525,15 @@ struct ImportBackupView: View {
             }
             Button {
                 Task {
-                    if await session.commitBackup(preview) { dismiss() } else { self.preview = nil }
+                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs) { dismiss() }
                 }
             } label: {
                 HStack {
                     if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
                     Text(L10n.text(session.isBusy ? "backup.importing" : "backup.confirmRestore"))
                 }
-            }.buttonStyle(PrimaryButtonStyle()).disabled(session.isBusy || loadingFile).accessibilityIdentifier("confirmRestoreButton")
+            }.buttonStyle(PrimaryButtonStyle()).disabled(session.isBusy || loadingFile || !preview.selection.canImport(selectedItemIDs))
+                .accessibilityIdentifier("confirmRestoreButton")
         }
     }
 
@@ -535,7 +548,10 @@ struct ImportBackupView: View {
     private func verify() {
         guard let container = selection, !credential.isEmpty, !session.isBusy else { return }
         let submitted = credential; credential = ""
-        Task { preview = await session.previewBackup(container, credential: submitted) }
+        Task {
+            preview = await session.previewBackup(container, credential: submitted)
+            selectedItemIDs = preview?.selection.itemIDs ?? []
+        }
     }
 
     /// Reads the picked file once; validation and commit later use these exact bytes, never the path again.

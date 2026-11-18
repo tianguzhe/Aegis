@@ -387,6 +387,7 @@ final class VaultSession {
         let destinationHeader: VaultHeader
         let revisions: [EncryptedRevision]
         let requiresEmptyVault: Bool
+        let selection: BackupImportPlan
         fileprivate let generation: UUID
         var exportedAt: Date { Date(timeIntervalSince1970: Double(payload.exportedAtMillis) / 1000) }
         var isCrossVault: Bool { destinationHeader.vaultID != payload.header.vaultID }
@@ -476,6 +477,7 @@ final class VaultSession {
             let localRevisions = try await store.revisions()
             var destinationHeader = payload.header
             var revisions = payload.revisions
+            var destinationEntries = heads
             if let local = try await store.header() {
                 guard !requiresEmptyVault else { throw BackupFlowError.sessionChanged }
                 var key = try await crypto.deviceKey()
@@ -486,6 +488,7 @@ final class VaultSession {
                     }
                 } else {
                     revisions = try await BackupMigration.revisions(from: payload, to: local, key: key, existing: localRevisions)
+                    destinationEntries = try await crypto.entries(from: revisions)
                 }
                 destinationHeader = local
             }
@@ -498,6 +501,7 @@ final class VaultSession {
                                        newRevisionCount: revisions.filter { !localIDs.contains($0.id) }.count,
                                        destinationHeader: destinationHeader, revisions: revisions,
                                        requiresEmptyVault: requiresEmptyVault,
+                                       selection: BackupImportPlan(revisions: revisions, entries: destinationEntries, existingRevisionIDs: localIDs),
                                        generation: token)
         } catch {
             self.error = error.localizedDescription
@@ -507,7 +511,7 @@ final class VaultSession {
 
     /// Commits a confirmed preview. The store write is one transaction; entering the vault afterwards is
     /// a separate step guarded by `generation`, and its failures do not undo or misreport the restore (§10.3–§10.4).
-    func commitBackup(_ preview: BackupImportPreview) async -> Bool {
+    func commitBackup(_ preview: BackupImportPreview, selectedItemIDs: Set<UUID>) async -> Bool {
         guard let store, !isBusy else { return false }
         isBusy = true; defer { isBusy = false }
         let token = generation
@@ -515,11 +519,12 @@ final class VaultSession {
         do {
             guard preview.generation == token else { throw BackupFlowError.sessionChanged }
             guard !backupImportBlockedByLock else { throw BackupFlowError.unlockFirst }
+            let revisions = try preview.selection.selectedRevisions(for: selectedItemIDs)
             if preview.requiresEmptyVault {
                 guard phase == .setup, header == nil else { throw BackupFlowError.sessionChanged }
-                try await store.restoreNewVault(header: preview.destinationHeader, revisions: preview.revisions)
+                try await store.restoreNewVault(header: preview.destinationHeader, revisions: revisions)
             } else {
-                try await store.restore(header: preview.destinationHeader, revisions: preview.revisions)
+                try await store.restore(header: preview.destinationHeader, revisions: revisions)
             }
         } catch {
             self.error = error.localizedDescription

@@ -17,6 +17,7 @@
 		0E9D7D42577A6613BB0E522F /* UtilityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52948473B7BD2DE48D206B0 /* UtilityViews.swift */; };
 		0ED5016AE58A14A933E9AC9C /* AegisMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 68BE04C2E3A9D2E19CD7E467 /* AegisMarkdown */; };
 		11F02DE9B5212A0FB0E48752 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
+		1819F17BC5DAA45A82BD5FE2 /* BackupImportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */; };
 		1CBF1BA77F1B2803DBFA4F7C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
 		30E37A62375BE1D5E66120DC /* VaultSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */; };
 		34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04269AA33697E609C24EA10F /* PreviewFixtures.swift */; };
@@ -67,6 +68,7 @@
 		EB5EF04F9A02C3478827F33A /* MarkdownSourceEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */; };
 		EBAADAE48EC66F76718B7168 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
 		F2E9681402EC6ED9100FA492 /* VaultErrorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */; };
+		FEF00B36EAE09DA99B42C24D /* BackupImportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,6 +130,7 @@
 		4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNumberField.swift; sourceTree = "<group>"; };
 		60916A488A0BC3C065A08819 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
 		6BC737346E27498A6FF75A71 /* AegisAutoFill-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "AegisAutoFill-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupImportSelectionView.swift; sourceTree = "<group>"; };
 		70EF2C1A21D0DAFFCAA8101E /* InterfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceTests.swift; sourceTree = "<group>"; };
 		72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownSourceEditor.swift; sourceTree = "<group>"; };
 		77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultSession.swift; sourceTree = "<group>"; };
@@ -277,6 +280,7 @@
 		B80C0854C1A111FC565D59B2 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */,
 				29D89D8A28EF1AFE82A37110 /* BankCardView.swift */,
 				4AF34D7024B8C0C9E79E9B3D /* CardNumberField.swift */,
 				EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */,
@@ -512,6 +516,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DA8F235AF731207F6F932023 /* AegisApp.swift in Sources */,
+				FEF00B36EAE09DA99B42C24D /* BackupImportSelectionView.swift in Sources */,
 				07A8242B9E68BE4664E61AD2 /* BankCardView.swift in Sources */,
 				0AB8727937E89093F356EF1A /* CardDesignGallery.swift in Sources */,
 				57FFB32234178CBD4E678A47 /* CardNumberField.swift in Sources */,
@@ -557,6 +562,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6EAFFE45DAA35A76C1B60A3 /* AegisApp.swift in Sources */,
+				1819F17BC5DAA45A82BD5FE2 /* BackupImportSelectionView.swift in Sources */,
 				727A0C7B591159B76345CE3E /* BankCardView.swift in Sources */,
 				42C33D8C598DD2F6D04DF13F /* CardDesignGallery.swift in Sources */,
 				CB96943B347B9C2704FBD0AC /* CardNumberField.swift in Sources */,

@@ -16,6 +16,7 @@ struct LocalVaultTransferView: View {
     @State private var needsMasterPassword = false
     @State private var preparing = false
     @State private var preview: VaultSession.BackupImportPreview?
+    @State private var selectedItemIDs: Set<UUID> = []
     @State private var operation: Task<Void, Never>?
     @State private var operationID = UUID()
 
@@ -49,7 +50,16 @@ struct LocalVaultTransferView: View {
             }
         }.background(AegisTheme.background).aegisSheetSize(width: 550, height: 650)
             .privacySensitive().vaultErrorPresenter().interactiveDismissDisabled(session.isBusy && preview != nil)
-            .task { if mode == .receive { transfer.search() } }
+            .task {
+                guard mode == .receive else { return }
+                #if DEBUG
+                if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
+                    preview = fixture; selectedItemIDs = fixture.selection.itemIDs
+                    return
+                }
+                #endif
+                transfer.search()
+            }
             .onChange(of: transfer.state) { _, state in if state == .received { validateReceived() } }
             .onChange(of: session.phase) { _, phase in
                 if (mode == .send && phase != .unlocked) || (mode == .receive && phase != .setup) {
@@ -115,17 +125,20 @@ struct LocalVaultTransferView: View {
                         .aegisFont(size: 12).foregroundStyle(AegisTheme.gold)
                 }
             }.aegisCard()
+            BackupImportSelectionView(plan: preview.selection, selectedItemIDs: $selectedItemIDs, busy: busy)
+            Text(L10n.text("backup.selection.syncHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
             Button {
                 let token = operationID
                 operation = Task {
-                    if await session.commitBackup(preview), token == operationID { dismiss() }
+                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs), token == operationID { dismiss() }
                 }
             } label: {
                 HStack {
                     if session.isBusy { ProgressView().controlSize(.small) }
                     Text(L10n.text("lan.receive.confirm"))
                 }
-            }.buttonStyle(PrimaryButtonStyle()).disabled(busy).accessibilityIdentifier("confirmLocalImportButton")
+            }.buttonStyle(PrimaryButtonStyle()).disabled(busy || !preview.selection.canImport(selectedItemIDs))
+                .accessibilityIdentifier("confirmLocalImportButton")
         } else if preparing || transfer.state == .transferring {
             ProgressView(L10n.text(preparing ? "backup.verifying" : "lan.transferring"))
                 .frame(maxWidth: .infinity).padding(.vertical, 24)
@@ -202,6 +215,7 @@ struct LocalVaultTransferView: View {
                 let result = await session.previewBackup(container, credential: credential, requireNewVault: true)
                 guard token == operationID, !Task.isCancelled else { return }
                 preview = result
+                selectedItemIDs = result?.selection.itemIDs ?? []
                 if result == nil { transfer.search() }
             } catch { if token == operationID { session.error = error.localizedDescription; transfer.search() } }
         }
@@ -209,6 +223,6 @@ struct LocalVaultTransferView: View {
 
     private func cancel() {
         operationID = UUID(); operation?.cancel(); operation = nil
-        transfer.stop(); code = ""; masterPassword = ""; preview = nil; preparing = false
+        transfer.stop(); code = ""; masterPassword = ""; preview = nil; selectedItemIDs = []; preparing = false
     }
 }

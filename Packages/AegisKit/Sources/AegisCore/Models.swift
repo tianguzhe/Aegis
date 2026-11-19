@@ -3,6 +3,7 @@ import Foundation
 public enum VaultError: Error, LocalizedError, Sendable {
     case invalidPassword, unsupportedFormat, invalidParameters, locked, damagedData, differentVault
     case randomFailure, derivationFailed, weakMasterPassword, invalidRecoveryKey, oversizedRecord, vaultChanged
+    case retiredVaultHistory
 
     public var errorDescription: String? {
         switch self {
@@ -18,6 +19,7 @@ public enum VaultError: Error, LocalizedError, Sendable {
         case .invalidRecoveryKey: L10n.text("error.invalidRecoveryKey")
         case .oversizedRecord: L10n.text("error.oversizedRecord")
         case .vaultChanged: L10n.text("error.vaultChanged")
+        case .retiredVaultHistory: L10n.text("rotation.error.retiredHistory")
         }
     }
 }
@@ -89,6 +91,8 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var deletedAt: Date?
     public var permanentlyDeletedAt: Date?
     public var modifiedAt: Date
+    // Optional so encrypted records written by older versions remain decodable.
+    var rotationLineage: VaultRotation.Lineage?
 
     public init(id: UUID = UUID(), kind: ItemKind = .login, title: String = "", username: String = "",
                 password: String = "", website: String = "", notes: String = "", isFavorite: Bool = false)

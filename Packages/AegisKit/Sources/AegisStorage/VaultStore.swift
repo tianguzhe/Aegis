@@ -17,6 +17,8 @@ final class StoredObject {
 
 @ModelActor
 public actor VaultStore {
+    private var cachedHeader: VaultHeader?
+
     private func encode(_ value: some Encodable) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -44,7 +46,12 @@ public actor VaultStore {
     }
 
     public func header() throws -> VaultHeader? {
-        try object("header").map { try JSONDecoder().decode(VaultHeader.self, from: $0.payload) }
+        if let cachedHeader {
+            return cachedHeader
+        }
+        let header = try object("header").map { try JSONDecoder().decode(VaultHeader.self, from: $0.payload) }
+        cachedHeader = header
+        return header
     }
 
     public func saveHeader(_ header: VaultHeader) throws {
@@ -54,7 +61,8 @@ public actor VaultStore {
             return
         }
         try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header), pending: true))
-        try modelContext.save()
+        try saveChanges()
+        cachedHeader = header
     }
 
     public func revisions() throws -> [EncryptedRevision] {
@@ -68,7 +76,16 @@ public actor VaultStore {
         let name = revision.id.uuidString
         guard try object(name) == nil else { return }
         try modelContext.insert(StoredObject(name: name, kind: "revision", payload: encode(revision), pending: true))
-        try modelContext.save()
+        try saveChanges()
+    }
+
+    private func saveChanges() throws {
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     public func backup() throws -> Data {
@@ -133,6 +150,7 @@ public actor VaultStore {
             }
             try beforeSave()
             try modelContext.save()
+            cachedHeader = header
         } catch {
             modelContext.rollback()
             throw error
@@ -170,6 +188,7 @@ public actor VaultStore {
             }
             try beforeSave()
             try modelContext.save()
+            cachedHeader = header
         } catch {
             // Unsaved inserts would otherwise be committed by the next unrelated save().
             modelContext.rollback()

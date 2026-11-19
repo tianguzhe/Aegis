@@ -34,6 +34,10 @@ final class VaultSession {
     @ObservationIgnored private var idleTask: Task<Void, Never>?
     @ObservationIgnored private var lockingTask: Task<Void, Never>?
     @ObservationIgnored private var trashCleanupTask: Task<Void, Never>?
+    @ObservationIgnored private var autoFillTask: Task<Void, Never>?
+    @ObservationIgnored private var publishedAutoFill: AutoFillVersion?
+    @ObservationIgnored private var replacingVault = false
+    @ObservationIgnored private var refreshID = UUID()
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var localState: LocalVaultStateStore?
     @ObservationIgnored private var draftSnapshots: [UUID: () -> VaultDraft] = [:]
@@ -93,26 +97,30 @@ final class VaultSession {
     }
 
     private func refresh() async throws {
-        guard let store else { return }
-        header = try await store.header()
+        guard !replacingVault, let store else { return }
+        let token = generation
+        let requestID = UUID()
+        refreshID = requestID
+        let loadedHeader = try await store.header()
+        guard token == generation, requestID == refreshID else { return }
+        header = loadedHeader
         if let header {
             biometricEnabled = UserDefaults.standard.bool(forKey: "biometry.\(header.vaultID)")
         }
         if phase == .unlocked {
-            let token = generation
             let revisions = try await store.revisions()
-            var loaded = try await crypto.entries(from: revisions)
-            guard token == generation, phase == .unlocked else { return }
+            var loaded = try await crypto.cachedEntries(from: revisions)
+            guard token == generation, requestID == refreshID, phase == .unlocked else { return }
             let expired = TrashPolicy.expiredGroups(in: loaded)
             for group in expired {
                 guard let first = group.first else { continue }
                 let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id))
-                guard token == generation, phase == .unlocked else { return }
+                guard token == generation, requestID == refreshID, phase == .unlocked else { return }
                 try await store.saveRevision(marker)
             }
             if !expired.isEmpty {
-                loaded = try await crypto.entries(from: store.revisions())
-                guard token == generation, phase == .unlocked else { return }
+                loaded = try await crypto.cachedEntries(from: store.revisions())
+                guard token == generation, requestID == refreshID, phase == .unlocked else { return }
             }
             entries = loaded
             permanentlyDeletedItemIDs = Set(revisions.map(\.itemID)).subtracting(loaded.map(\.item.id))
@@ -125,8 +133,8 @@ final class VaultSession {
                 recoverableDrafts = state.drafts
             }
             scheduleTrashCleanup()
+            scheduleAutoFillSnapshot()
         }
-        try await publishAutoFillSnapshot()
     }
 
     func create(password: String) async {
@@ -216,6 +224,10 @@ final class VaultSession {
             retainDraft(snapshot())
         }
         draftSnapshots.removeAll()
+        let previousLock = lockingTask
+        let pendingWrite = phase == .unlocked && !replacingVault && (autoFillTask != nil || !pendingItemIDs.isEmpty || isBusy)
+        autoFillTask?.cancel()
+        autoFillTask = nil
         generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel(); trashCleanupTask?.cancel()
         permanentlyDeletedItemIDs = []
         noticeTask?.cancel(); notice = nil
@@ -228,7 +240,13 @@ final class VaultSession {
             phase = .locked
         }
         let crypto = crypto
-        lockingTask = Task { await crypto.lock() }
+        lockingTask = Task { [weak self] in
+            await previousLock?.value
+            if pendingWrite {
+                await self?.flushAutoFillSnapshot()
+            }
+            await crypto.lock()
+        }
     }
 
     func touch() {
@@ -243,13 +261,13 @@ final class VaultSession {
 
     @discardableResult
     func save(_ item: VaultItem, parents: [UUID]) async -> Bool {
-        guard phase == .unlocked, let store, !pendingItemIDs.contains(item.id) else { return false }
+        guard phase == .unlocked, let store, !isBusy, !pendingItemIDs.contains(item.id) else { return false }
         pendingItemIDs.insert(item.id)
         defer { pendingItemIDs.remove(item.id) }
         let token = generation
         do {
             let revisions = try await store.revisions()
-            let current = try await crypto.entries(from: revisions)
+            let current = try await crypto.cachedEntries(from: revisions)
             // An editor left open on another device must not resurrect a terminally deleted item.
             if revisions.contains(where: { $0.itemID == item.id }), !current.contains(where: { $0.item.id == item.id }) {
                 self.error = L10n.text("editor.itemUnavailable")
@@ -264,7 +282,7 @@ final class VaultSession {
             }
             var updated = item; updated.modifiedAt = Date()
             let revision = try await crypto.encrypt(updated, parents: parents)
-            guard token == generation else { return false }
+            guard token == generation, phase == .unlocked else { return false }
             try await store.saveRevision(revision)
             try await refresh(); touch()
             guard token == generation, phase == .unlocked else { return false }
@@ -344,8 +362,7 @@ final class VaultSession {
 
     // MARK: - Master password change (Docs/KEY_ROTATION_DESIGN.md §3)
 
-    /// Rotates the vault: new vault ID, vault key, master password and recovery key, with the whole
-    /// history re-encrypted and the old store contents replaced in one transaction.
+    /// Re-encrypts the retained history with new vault credentials and replaces the store atomically.
     ///
     /// Open editors and retained drafts block the change: they are sealed with the old key and
     /// reference item IDs that the rotation remaps. On success `recoveryKey` holds the new recovery
@@ -353,12 +370,16 @@ final class VaultSession {
     /// interruption after the commit still asks for confirmation on the next unlock.
     /// - Returns: true once the rotated vault is stored, even if re-enabling biometrics failed.
     @discardableResult
-    func changeMasterPassword(current: String, new: String) async -> Bool {
-        guard phase == .unlocked, let store, let localState, let header, !isBusy else { return false }
+    func changeMasterPassword(current: String, new: String, compactHistory: Bool) async -> Bool {
+        guard phase == .unlocked, let store, let localState, let header, !isBusy, pendingItemIDs.isEmpty else { return false }
         guard draftSnapshots.isEmpty, recoverableDrafts.isEmpty else {
             error = L10n.text("rotation.error.unsavedDrafts"); return false
         }
-        isBusy = true; defer { isBusy = false }
+        isBusy = true
+        defer {
+            replacingVault = false
+            isBusy = false
+        }
         let token = generation
         var stateMovedToNewVault = false
         let rotation: VaultRotation
@@ -372,7 +393,7 @@ final class VaultSession {
             guard token == generation, snapshot.header == header else { throw BackupFlowError.sessionChanged }
             rotation = try await VaultRotation.prepare(header: snapshot.header, revisions: snapshot.revisions,
                                                        incompleteHistory: snapshot.hasIncompleteHistory,
-                                                       vaultKey: oldKey, newPassword: new)
+                                                       vaultKey: oldKey, newPassword: new, compactHistory: compactHistory)
             guard token == generation, phase == .unlocked else { throw BackupFlowError.sessionChanged }
             // Persist the new recovery key before the commit, mirroring create().
             try localState.unlock(key: rotation.vaultKey, vaultID: rotation.header.vaultID)
@@ -380,9 +401,17 @@ final class VaultSession {
             var pending = LocalVaultState()
             pending.pendingRecoveryKey = rotation.recoveryKey
             try localState.write(pending)
+            replacingVault = true
+            refreshID = UUID()
+            try invalidateAutoFillSnapshot()
             // Rejects the swap if anything was saved after the snapshot.
             try await store.replaceVault(expected: snapshot, header: rotation.header, revisions: rotation.revisions)
         } catch {
+            replacingVault = false
+            if token == generation, phase == .unlocked {
+                scheduleTrashCleanup()
+                scheduleAutoFillSnapshot()
+            }
             if stateMovedToNewVault, token == generation {
                 do {
                     var key = try await crypto.deviceKey()
@@ -405,6 +434,8 @@ final class VaultSession {
         guard token == generation, phase == .unlocked else { return true }
         do {
             try await crypto.unlock(deviceKey: rotation.vaultKey, header: rotation.header)
+            guard token == generation, phase == .unlocked else { return true }
+            replacingVault = false
             recoveryKey = rotation.recoveryKey; recoveryAcknowledged = false
             if wasBiometric {
                 do {
@@ -593,7 +624,7 @@ final class VaultSession {
         let token = generation
         let enterVault = phase != .unlocked
         do {
-            guard preview.generation == token else { throw BackupFlowError.sessionChanged }
+            guard preview.generation == token, pendingItemIDs.isEmpty else { throw BackupFlowError.sessionChanged }
             guard !backupImportBlockedByLock else { throw BackupFlowError.unlockFirst }
             let revisions = try preview.selection.selectedRevisions(for: selectedItemIDs)
             if preview.requiresEmptyVault {
@@ -608,6 +639,7 @@ final class VaultSession {
         }
         do {
             if enterVault {
+                await lockingTask?.value
                 try await guardedRestoreStep(token: token) {
                     try await crypto.unlock(deviceKey: preview.payload.vaultKey, header: preview.payload.header)
                 }
@@ -642,16 +674,103 @@ final class VaultSession {
         return zip(lhs, rhs).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
     }
 
-    private func publishAutoFillSnapshot() async throws {
-        guard !isPreview, !appGroup.isEmpty, let store, try await store.header() != nil,
-              let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return }
-        let data = try await store.backup()
-        let url = directory.appendingPathComponent("autofill.aegis")
+    private struct AutoFillVersion: Equatable {
+        let vaultID: UUID
+        let loginRevisions: Set<UUID>
+
+        init(header: VaultHeader, entries: [VaultEntry]) {
+            vaultID = header.vaultID
+            loginRevisions = Set(entries.lazy.filter(AutoFillCredential.includes).map(\.id))
+        }
+    }
+
+    private var autoFillDirectory: URL? {
+        guard !isPreview, !appGroup.isEmpty else { return nil }
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+    }
+
+    private func scheduleAutoFillSnapshot() {
+        guard !replacingVault, let header, let directory = autoFillDirectory else { return }
+        autoFillTask?.cancel()
+        autoFillTask = nil
+        let version = AutoFillVersion(header: header, entries: entries)
+        guard shouldPublishAutoFill(version, directory: directory) else { return }
+        let token = generation
+        autoFillTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(350))
+                guard let self, generation == token, phase == .unlocked else { return }
+                defer {
+                    if !Task.isCancelled {
+                        autoFillTask = nil
+                    }
+                }
+                try await publishAutoFillSnapshot(header: header, entries: entries, version: version, directory: directory)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                discardFailedAutoFillSnapshot(error, directory: directory)
+            }
+        }
+    }
+
+    private func flushAutoFillSnapshot() async {
+        guard let store, let directory = autoFillDirectory else { return }
+        do {
+            // A save may have committed just as the UI locked, before its refresh could finish.
+            let snapshot = try await store.snapshot()
+            let entries = try await crypto.cachedEntries(from: snapshot.revisions)
+            let version = AutoFillVersion(header: snapshot.header, entries: entries)
+            guard shouldPublishAutoFill(version, directory: directory) else { return }
+            try await publishAutoFillSnapshot(header: snapshot.header, entries: entries, version: version, directory: directory)
+        } catch {
+            discardFailedAutoFillSnapshot(error, directory: directory)
+        }
+    }
+
+    private func shouldPublishAutoFill(_ version: AutoFillVersion, directory: URL) -> Bool {
+        publishedAutoFill != version ||
+            !FileManager.default.fileExists(atPath: directory.appendingPathComponent(AutoFillSnapshot.filename).path)
+    }
+
+    private func publishAutoFillSnapshot(header: VaultHeader, entries: [VaultEntry], version: AutoFillVersion, directory: URL) async throws {
+        try Task.checkCancellation()
+        let data = try await crypto.makeAutoFillSnapshot(header: header, entries: entries)
+        try Task.checkCancellation()
+        let url = directory.appendingPathComponent(AutoFillSnapshot.filename)
         #if os(iOS)
             try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         #else
             try data.write(to: url, options: .atomic)
         #endif
+        publishedAutoFill = version
+        try removeAutoFillFile(AutoFillSnapshot.legacyFilename, from: directory)
+    }
+
+    private func discardFailedAutoFillSnapshot(_ failure: Error, directory: URL) {
+        publishedAutoFill = nil
+        do {
+            try removeAutoFillFile(AutoFillSnapshot.filename, from: directory)
+            error = failure.localizedDescription
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func invalidateAutoFillSnapshot() throws {
+        autoFillTask?.cancel()
+        autoFillTask = nil
+        publishedAutoFill = nil
+        guard let directory = autoFillDirectory else { return }
+        try removeAutoFillFile(AutoFillSnapshot.legacyFilename, from: directory)
+        try removeAutoFillFile(AutoFillSnapshot.filename, from: directory)
+    }
+
+    private func removeAutoFillFile(_ filename: String, from directory: URL) throws {
+        do {
+            try FileManager.default.removeItem(at: directory.appendingPathComponent(filename))
+        } catch CocoaError.fileNoSuchFile {}
     }
 
     private func unlockLocalState(header: VaultHeader) async throws {

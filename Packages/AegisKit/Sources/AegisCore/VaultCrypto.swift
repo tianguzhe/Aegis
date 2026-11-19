@@ -42,6 +42,7 @@ public enum Argon2id {
 public actor VaultCrypto {
     private var key: SymmetricKey?
     private var vaultID: UUID?
+    private var decryptedRevisions: [UUID: (revision: EncryptedRevision, item: VaultItem)] = [:]
     public init() {}
 
     public func create(password: String) throws -> (header: VaultHeader, recoveryKey: String) {
@@ -58,7 +59,7 @@ public actor VaultCrypto {
         let formatted = stride(from: 0, to: 64, by: 8).map { start in
             String(hex.dropFirst(start).prefix(8))
         }.joined(separator: "-")
-        key = SymmetricKey(data: raw); vaultID = id
+        setKey(raw, vaultID: id)
         return (VaultHeader(vaultID: id, salt: salt, kdf: parameters, wrappedKey: wrapped,
                             recoveryWrappedKey: recoveryWrapped), formatted)
     }
@@ -66,13 +67,13 @@ public actor VaultCrypto {
     public func unlock(password: String, header: VaultHeader) throws {
         var raw = try Self.unwrapVaultKey(password: password, header: header)
         defer { raw.resetBytes(in: 0 ..< raw.count) }
-        key = SymmetricKey(data: raw); vaultID = header.vaultID
+        setKey(raw, vaultID: header.vaultID)
     }
 
     public func recover(recoveryKey: String, header: VaultHeader) throws {
         var raw = try Self.unwrapVaultKey(recoveryKey: recoveryKey, header: header)
         defer { raw.resetBytes(in: 0 ..< raw.count) }
-        key = SymmetricKey(data: raw); vaultID = header.vaultID
+        setKey(raw, vaultID: header.vaultID)
     }
 
     /// Returns the raw vault key wrapped by the master password without unlocking this actor.
@@ -108,7 +109,13 @@ public actor VaultCrypto {
     public func unlock(deviceKey: Data, header: VaultHeader) throws {
         try header.validate()
         guard deviceKey.count == 32 else { throw VaultError.damagedData }
-        key = SymmetricKey(data: deviceKey); vaultID = header.vaultID
+        setKey(deviceKey, vaultID: header.vaultID)
+    }
+
+    private func setKey(_ raw: Data, vaultID: UUID) {
+        decryptedRevisions.removeAll()
+        key = SymmetricKey(data: raw)
+        self.vaultID = vaultID
     }
 
     public func deviceKey() throws -> Data {
@@ -117,7 +124,30 @@ public actor VaultCrypto {
     }
 
     public func lock() {
+        decryptedRevisions.removeAll()
         key = nil; vaultID = nil
+    }
+
+    public func makeAutoFillSnapshot(header: VaultHeader, entries: [VaultEntry]) throws -> Data {
+        guard let key, vaultID == header.vaultID else { throw VaultError.locked }
+        let credentials = entries.filter(AutoFillCredential.includes).map(AutoFillCredential.init)
+        var plaintext = try JSONEncoder().encode(credentials)
+        defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
+        let sealed = try AES.GCM.seal(plaintext, using: key, authenticating: AutoFillSnapshot.authenticatedData(vaultID: header.vaultID))
+        let data = try JSONEncoder().encode(AutoFillSnapshot(header: header, ciphertext: sealed.combined!))
+        guard data.count <= AutoFillSnapshot.maxFileSize else { throw VaultError.oversizedRecord }
+        return data
+    }
+
+    public func openAutoFillSnapshot(_ snapshot: AutoFillSnapshot) throws -> [AutoFillCredential] {
+        guard snapshot.version == 1 else { throw VaultError.unsupportedFormat }
+        guard let key, vaultID == snapshot.header.vaultID else { throw VaultError.locked }
+        do {
+            var plaintext = try AES.GCM.open(AES.GCM.SealedBox(combined: snapshot.ciphertext), using: key,
+                                             authenticating: snapshot.authenticatedData)
+            defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
+            return try JSONDecoder().decode([AutoFillCredential].self, from: plaintext)
+        } catch { throw VaultError.damagedData }
     }
 
     public func encrypt(_ item: VaultItem, parents: [UUID], revisionID: UUID = UUID()) throws -> EncryptedRevision {
@@ -147,6 +177,18 @@ public actor VaultCrypto {
     }
 
     public func entries(from revisions: [EncryptedRevision]) throws -> [VaultEntry] {
+        try entries(from: revisions, usingCache: false)
+    }
+
+    /// For the live store. A matching ID alone cannot authenticate a changed ciphertext or graph link.
+    public func cachedEntries(from revisions: [EncryptedRevision]) throws -> [VaultEntry] {
+        try entries(from: revisions, usingCache: true)
+    }
+
+    private func entries(from revisions: [EncryptedRevision], usingCache: Bool) throws -> [VaultEntry] {
+        if usingCache, key == nil {
+            throw VaultError.locked
+        }
         // Authenticate every revision before its parent links may suppress another record.
         var items: [UUID: VaultItem] = [:]
         var known: [UUID: EncryptedRevision] = [:]
@@ -156,7 +198,11 @@ public actor VaultCrypto {
             }
             guard !revision.parents.contains(revision.id) else { throw VaultError.damagedData }
             known[revision.id] = revision
-            items[revision.id] = try decrypt(revision)
+            if usingCache, let cached = decryptedRevisions[revision.id], cached.revision == revision {
+                items[revision.id] = cached.item
+            } else {
+                items[revision.id] = try decrypt(revision)
+            }
         }
         for revision in revisions {
             for parentID in revision.parents {
@@ -164,6 +210,9 @@ public actor VaultCrypto {
                     throw VaultError.damagedData
                 }
             }
+        }
+        if usingCache {
+            decryptedRevisions = known.compactMapValues { revision in items[revision.id].map { (revision, $0) } }
         }
         // A terminal deletion also suppresses late offline branches and stale restores.
         // Only authenticated markers may suppress an item, even when no longer a graph head.

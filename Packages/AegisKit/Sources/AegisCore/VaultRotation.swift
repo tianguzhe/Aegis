@@ -1,7 +1,6 @@
 import Foundation
 
-/// A rotated copy of a vault: new identity, vault key, master password and recovery key, with the
-/// complete history re-encrypted (Docs/KEY_ROTATION_DESIGN.md §2–§3).
+/// A rotated copy of a vault with new credentials and optionally compacted history.
 ///
 /// Rotation creates a new vault ID instead of bumping an epoch, so `VaultHeader`, the ABB v1 backup
 /// format and the LAN protocol stay unchanged. Revisions are moved with `BackupMigration`, whose
@@ -25,18 +24,32 @@ public struct VaultRotation: Sendable {
     ///   authentication, and `VaultError.damagedData` when the re-encrypted vault does not decrypt
     ///   to exactly the same items as the source.
     public static func prepare(header: VaultHeader, revisions: [EncryptedRevision], incompleteHistory: Bool,
-                               vaultKey: Data, newPassword: String) async throws -> VaultRotation
+                               vaultKey: Data, newPassword: String, compactHistory: Bool = false) async throws -> VaultRotation
     {
         // exportedAtMillis is unused by the migration; the payload only carries the source vault.
         let source = try BackupPayload(exportedAtMillis: 0, incompleteHistory: incompleteHistory, vaultKey: vaultKey,
                                        header: header, revisions: revisions)
         // Authenticates every source record and returns the items to compare against afterwards.
         let expected = try await BackupValidator.validate(source)
-        let destination = VaultCrypto()
+        let origin = VaultCrypto(), destination = VaultCrypto()
         do {
+            try await origin.unlock(deviceKey: vaultKey, header: header)
+            var lineage = try await lineage(in: revisions, using: origin)
+            lineage.predecessors.insert(header.vaultID)
+            if compactHistory {
+                lineage.retired.formUnion(lineage.predecessors)
+            }
+            let retained = compactHistory ? try await compactedRevisionIDs(source, entries: expected, crypto: origin) : nil
+            await origin.lock()
+
             let created = try await destination.create(password: newPassword)
             let newKey = try await destination.deviceKey()
-            let migrated = try await BackupMigration.revisions(from: source, to: created.header, key: newKey, existing: [])
+            var migrated = try await BackupMigration.migrate(source, to: created.header, key: newKey, existing: [], keeping: retained)
+            // Keep the lineage in an authenticated, invisible record so exports and LAN joins
+            // carry the same import boundary without a change to either container format.
+            var record = TrashPolicy.deletionMarker(for: VaultItem(id: created.header.vaultID, kind: .note))
+            record.rotationLineage = lineage
+            try await migrated.append(destination.encrypt(record, parents: [], revisionID: record.id))
             // Never hand back a rotation that would silently lose or alter an item.
             let actual = try await destination.entries(from: migrated)
             guard try fingerprint(actual) == fingerprint(expected) else { throw VaultError.damagedData }
@@ -44,9 +57,44 @@ public struct VaultRotation: Sendable {
             return VaultRotation(header: created.header, recoveryKey: created.recoveryKey, vaultKey: newKey,
                                  revisions: migrated)
         } catch {
+            await origin.lock()
             await destination.lock()
             throw error
         }
+    }
+
+    struct Lineage: Codable, Equatable, Sendable {
+        var predecessors: Set<UUID> = []
+        var retired: Set<UUID> = []
+    }
+
+    /// Both IDs are reserved to distinguish this record from user items, including deleted notes.
+    static func isLineageRecord(_ revision: EncryptedRevision) -> Bool {
+        revision.id == revision.vaultID && revision.itemID == revision.vaultID
+    }
+
+    static func lineage(in revisions: [EncryptedRevision], using crypto: VaultCrypto) async throws -> Lineage {
+        guard let revision = revisions.first(where: isLineageRecord) else { return Lineage() }
+        let record = try await crypto.decrypt(revision)
+        guard revision.parents.isEmpty, record.permanentlyDeletedAt != nil, let lineage = record.rotationLineage,
+              lineage.retired.isSubset(of: lineage.predecessors), !lineage.predecessors.contains(revision.vaultID)
+        else { throw VaultError.damagedData }
+        return lineage
+    }
+
+    private static func compactedRevisionIDs(_ source: BackupPayload, entries: [VaultEntry], crypto: VaultCrypto) async throws -> Set<UUID> {
+        let visible = Set(entries.map(\.item.id))
+        var kept = Set(entries.map(\.id))
+        var keptDeletionMarkers: Set<UUID> = []
+        for revision in source.revisions where !visible.contains(revision.itemID) && !isLineageRecord(revision) {
+            try Task.checkCancellation()
+            guard !keptDeletionMarkers.contains(revision.itemID) else { continue }
+            if try await crypto.decrypt(revision).permanentlyDeletedAt != nil {
+                keptDeletionMarkers.insert(revision.itemID)
+                kept.insert(revision.id)
+            }
+        }
+        return kept
     }
 
     /// Visible state of each head with item IDs removed, since the migration maps every ID.

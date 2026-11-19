@@ -49,15 +49,15 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
 
 private struct AutoFillView: View {
     let services: [String]
-    let complete: (VaultItem) -> Void
+    let complete: (AutoFillCredential) -> Void
     let cancel: () -> Void
     @Environment(\.scenePhase) private var scenePhase
     @State private var password = ""
-    @State private var entries: [VaultEntry] = []
+    @State private var entries: [AutoFillCredential] = []
     @State private var error: String?
     @State private var busy = false
     @State private var unlocked = false
-    @State private var selected: VaultItem?
+    @State private var selected: AutoFillCredential?
     @State private var generation = UUID()
 
     var body: some View {
@@ -75,13 +75,13 @@ private struct AutoFillView: View {
                                 ForEach(services, id: \.self) { Text($0).aegisFont(size: 12, weight: .medium, design: .monospaced).foregroundStyle(AegisTheme.teal) }
                             }.padding(16).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 12))
                             ForEach(entries) { entry in
-                                Button { selected = entry.item } label: {
+                                Button { selected = entry } label: {
                                     HStack(spacing: 12) {
-                                        ItemIcon(item: entry.item)
+                                        ItemIcon(item: VaultItem(id: entry.id, title: entry.title, website: entry.website))
                                         VStack(alignment: .leading, spacing: 6) {
-                                            Text(entry.item.title).aegisFont(size: 14, weight: .semibold).foregroundStyle(AegisTheme.text)
-                                            Text(entry.item.username).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
-                                            Text(entry.item.website).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).lineLimit(1)
+                                            Text(entry.title).aegisFont(size: 14, weight: .semibold).foregroundStyle(AegisTheme.text)
+                                            Text(entry.username).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+                                            Text(entry.website).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).lineLimit(1)
                                         }.frame(maxWidth: .infinity, alignment: .leading)
                                         Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AegisTheme.secondary)
                                     }.padding(16).aegisSurface()
@@ -155,22 +155,27 @@ private struct AutoFillView: View {
             do {
                 guard let group = Bundle.main.object(forInfoDictionaryKey: "AegisAppGroup") as? String, !group.isEmpty,
                       let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
-                      let data = try? Data(contentsOf: directory.appendingPathComponent("autofill.aegis")), data.count <= 32 * 1024 * 1024
+                      FileManager.default.fileExists(atPath: directory.appendingPathComponent(AutoFillSnapshot.filename).path)
                 else {
                     throw NSError(domain: "Aegis", code: 1, userInfo: [NSLocalizedDescriptionKey: L10n.text("autofill.unavailable")])
                 }
-                let backup = try JSONDecoder().decode(VaultBackup.self, from: data)
-                try backup.validate()
-                try await crypto.unlock(password: submitted, header: backup.header)
-                let loaded = try await crypto.entries(from: backup.revisions).filter { $0.item.kind == .login && $0.item.deletedAt == nil }
+                let snapshot = try await Task.detached { try AutoFillSnapshot.read(from: directory) }.value
+                guard token == generation else { return }
+                try await crypto.unlock(password: submitted, header: snapshot.header)
+                let loaded = try await crypto.openAutoFillSnapshot(snapshot)
                 await crypto.lock()
                 guard token == generation else { return }
                 entries = loaded.sorted { lhs, rhs in
-                    let left = matches(lhs.item.website), right = matches(rhs.item.website)
-                    return left == right ? lhs.item.title < rhs.item.title : left
+                    let left = matches(lhs.website), right = matches(rhs.website)
+                    return left == right ? lhs.title < rhs.title : left
                 }
                 unlocked = true
-            } catch { await crypto.lock(); self.error = error.localizedDescription }
+            } catch {
+                await crypto.lock()
+                if token == generation {
+                    self.error = error.localizedDescription
+                }
+            }
         }
     }
 

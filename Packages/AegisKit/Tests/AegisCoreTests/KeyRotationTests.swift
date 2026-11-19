@@ -92,7 +92,7 @@ import Testing
         let oldEntries = try await before.entries(from: source.revisions)
         let newEntries = try await after.entries(from: rotation.revisions)
 
-        #expect(rotation.revisions.count == source.revisions.count)
+        #expect(rotation.revisions.filter { $0.id != rotation.header.vaultID }.count == source.revisions.count)
         #expect(try Self.contents(newEntries) == Self.contents(oldEntries))
         #expect(newEntries.filter(\.isConflict).count == 2)
         #expect(newEntries.contains { $0.item.title == "Old note" && $0.item.deletedAt != nil })
@@ -106,6 +106,42 @@ import Testing
         #expect(rotation.header.salt != source.header.salt)
         #expect(rotation.vaultKey != source.vaultKey)
         try await VaultCrypto().unlock(password: Self.oldPassword, header: rotation.header)
+    }
+
+    @Test func compactionPreservesVisibleStateAndCarriesItsImportBoundaryInBackups() async throws {
+        let source = try await Self.makeSource()
+        let oldBackup = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.vaultKey,
+                                          header: source.header, revisions: source.revisions)
+        let compacted = try await VaultRotation.prepare(header: source.header, revisions: source.revisions,
+                                                        incompleteHistory: false, vaultKey: source.vaultKey,
+                                                        newPassword: Self.newPassword, compactHistory: true)
+        let backup = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: compacted.vaultKey,
+                                       header: compacted.header, revisions: compacted.revisions)
+        let reopened = try BackupPayload.decode(backup.encoded())
+        let visible = try await BackupValidator.validate(reopened)
+        let original = try await BackupValidator.validate(oldBackup)
+        #expect(try Self.contents(visible) == Self.contents(original))
+        #expect(compacted.revisions.count < source.revisions.count)
+        #expect(compacted.revisions.allSatisfy { $0.parents.isEmpty })
+
+        let plan = BackupImportPlan(revisions: reopened.revisions, entries: visible)
+        let login = try #require(visible.first { $0.item.title == "Bank" })
+        let selected = try plan.selectedRevisions(for: [login.item.id])
+        #expect(!plan.itemIDs.contains(compacted.header.vaultID))
+        #expect(selected.contains { $0.id == compacted.header.vaultID })
+        await #expect(throws: VaultError.retiredVaultHistory) {
+            try await BackupMigration.revisions(from: oldBackup, to: reopened.header, key: reopened.vaultKey, existing: selected)
+        }
+
+        let crypto = VaultCrypto()
+        try await crypto.unlock(deviceKey: compacted.vaultKey, header: compacted.header)
+        var retainedItems: [VaultItem] = []
+        for revision in compacted.revisions {
+            try await retainedItems.append(crypto.decrypt(revision))
+        }
+        let marker = try #require(retainedItems.first { $0.permanentlyDeletedAt != nil && $0.id != compacted.header.vaultID })
+        let lateBranch = try await crypto.encrypt(VaultItem(id: marker.id, title: "Stale restore"), parents: [])
+        #expect(try await crypto.entries(from: compacted.revisions + [lateBranch]).allSatisfy { $0.item.id != marker.id })
     }
 
     @Test func weakNewPasswordIsRejected() async throws {

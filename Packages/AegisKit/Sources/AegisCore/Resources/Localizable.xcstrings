@@ -4370,6 +4370,28 @@
         }
       }
     },
+    "rotation.compactHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同时压缩历史版本"
+          }
+        }
+      }
+    },
+    "rotation.compactHistoryDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除被取代的历史版本，保留当前版本、冲突分支、回收站及永久删除标记。压缩前的本库备份只能恢复到独立保险库。"
+          }
+        }
+      }
+    },
     "rotation.current": {
       "extractionState": "manual",
       "localizations": {
@@ -4387,7 +4409,18 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密全部记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。"
+            "value": "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密保留的记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。"
+          }
+        }
+      }
+    },
+    "rotation.error.retiredHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该备份来自本库压缩前的保险库。请在独立保险库中恢复。"
           }
         }
       }

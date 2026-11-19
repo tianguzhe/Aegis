@@ -28,7 +28,7 @@ public struct BackupImportPlan: Sendable {
     public init(revisions: [EncryptedRevision], entries: [VaultEntry], existingRevisionIDs: Set<UUID> = []) {
         self.revisions = revisions
         self.existingRevisionIDs = existingRevisionIDs
-        itemIDs = Set(revisions.map(\.itemID))
+        itemIDs = Set(revisions.filter { !VaultRotation.isLineageRecord($0) }.map(\.itemID))
         let groups = Dictionary(grouping: entries, by: \.item.id)
         items = itemIDs.map { id in
             let group = groups[id] ?? []
@@ -64,7 +64,7 @@ public struct BackupImportPlan: Sendable {
     public func selectedRevisions(for selectedItemIDs: Set<UUID>) throws -> [EncryptedRevision] {
         guard selectedItemIDs.isSubset(of: itemIDs) else { throw BackupSelectionError.invalidSelection }
         guard items.isEmpty || !selectedItemIDs.isEmpty else { throw BackupSelectionError.noSelection }
-        return revisions.filter { selectedItemIDs.contains($0.itemID) }
+        return revisions.filter { selectedItemIDs.contains($0.itemID) || VaultRotation.isLineageRecord($0) }
     }
 }
 

@@ -309,6 +309,7 @@ struct ChangeMasterPasswordView: View {
     @State private var password = ""
     @State private var confirmation = ""
     @State private var finished = false
+    @State private var compactHistory = false
 
     private var validPassword: Bool {
         password.count >= 12 && password.utf8.count <= 4096
@@ -360,6 +361,11 @@ struct ChangeMasterPasswordView: View {
                     Label(L10n.text(mismatch ? "error.passwordMismatch" : "rotation.requirement"),
                           systemImage: validPassword && !mismatch ? "checkmark.circle.fill" : "info.circle")
                         .aegisFont(size: 11).foregroundStyle(mismatch ? Color.orange : AegisTheme.secondary)
+                    Toggle(L10n.text("rotation.compactHistory"), isOn: $compactHistory)
+                    if compactHistory {
+                        Text(L10n.text("rotation.compactHistoryDetail"))
+                            .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                     Button(action: submit) {
                         HStack {
                             if session.isBusy {
@@ -376,10 +382,10 @@ struct ChangeMasterPasswordView: View {
 
     private func submit() {
         guard canSubmit else { return }
-        let submittedCurrent = current, submittedNew = password
+        let submittedCurrent = current, submittedNew = password, shouldCompact = compactHistory
         current = ""
         Task {
-            if await session.changeMasterPassword(current: submittedCurrent, new: submittedNew) {
+            if await session.changeMasterPassword(current: submittedCurrent, new: submittedNew, compactHistory: shouldCompact) {
                 password = ""; confirmation = ""
                 // Locked during the commit: the recovery key appears after the next unlock instead.
                 if session.recoveryKey == nil {

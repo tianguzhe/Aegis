@@ -320,9 +320,12 @@
 "recovery.warning" = "任何持有它的人都能解锁保险库。确认保存前，恢复配置会加密保留在本机。";
 "rotation.action" = "修改主密码";
 "rotation.biometricFailed" = "主密码已修改，但未能重新启用生物识别解锁：%@";
+"rotation.compactHistory" = "同时压缩历史版本";
+"rotation.compactHistoryDetail" = "移除被取代的历史版本，保留当前版本、冲突分支、回收站及永久删除标记。压缩前的本库备份只能恢复到独立保险库。";
 "rotation.confirm" = "确认新主密码";
 "rotation.current" = "当前主密码";
-"rotation.description" = "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密全部记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。";
+"rotation.description" = "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密保留的记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。";
+"rotation.error.retiredHistory" = "该备份来自本库压缩前的保险库。请在独立保险库中恢复。";
 "rotation.error.unsavedDrafts" = "请先保存或放弃正在编辑的记录，再修改主密码。";
 "rotation.finishedWithIssue" = "主密码已修改，保险库已锁定。请使用新主密码解锁。详情：%@";
 "rotation.new" = "新主密码";

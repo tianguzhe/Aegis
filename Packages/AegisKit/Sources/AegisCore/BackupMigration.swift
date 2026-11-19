@@ -9,18 +9,30 @@ public enum BackupMigration {
         guard payload.header.vaultID != header.vaultID else { throw VaultError.differentVault }
         // Authenticate all source records and the graph before preparing any destination records.
         _ = try await BackupValidator.validate(payload)
+        return try await migrate(payload, to: header, key: key, existing: existing)
+    }
+
+    /// The caller has already authenticated the source revisions and graph.
+    static func migrate(_ payload: BackupPayload, to header: VaultHeader, key: Data,
+                        existing: [EncryptedRevision], keeping retainedIDs: Set<UUID>? = nil) async throws -> [EncryptedRevision]
+    {
         let source = VaultCrypto(), destination = VaultCrypto()
         do {
             try await source.unlock(deviceKey: payload.vaultKey, header: payload.header)
             try await destination.unlock(deviceKey: key, header: header)
+            let lineage = try await VaultRotation.lineage(in: existing, using: destination)
+            guard !lineage.retired.contains(payload.header.vaultID) else { throw VaultError.retiredVaultHistory }
             let known = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
             var migrated: [EncryptedRevision] = []
-            for revision in payload.revisions {
+            for revision in payload.revisions where !VaultRotation.isLineageRecord(revision) {
                 try Task.checkCancellation()
+                if let retainedIDs, !retainedIDs.contains(revision.id) {
+                    continue
+                }
                 var item = try await source.decrypt(revision)
                 item.id = mappedID(item.id, kind: "item", source: payload.header.vaultID, destination: header.vaultID)
                 let id = mappedID(revision.id, kind: "revision", source: payload.header.vaultID, destination: header.vaultID)
-                let parents = revision.parents.map {
+                let parents = (retainedIDs == nil ? revision.parents : []).map {
                     mappedID($0, kind: "revision", source: payload.header.vaultID, destination: header.vaultID)
                 }
                 if let stored = known[id] {

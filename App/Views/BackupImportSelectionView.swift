@@ -11,7 +11,10 @@ struct BackupImportSelectionView: View {
 
     private enum Filter: String, CaseIterable, Identifiable {
         case all, login, card, note, trash, deleted
-        var id: Self { self }
+        var id: Self {
+            self
+        }
+
         var title: String {
             switch self {
             case .all: L10n.text("backup.selection.allTypes")
@@ -22,6 +25,7 @@ struct BackupImportSelectionView: View {
             case .deleted: L10n.text("backup.selection.deleted")
             }
         }
+
         func includes(_ item: BackupImportPlan.Item) -> Bool {
             switch self {
             case .all: true
@@ -38,7 +42,7 @@ struct BackupImportSelectionView: View {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return plan.items.filter { item in
             filter.includes(item) && (query.isEmpty || title(item).localizedStandardContains(query)
-                                     || item.username.localizedStandardContains(query))
+                || item.username.localizedStandardContains(query))
         }
     }
 
@@ -69,8 +73,11 @@ struct BackupImportSelectionView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(filtered) { item in
                         Button {
-                            if selectedItemIDs.contains(item.id) { selectedItemIDs.remove(item.id) }
-                            else { selectedItemIDs.insert(item.id) }
+                            if selectedItemIDs.contains(item.id) {
+                                selectedItemIDs.remove(item.id)
+                            } else {
+                                selectedItemIDs.insert(item.id)
+                            }
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: item.isPermanentlyDeleted ? "trash.slash" : item.kind?.symbol ?? "doc")
@@ -106,16 +113,26 @@ struct BackupImportSelectionView: View {
     }
 
     private func title(_ item: BackupImportPlan.Item) -> String {
-        if item.isPermanentlyDeleted { return L10n.text("backup.selection.deletedItem") }
+        if item.isPermanentlyDeleted {
+            return L10n.text("backup.selection.deletedItem")
+        }
         return item.title.isEmpty ? L10n.text("list.untitled") : item.title
     }
 
     private func detail(_ item: BackupImportPlan.Item) -> String {
-        if item.isPermanentlyDeleted { return String(item.id.uuidString.prefix(8)) }
+        if item.isPermanentlyDeleted {
+            return String(item.id.uuidString.prefix(8))
+        }
         var parts = [item.kind?.title ?? ""]
-        if !item.username.isEmpty { parts.append(item.username) }
-        if item.isTrashed { parts.append(L10n.text("nav.trash")) }
-        if item.isConflict { parts.append(L10n.text("backup.selection.conflict")) }
+        if !item.username.isEmpty {
+            parts.append(item.username)
+        }
+        if item.isTrashed {
+            parts.append(L10n.text("nav.trash"))
+        }
+        if item.isConflict {
+            parts.append(L10n.text("backup.selection.conflict"))
+        }
         return parts.joined(separator: " · ")
     }
 }

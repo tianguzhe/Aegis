@@ -3,7 +3,10 @@ import Foundation
 /// User-selected card network; no issuer or product is inferred from the PAN.
 public enum CardBrand: String, Codable, CaseIterable, Identifiable, Sendable {
     case unionPay, visa, mastercard, americanExpress
-    public var id: String { rawValue }
+    public var id: String {
+        rawValue
+    }
+
     public var title: String {
         switch self {
         case .unionPay: L10n.text("card.brand.unionPay")
@@ -28,7 +31,10 @@ public enum CardBrand: String, Codable, CaseIterable, Identifiable, Sendable {
 
 public enum PaymentCardType: String, Codable, CaseIterable, Identifiable, Sendable {
     case debit, credit
-    public var id: String { rawValue }
+    public var id: String {
+        rawValue
+    }
+
     public var title: String {
         switch self {
         case .debit: L10n.text("card.type.debit")
@@ -39,7 +45,10 @@ public enum PaymentCardType: String, Codable, CaseIterable, Identifiable, Sendab
 
 public enum CardNumberValidation: Sendable, Equatable {
     case empty, tooShort, tooLong, invalidChecksum, valid
-    public var allowsSaving: Bool { self == .empty || self == .valid }
+    public var allowsSaving: Bool {
+        self == .empty || self == .valid
+    }
+
     public var message: String {
         switch self {
         case .empty: L10n.text("card.number.empty")
@@ -59,8 +68,8 @@ public enum CardNumberRules {
     public static func digits(from value: String) -> String {
         String(String.UnicodeScalarView(value.unicodeScalars.compactMap { scalar in
             switch scalar.value {
-            case 48...57: scalar
-            case 0xFF10...0xFF19: UnicodeScalar(scalar.value - 0xFF10 + 48)
+            case 48 ... 57: scalar
+            case 0xFF10 ... 0xFF19: UnicodeScalar(scalar.value - 0xFF10 + 48)
             default: nil
             }
         }))
@@ -81,18 +90,18 @@ public enum CardNumberRules {
     }
 }
 
-extension VaultItem {
-    public var cardLastFour: String {
+public extension VaultItem {
+    var cardLastFour: String {
         String(CardNumberRules.digits(from: cardNumber).suffix(4))
     }
 
-    public var maskedCardNumber: String {
+    var maskedCardNumber: String {
         let tail = cardLastFour
         return "••••  ••••  ••••  " + (tail.count == 4 ? tail : "••••")
     }
 
-    public var cardDescription: String {
-        let labels = [cardBrand?.title, cardType?.title].compactMap { $0 }
+    var cardDescription: String {
+        let labels = [cardBrand?.title, cardType?.title].compactMap(\.self)
         return labels.isEmpty ? ItemKind.card.title : labels.joined(separator: " · ")
     }
 }

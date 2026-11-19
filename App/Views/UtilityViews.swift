@@ -38,7 +38,7 @@ struct GeneratorView: View {
                                     AegisIconButton(symbol: "plus", label: L10n.text("ui.lengthIncrease")) { session.passwordOptions.length += 1 }.disabled(session.passwordOptions.length >= 64).accessibilityIdentifier("increasePasswordLength")
                                 }
                             }
-                            Slider(value: Binding(get: { Double(session.passwordOptions.length) }, set: { session.passwordOptions.length = Int($0) }), in: 12...64, step: 1)
+                            Slider(value: Binding(get: { Double(session.passwordOptions.length) }, set: { session.passwordOptions.length = Int($0) }), in: 12 ... 64, step: 1)
                                 .tint(AegisTheme.teal).accessibilityLabel(L10n.text("generator.length"))
                         }.padding(20)
                         settingDivider
@@ -65,8 +65,13 @@ struct GeneratorView: View {
                 .overlay(alignment: .top) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
         }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 700)).vaultErrorPresenter()
             .onAppear(perform: regenerate).onChange(of: session.passwordOptions) { _, _ in regenerate() }
-            .task(id: copied) { if copied { try? await Task.sleep(for: .seconds(2)); copied = false } }.privacySensitive()
+            .task(id: copied) {
+                if copied {
+                    try? await Task.sleep(for: .seconds(2)); copied = false
+                }
+            }.privacySensitive()
     }
+
     private var styledPassword: AttributedString {
         password.reduce(into: AttributedString()) { result, character in
             var value = AttributedString(String(character))
@@ -74,6 +79,7 @@ struct GeneratorView: View {
             result += value
         }
     }
+
     private func generatorToggle(_ key: String, sample: String, value: Binding<Bool>) -> some View {
         Toggle(isOn: value) {
             HStack {
@@ -83,7 +89,11 @@ struct GeneratorView: View {
             }
         }.toggleStyle(.switch).tint(AegisTheme.teal).padding(.horizontal, 18).padding(.vertical, 13)
     }
-    private var settingDivider: some View { Rectangle().fill(AegisTheme.border).frame(height: 1).padding(.horizontal, 20) }
+
+    private var settingDivider: some View {
+        Rectangle().fill(AegisTheme.border).frame(height: 1).padding(.horizontal, 20)
+    }
+
     private func regenerate() {
         do { password = try PasswordGenerator.generate(options: session.passwordOptions); copied = false; session.touch() }
         catch { session.error = error.localizedDescription }
@@ -94,18 +104,33 @@ private struct UtilitySize: ViewModifier {
     let embedded: Bool
     let height: CGFloat
     func body(content: Content) -> some View {
-        if embedded { content.frame(maxWidth: .infinity, maxHeight: .infinity) }
-        else { content.aegisSheetSize(width: 580, height: height) }
+        if embedded {
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            content.aegisSheetSize(width: 580, height: height)
+        }
     }
 }
 
 struct EncryptedBackupDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.aegisVaultBackup] }
+    static var readableContentTypes: [UTType] {
+        [.aegisVaultBackup]
+    }
+
     var data: Data
-    init(data: Data) { self.data = data }
-    init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration _: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
 }
+
 extension UTType {
     /// ABB v1 binary backups (`.aegis`), the only format new exports produce.
     static let aegisVaultBackup = UTType(exportedAs: "app.aegis.backup", conformingTo: .data)
@@ -113,7 +138,10 @@ extension UTType {
 
 private enum SettingsTab: String, CaseIterable, Identifiable {
     case security, data, about
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
+
     var title: String {
         switch self {
         case .security: L10n.text("settings.tab.security")
@@ -135,6 +163,7 @@ struct SettingsView: View {
     private var versionLabel: String {
         L10n.format("settings.versionFormat", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
     }
+
     var body: some View {
         VStack(spacing: 0) {
             AegisSheetHeader(title: L10n.text("action.settings"), subtitle: L10n.text("settings.subtitle"),
@@ -159,6 +188,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showLocalTransfer) { LocalVaultTransferView(mode: .send).environment(session) }
             .onChange(of: tab) { _, _ in session.touch() }
     }
+
     private var securitySettings: some View {
         VStack(alignment: .leading, spacing: 24) {
             AegisSection(title: L10n.text("settings.security")) {
@@ -167,13 +197,15 @@ struct SettingsView: View {
                     Toggle(L10n.text("biometric.title"), isOn: Binding(get: { session.biometricEnabled }, set: { enabled in Task { await session.setBiometrics(enabled) } }))
                         .labelsHidden().toggleStyle(.switch).tint(AegisTheme.accentFill)
                         .disabled(session.isUpdatingBiometrics)
-                    if session.isUpdatingBiometrics { ProgressView().controlSize(.small) }
+                    if session.isUpdatingBiometrics {
+                        ProgressView().controlSize(.small)
+                    }
                 }.padding(18)
                 settingDivider
                 #if os(macOS)
-                SettingsRowText(symbol: "lock", title: "settings.lockTitle", detail: "settings.lockDescription.mac").padding(18)
+                    SettingsRowText(symbol: "lock", title: "settings.lockTitle", detail: "settings.lockDescription.mac").padding(18)
                 #else
-                SettingsRowText(symbol: "lock", title: "settings.lockTitle", detail: "settings.lockDescription").padding(18)
+                    SettingsRowText(symbol: "lock", title: "settings.lockTitle", detail: "settings.lockDescription").padding(18)
                 #endif
                 settingDivider
                 SettingsRowText(symbol: "doc.on.clipboard", title: "settings.clipboardTitle", detail: "settings.clipboardDescription").padding(18)
@@ -183,6 +215,7 @@ struct SettingsView: View {
             }
         }
     }
+
     private var dataSettings: some View {
         VStack(alignment: .leading, spacing: 24) {
             AegisSection(title: L10n.text("lan.settings.title"), subtitle: L10n.text("lan.settings.description")) {
@@ -198,6 +231,7 @@ struct SettingsView: View {
                 .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
         }
     }
+
     private var aboutSettings: some View {
         VStack(alignment: .leading, spacing: 24) {
             AegisSection(title: L10n.text("appearance.title")) {
@@ -227,7 +261,11 @@ struct SettingsView: View {
             }
         }
     }
-    private var settingDivider: some View { Rectangle().fill(AegisTheme.border).frame(height: 0.5).padding(.leading, 64) }
+
+    private var settingDivider: some View {
+        Rectangle().fill(AegisTheme.border).frame(height: 0.5).padding(.leading, 64)
+    }
+
     private func settingsAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 14) {
@@ -272,12 +310,19 @@ struct ExportBackupView: View {
     @State private var showIncomplete = false
     @State private var showExporter = false
 
-    // Backup passwords are NFC-normalized before sealing, so confirmation compares the same form.
-    private var busy: Bool { session.isBusy || working }
-    private var normalizedPassword: String { password.precomposedStringWithCanonicalMapping }
+    /// Backup passwords are NFC-normalized before sealing, so confirmation compares the same form.
+    private var busy: Bool {
+        session.isBusy || working
+    }
+
+    private var normalizedPassword: String {
+        password.precomposedStringWithCanonicalMapping
+    }
+
     private var passwordsMatch: Bool {
         normalizedPassword.utf8.elementsEqual(confirmation.precomposedStringWithCanonicalMapping.utf8)
     }
+
     private var canExport: Bool {
         guard !busy, !(needsMasterPassword && masterPassword.isEmpty) else { return false }
         return !usesBackupPassword || (normalizedPassword.count >= BackupCryptor.minimumPasswordCharacters && passwordsMatch)
@@ -321,7 +366,9 @@ struct ExportBackupView: View {
                     }
                     Button(action: export) {
                         HStack {
-                            if busy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
+                            if busy {
+                                ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                            }
                             Text(L10n.text(busy ? "backup.exporting" : "backup.exportAction"))
                         }
                     }.buttonStyle(PrimaryButtonStyle()).disabled(!canExport).accessibilityIdentifier("exportBackupButton")
@@ -334,12 +381,13 @@ struct ExportBackupView: View {
                 Button(L10n.text("action.cancel"), role: .cancel) { document = nil }
             } message: { Text(L10n.text("backup.incompleteMessage")) }
             .fileExporter(isPresented: $showExporter, document: document, contentType: .aegisVaultBackup,
-                          defaultFilename: "Aegis-\(Date.now.formatted(.iso8601.year().month().day()))") { result in
+                          defaultFilename: "Aegis-\(Date.now.formatted(.iso8601.year().month().day()))")
+            { result in
                 document = nil
                 switch result {
                 case .success: dismiss()
-                case .failure(let error as CocoaError) where error.code == .userCancelled: break
-                case .failure(let error): session.error = error.localizedDescription
+                case let .failure(error as CocoaError) where error.code == .userCancelled: break
+                case let .failure(error): session.error = error.localizedDescription
                 }
             }
     }
@@ -364,13 +412,18 @@ struct ExportBackupView: View {
                                                             includeVaultSlot: !usesBackupPassword || !passwordOnly)
                 password = ""; confirmation = ""
                 document = EncryptedBackupDocument(data: result.data)
-                if result.incompleteHistory { showIncomplete = true } else { showExporter = true }
+                if result.incompleteHistory {
+                    showIncomplete = true
+                } else {
+                    showExporter = true
+                }
             } catch { session.error = error.localizedDescription }
         }
     }
 
     private func modeOption(selected: Bool, title: String, detail: String, symbol: String, identifier: String,
-                            action: @escaping () -> Void) -> some View {
+                            action: @escaping () -> Void) -> some View
+    {
         Button(action: action) {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: symbol).font(.system(size: 17)).foregroundStyle(AegisTheme.teal)
@@ -403,8 +456,20 @@ struct ImportBackupView: View {
 
     private var credentialTitle: String {
         guard let container = selection else { return L10n.text("backup.credential.any") }
-        let password = container.header.slots.contains { if case .password = $0 { true } else { false } }
-        let vault = container.header.slots.contains { if case .vault = $0 { true } else { false } }
+        let password = container.header.slots.contains {
+            if case .password = $0 {
+                true
+            } else {
+                false
+            }
+        }
+        let vault = container.header.slots.contains {
+            if case .vault = $0 {
+                true
+            } else {
+                false
+            }
+        }
         return L10n.text(password && vault ? "backup.credential.any" : password ? "backup.credential.password" : "backup.credential.vault")
     }
 
@@ -424,26 +489,32 @@ struct ImportBackupView: View {
                     }.buttonStyle(.plain).disabled(session.isBusy || loadingFile)
                     if loadingFile {
                         ProgressView(L10n.text("backup.readingFile")).frame(maxWidth: .infinity)
-                    } else if let preview { previewCard(preview) } else { credentialStep }
+                    } else if let preview {
+                        previewCard(preview)
+                    } else {
+                        credentialStep
+                    }
                 }.padding(24)
             }
         }.background(AegisTheme.background).aegisSheetSize(width: 520, height: 620).vaultErrorPresenter()
             .interactiveDismissDisabled(session.isBusy || loadingFile).privacySensitive()
             .task {
                 #if DEBUG
-                if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
-                    preview = fixture; selectedItemIDs = fixture.selection.itemIDs
-                }
+                    if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
+                        preview = fixture; selectedItemIDs = fixture.selection.itemIDs
+                    }
                 #endif
             }
-        .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisVaultBackup]) { result in
+            .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisVaultBackup]) { result in
                 Task {
                     do {
                         let url = try result.get()
                         loadingFile = true
                         defer { loadingFile = false }
                         let loaded = try await Task.detached(priority: .userInitiated) { try Self.load(url) }.value
-                        if session.backupImportBlockedByLock { throw VaultSession.BackupFlowError.unlockFirst }
+                        if session.backupImportBlockedByLock {
+                            throw VaultSession.BackupFlowError.unlockFirst
+                        }
                         selection = loaded; preview = nil; selectedItemIDs = []; credential = ""
                     } catch let error as CocoaError where error.code == .userCancelled {
                         return
@@ -456,13 +527,15 @@ struct ImportBackupView: View {
         AegisInput(title: credentialTitle, icon: "lock") {
             SecureField(credentialTitle, text: $credential).textContentType(.password).accessibilityIdentifier("backupCredential")
         }.disabled(session.isBusy || loadingFile)
-        if !session.isBusy && (selection == nil || credential.isEmpty) {
+        if !session.isBusy, selection == nil || credential.isEmpty {
             Label(L10n.text(selection == nil ? "backup.chooseHint" : "backup.credentialHint"), systemImage: "info.circle")
                 .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
         }
         Button(action: verify) {
             HStack {
-                if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
+                if session.isBusy {
+                    ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                }
                 Text(L10n.text(session.isBusy ? "backup.verifying" : "backup.verifyAction"))
             }
         }.buttonStyle(PrimaryButtonStyle()).disabled(selection == nil || credential.isEmpty || session.isBusy)
@@ -497,11 +570,15 @@ struct ImportBackupView: View {
             }
             Button {
                 Task {
-                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs) { dismiss() }
+                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs) {
+                        dismiss()
+                    }
                 }
             } label: {
                 HStack {
-                    if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
+                    if session.isBusy {
+                        ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                    }
                     Text(L10n.text(session.isBusy ? "backup.importing" : "backup.confirmRestore"))
                 }
             }.buttonStyle(PrimaryButtonStyle()).disabled(session.isBusy || loadingFile || !preview.selection.canImport(selectedItemIDs))
@@ -527,9 +604,13 @@ struct ImportBackupView: View {
     }
 
     /// Reads the picked file once; validation and commit later use these exact bytes, never the path again.
-    nonisolated private static func load(_ url: URL) throws -> BackupContainer {
+    private nonisolated static func load(_ url: URL) throws -> BackupContainer {
         let accessed = url.startAccessingSecurityScopedResource()
-        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        defer {
+            if accessed {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size <= BackupLimits.maxFileLength else { throw BackupError.limitExceeded }
         let data = try Data(contentsOf: url)

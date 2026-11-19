@@ -17,11 +17,12 @@ final class StoredObject {
 
 @ModelActor
 public actor VaultStore {
-    private func encode<T: Encodable>(_ value: T) throws -> Data {
+    private func encode(_ value: some Encodable) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         return try encoder.encode(value)
     }
+
     public static func make(directory: URL? = nil, inMemory: Bool = false) throws -> VaultStore {
         let schema = Schema([StoredObject.self])
         let config: ModelConfiguration
@@ -33,7 +34,7 @@ public actor VaultStore {
         } else {
             config = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
         }
-        return VaultStore(modelContainer: try ModelContainer(for: schema, configurations: config))
+        return try VaultStore(modelContainer: ModelContainer(for: schema, configurations: config))
     }
 
     private func object(_ name: String) throws -> StoredObject? {
@@ -52,7 +53,7 @@ public actor VaultStore {
             guard existing == header else { throw VaultError.differentVault }
             return
         }
-        modelContext.insert(StoredObject(name: "header", kind: "header", payload: try encode(header), pending: true))
+        try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header), pending: true))
         try modelContext.save()
     }
 
@@ -66,7 +67,7 @@ public actor VaultStore {
         guard let header = try header(), revision.vaultID == header.vaultID else { throw VaultError.differentVault }
         let name = revision.id.uuidString
         guard try object(name) == nil else { return }
-        modelContext.insert(StoredObject(name: name, kind: "revision", payload: try encode(revision), pending: true))
+        try modelContext.insert(StoredObject(name: name, kind: "revision", payload: encode(revision), pending: true))
         try modelContext.save()
     }
 
@@ -79,7 +80,7 @@ public actor VaultStore {
     /// Throws `VaultError.locked` when no vault exists yet.
     public func snapshot() throws -> VaultSnapshot {
         guard let header = try header() else { throw VaultError.locked }
-        return VaultSnapshot(header: header, revisions: try revisions())
+        return try VaultSnapshot(header: header, revisions: revisions())
     }
 
     /// Merges authenticated backup contents in one transaction (Docs/BACKUP_FORMAT_DESIGN_V1.md §10.3).
@@ -105,25 +106,32 @@ public actor VaultStore {
 
     /// `beforeSave` lets tests fail the commit after rows are inserted; production passes a no-op.
     func restore(header: VaultHeader, revisions incoming: [EncryptedRevision],
-                 beforeSave: @Sendable () throws -> Void) throws -> RestoreResult {
+                 beforeSave: @Sendable () throws -> Void) throws -> RestoreResult
+    {
         try header.validate()
         guard incoming.allSatisfy({ $0.vaultID == header.vaultID && $0.formatVersion == 1 }) else { throw VaultError.damagedData }
         let localHeader = try self.header()
-        if let localHeader, localHeader != header { throw VaultError.differentVault }
-        let existing = Dictionary(uniqueKeysWithValues: try revisions().map { ($0.id, $0) })
+        if let localHeader, localHeader != header {
+            throw VaultError.differentVault
+        }
+        let existing = try Dictionary(uniqueKeysWithValues: revisions().map { ($0.id, $0) })
         var additions: [UUID: EncryptedRevision] = [:]
         for revision in incoming {
-            if let previous = existing[revision.id] ?? additions[revision.id], previous != revision { throw VaultError.damagedData }
-            if existing[revision.id] == nil { additions[revision.id] = revision }
+            if let previous = existing[revision.id] ?? additions[revision.id], previous != revision {
+                throw VaultError.damagedData
+            }
+            if existing[revision.id] == nil {
+                additions[revision.id] = revision
+            }
         }
         // Everything is validated before the store is mutated.
         do {
             if localHeader == nil {
-                modelContext.insert(StoredObject(name: "header", kind: "header", payload: try encode(header), pending: true))
+                try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header), pending: true))
             }
             for revision in additions.values {
-                modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
-                                                payload: try encode(revision), pending: true))
+                try modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
+                                                     payload: encode(revision), pending: true))
             }
             try beforeSave()
             try modelContext.save()

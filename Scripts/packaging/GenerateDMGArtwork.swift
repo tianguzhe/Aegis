@@ -19,9 +19,11 @@ struct GenerateDMGArtwork {
 
         let representations = [1, 2].map { render(scale: $0, version: arguments[2], brand: brand) }
         let image = NSImage(size: canvas)
-        for representation in representations { image.addRepresentation(representation) }
+        for representation in representations {
+            image.addRepresentation(representation)
+        }
         guard let tiff = image.tiffRepresentation,
-            let preview = representations[1].representation(using: .png, properties: [:])
+              let preview = representations[1].representation(using: .png, properties: [:])
         else { throw failure("Could not encode the DMG artwork.") }
         try tiff.write(to: output.appendingPathComponent("background.tiff"), options: .atomic)
         try preview.write(to: output.appendingPathComponent("background@2x.png"), options: .atomic)
@@ -134,7 +136,8 @@ struct GenerateDMGArtwork {
     }
 
     private static func text(_ string: String, in rect: NSRect, font: NSFont, color: NSColor,
-                             alignment: NSTextAlignment = .left) {
+                             alignment: NSTextAlignment = .left)
+    {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
         paragraph.lineBreakMode = .byTruncatingTail

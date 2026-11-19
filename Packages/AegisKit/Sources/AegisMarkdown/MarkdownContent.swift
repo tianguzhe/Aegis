@@ -3,9 +3,9 @@ import Foundation
 import Markdown
 import SwiftUI
 #if os(macOS)
-import AppKit
+    import AppKit
 #else
-import UIKit
+    import UIKit
 #endif
 
 public struct MarkdownListEntry: Sendable, Equatable {
@@ -76,13 +76,21 @@ public enum MarkdownParser {
         default:
             var result = markup.children.reduce(AttributedString()) { $0 + inline($1) }
             if markup is Strong {
-                for run in result.runs { result[run.range].inlinePresentationIntent = (run.inlinePresentationIntent ?? []).union(.stronglyEmphasized) }
+                for run in result.runs {
+                    result[run.range].inlinePresentationIntent = (run.inlinePresentationIntent ?? []).union(.stronglyEmphasized)
+                }
             }
             if markup is Emphasis {
-                for run in result.runs { result[run.range].inlinePresentationIntent = (run.inlinePresentationIntent ?? []).union(.emphasized) }
+                for run in result.runs {
+                    result[run.range].inlinePresentationIntent = (run.inlinePresentationIntent ?? []).union(.emphasized)
+                }
             }
-            if markup is Strikethrough { result.strikethroughStyle = .single }
-            if let link = markup as? Markdown.Link, let url = safeLink(link.destination) { result.link = url }
+            if markup is Strikethrough {
+                result.strikethroughStyle = .single
+            }
+            if let link = markup as? Markdown.Link, let url = safeLink(link.destination) {
+                result.link = url
+            }
             return result
         }
     }
@@ -97,7 +105,9 @@ public struct MarkdownContent: View {
     @ScaledMetric(relativeTo: .callout) private var codeSize = 14
     @ScaledMetric(relativeTo: .caption) private var captionSize = 12
     @ScaledMetric(relativeTo: .body) private var taskSize = 20
-    public init(_ source: String, accent: Color = .accentColor) { self.source = source; self.accent = accent }
+    public init(_ source: String, accent: Color = .accentColor) {
+        self.source = source; self.accent = accent
+    }
 
     public var body: some View {
         blockStack(blocks)
@@ -108,7 +118,7 @@ public struct MarkdownContent: View {
                 MarkdownParser.safeLink(url.absoluteString) == nil ? .discarded : .systemAction
             })
             .task(id: source) {
-                let source = self.source
+                let source = source
                 let parsed = await Task.detached(priority: .userInitiated) { MarkdownParser.parse(source) }.value
                 guard !Task.isCancelled else { return }
                 blocks = parsed
@@ -134,9 +144,9 @@ public struct MarkdownContent: View {
 
     private var bodyCapHeight: CGFloat {
         #if os(macOS)
-        NSFont.systemFont(ofSize: bodySize).capHeight
+            NSFont.systemFont(ofSize: bodySize).capHeight
         #else
-        UIFont.systemFont(ofSize: bodySize).capHeight
+            UIFont.systemFont(ofSize: bodySize).capHeight
         #endif
     }
 
@@ -162,13 +172,13 @@ public struct MarkdownContent: View {
 
     private func blockView(_ block: MarkdownBlock) -> AnyView {
         switch block {
-        case .paragraph(let text):
+        case let .paragraph(text):
             return AnyView(SwiftUI.Text(text).font(.system(size: bodySize)).lineSpacing(7).fixedSize(horizontal: false, vertical: true))
-        case .heading(let level, let text):
+        case let .heading(level, text):
             let size = level == 1 ? headingSize : level == 2 ? headingSize * 0.79 : level == 3 ? headingSize * 0.68 : bodySize
             return AnyView(SwiftUI.Text(text).font(.system(size: size, weight: .semibold))
                 .lineSpacing(4).fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader))
-        case .code(let code, let language):
+        case let .code(code, language):
             return AnyView(VStack(alignment: .leading, spacing: 12) {
                 if let language, !language.isEmpty {
                     SwiftUI.Text(language.uppercased()).font(.system(size: captionSize, weight: .medium, design: .monospaced))
@@ -182,12 +192,12 @@ public struct MarkdownContent: View {
             }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
                 .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(.primary.opacity(0.04))))
-        case .quote(let children):
+        case let .quote(children):
             return AnyView(blockStack(children).foregroundStyle(.secondary).padding(.vertical, 12).padding(.horizontal, 18)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(accent.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 2).fill(accent.opacity(0.6)).frame(width: 4) })
-        case .list(let entries):
+        case let .list(entries):
             return AnyView(VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -196,7 +206,7 @@ public struct MarkdownContent: View {
                     }.accessibilityElement(children: .combine)
                 }
             })
-        case .table(let header, let rows):
+        case let .table(header, rows):
             return AnyView(ScrollView(.horizontal) {
                 Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
                     GridRow {

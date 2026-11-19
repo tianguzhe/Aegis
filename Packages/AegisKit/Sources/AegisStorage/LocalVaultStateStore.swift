@@ -11,14 +11,17 @@ public final class LocalVaultStateStore {
     private var vaultID: UUID?
     public private(set) var state = LocalVaultState()
 
-    public init(directory: URL?) { self.directory = directory }
+    public init(directory: URL?) {
+        self.directory = directory
+    }
 
     public func unlock(key: Data, vaultID: UUID) throws {
         let symmetricKey = SymmetricKey(data: key)
-        let ciphertext: Data?
-        if let file = file(for: vaultID), FileManager.default.fileExists(atPath: file.path) {
-            ciphertext = try Data(contentsOf: file)
-        } else { ciphertext = memory[vaultID] }
+        let ciphertext: Data? = if let file = file(for: vaultID), FileManager.default.fileExists(atPath: file.path) {
+            try Data(contentsOf: file)
+        } else {
+            memory[vaultID]
+        }
         let opened = try ciphertext.map { try LocalVaultStateCipher.open($0, key: symmetricKey, vaultID: vaultID) } ?? LocalVaultState()
         self.key = symmetricKey; self.vaultID = vaultID; state = opened
     }
@@ -28,14 +31,21 @@ public final class LocalVaultStateStore {
         let ciphertext = try LocalVaultStateCipher.seal(updated, key: key, vaultID: vaultID)
         if let file = file(for: vaultID) {
             #if os(iOS)
-            try ciphertext.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                try ciphertext.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             #else
-            try ciphertext.write(to: file, options: .atomic)
+                try ciphertext.write(to: file, options: .atomic)
             #endif
-        } else { memory[vaultID] = ciphertext }
+        } else {
+            memory[vaultID] = ciphertext
+        }
         state = updated
     }
 
-    public func lock() { key = nil; vaultID = nil; state = LocalVaultState() }
-    private func file(for id: UUID) -> URL? { directory?.appendingPathComponent("local-state-\(id.uuidString).aegis") }
+    public func lock() {
+        key = nil; vaultID = nil; state = LocalVaultState()
+    }
+
+    private func file(for id: UUID) -> URL? {
+        directory?.appendingPathComponent("local-state-\(id.uuidString).aegis")
+    }
 }

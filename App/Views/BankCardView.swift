@@ -8,17 +8,16 @@ struct CardPalette {
     let foil: Color
 
     init(brand: CardBrand?, type: PaymentCardType?) {
-        let colors: (UInt32, UInt32, UInt32, UInt32)
-        switch (brand, type) {
-        case (.unionPay, .debit): colors = (0x294D7B, 0x152440, 0xF2F6FF, 0x7FB8F6)
-        case (.unionPay, .credit): colors = (0x303B50, 0x171D2A, 0xF2F4FA, 0xA9BAD6)
-        case (.visa, .debit): colors = (0x24528D, 0x112A51, 0xF0F5FF, 0x6BB5FF)
-        case (.visa, .credit): colors = (0x2C3D68, 0x121B30, 0xF2F4FF, 0x9DB8F5)
-        case (.mastercard, .debit): colors = (0x514747, 0x2B282D, 0xF7F3F0, 0xDFC2A3)
-        case (.mastercard, .credit): colors = (0x34343A, 0x171A22, 0xF5F4F1, 0xDCC7A8)
-        case (.americanExpress, .debit): colors = (0x738092, 0x3B475A, 0xFFFFFF, 0xD4E0F1)
-        case (.americanExpress, .credit): colors = (0x38414F, 0x151B24, 0xF2F5FA, 0xA9B7CD)
-        default: colors = (0x35424D, 0x18242D, 0xF2F5F7, 0xB1C3CE)
+        let colors: (UInt32, UInt32, UInt32, UInt32) = switch (brand, type) {
+        case (.unionPay, .debit): (0x294D7B, 0x152440, 0xF2F6FF, 0x7FB8F6)
+        case (.unionPay, .credit): (0x303B50, 0x171D2A, 0xF2F4FA, 0xA9BAD6)
+        case (.visa, .debit): (0x24528D, 0x112A51, 0xF0F5FF, 0x6BB5FF)
+        case (.visa, .credit): (0x2C3D68, 0x121B30, 0xF2F4FF, 0x9DB8F5)
+        case (.mastercard, .debit): (0x514747, 0x2B282D, 0xF7F3F0, 0xDFC2A3)
+        case (.mastercard, .credit): (0x34343A, 0x171A22, 0xF5F4F1, 0xDCC7A8)
+        case (.americanExpress, .debit): (0x738092, 0x3B475A, 0xFFFFFF, 0xD4E0F1)
+        case (.americanExpress, .credit): (0x38414F, 0x151B24, 0xF2F5FA, 0xA9B7CD)
+        default: (0x35424D, 0x18242D, 0xF2F5F7, 0xB1C3CE)
         }
         top = Self.color(colors.0); bottom = Self.color(colors.1)
         ink = Self.color(colors.2); foil = Self.color(colors.3)
@@ -38,7 +37,9 @@ struct BankCardView: View {
     let item: VaultItem
     static let aspectRatio: CGFloat = 85.60 / 53.98
     private let canvasWidth: CGFloat = 340
-    private var palette: CardPalette { CardPalette(brand: item.cardBrand, type: item.cardType) }
+    private var palette: CardPalette {
+        CardPalette(brand: item.cardBrand, type: item.cardType)
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -62,7 +63,7 @@ struct BankCardView: View {
         .privacySensitive()
     }
 
-    // The card is a proportional graphic; scalable, selectable values remain in the detail fields.
+    /// The card is a proportional graphic; scalable, selectable values remain in the detail fields.
     private var face: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 14) {
@@ -83,7 +84,7 @@ struct BankCardView: View {
             Spacer(minLength: 8)
             HStack(spacing: 11) {
                 CardChip().fill(LinearGradient(colors: [palette.foil.opacity(0.8), palette.foil.opacity(0.4)],
-                                              startPoint: .topLeading, endPoint: .bottomTrailing))
+                                               startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 28, height: 21)
                     .overlay { CardChipLines().stroke(palette.top.opacity(0.65), lineWidth: 0.7) }
                 Image(systemName: "wave.3.right").font(.system(size: 15, weight: .light)).opacity(0.55)
@@ -113,7 +114,10 @@ struct BankCardView: View {
 struct CardThumbnail: View {
     let item: VaultItem
     var size: CGFloat
-    private var palette: CardPalette { CardPalette(brand: item.cardBrand, type: item.cardType) }
+    private var palette: CardPalette {
+        CardPalette(brand: item.cardBrand, type: item.cardType)
+    }
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.21).fill(palette.gradient)
@@ -197,7 +201,8 @@ struct CardAppearancePicker: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.text("card.network")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8),
-                                         count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 8) {
+                                         count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 8)
+                {
                     ForEach(CardBrand.allCases) { brand in brandButton(brand) }
                 }
             }
@@ -268,7 +273,7 @@ private struct CardArtwork: View {
                 palette.gradient
                 LinearGradient(colors: [.white.opacity(0.07), .clear, .black.opacity(0.13)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 CardArc(fill: true).fill(LinearGradient(colors: [palette.foil.opacity(0.05), palette.foil.opacity(0.29)],
-                                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+                                                        startPoint: .topLeading, endPoint: .bottomTrailing))
                 CardArc().stroke(LinearGradient(colors: [palette.foil.opacity(0.05), palette.foil.opacity(0.8), .white.opacity(0.2)],
                                                 startPoint: .leading, endPoint: .trailing), lineWidth: 0.55)
                 watermark
@@ -316,7 +321,9 @@ struct CardBrandMark: View {
                     }
                     VStack(spacing: 0) {
                         Text(L10n.text("card.brand.unionPay")).font(.system(size: compact ? 9 : 13, weight: .heavy)).italic()
-                        if !compact { Text("UnionPay").font(.system(size: 10, weight: .bold)).italic() }
+                        if !compact {
+                            Text("UnionPay").font(.system(size: 10, weight: .bold)).italic()
+                        }
                     }.foregroundStyle(.white).minimumScaleFactor(0.6).lineLimit(1).padding(.horizontal, 3)
                 }.frame(maxWidth: compact ? 36 : 70, maxHeight: compact ? 18 : 36)
             case .visa:
@@ -328,7 +335,9 @@ struct CardBrandMark: View {
                         Circle().fill(CardPalette.color(0xEB302C))
                         Circle().fill(CardPalette.color(0xF5A21A)).opacity(0.94)
                     }.frame(width: compact ? 31 : 47, height: compact ? 19 : 28)
-                    if !compact { Text("mastercard").font(.system(size: 8, weight: .medium)).foregroundStyle(ink) }
+                    if !compact {
+                        Text("mastercard").font(.system(size: 8, weight: .medium)).foregroundStyle(ink)
+                    }
                 }
             case .americanExpress:
                 if compact {
@@ -348,7 +357,9 @@ struct CardBrandMark: View {
 }
 
 private struct CardChip: Shape {
-    func path(in rect: CGRect) -> Path { Path(roundedRect: rect, cornerRadius: rect.height * 0.21) }
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: rect, cornerRadius: rect.height * 0.21)
+    }
 }
 
 private struct CardChipLines: Shape {
@@ -409,12 +420,12 @@ private struct CenturionMedallion: Shape {
         p.move(to: v(0.39, 0.32)); p.addCurve(to: v(0.59, 0.27), control1: v(0.44, 0.24), control2: v(0.55, 0.23))
         p.move(to: v(0.56, 0.5)); p.addLine(to: v(0.61, 0.5))
         // Fine engraved rays and helmet ribs echo the relief on a metal card.
-        for i in 0..<23 {
+        for i in 0 ..< 23 {
             let angle = Double(i) / 22 * Double.pi * 1.24 + Double.pi * 0.82
             p.move(to: v(0.5 + CGFloat(cos(angle)) * 0.35, 0.5 + CGFloat(sin(angle)) * 0.4))
             p.addLine(to: v(0.5 + CGFloat(cos(angle)) * 0.39, 0.5 + CGFloat(sin(angle)) * 0.445))
         }
-        for i in 0..<7 {
+        for i in 0 ..< 7 {
             let y = CGFloat(i) * 0.014
             p.move(to: v(0.34, 0.38 + y))
             p.addQuadCurve(to: v(0.68, 0.34 + y), control: v(0.52, 0.23 + y))
@@ -422,8 +433,8 @@ private struct CenturionMedallion: Shape {
         p.move(to: v(0.29, 0.46)); p.addLine(to: v(0.24, 0.74)); p.addLine(to: v(0.35, 0.68))
         p.move(to: v(0.32, 0.49)); p.addLine(to: v(0.29, 0.7))
         p.addEllipse(in: CGRect(x: rect.minX + rect.width * 0.39, y: rect.minY + rect.height * 0.49,
-                               width: rect.width * 0.055, height: rect.height * 0.095))
-        for i in 0..<5 {
+                                width: rect.width * 0.055, height: rect.height * 0.095))
+        for i in 0 ..< 5 {
             let y = CGFloat(i) * 0.019
             p.move(to: v(0.47, 0.59 + y)); p.addLine(to: v(0.57, 0.67 + y))
         }

@@ -2,9 +2,9 @@ import AegisCore
 import AuthenticationServices
 import SwiftUI
 #if os(iOS)
-import UIKit
+    import UIKit
 #else
-import AppKit
+    import AppKit
 #endif
 
 final class CredentialProviderViewController: ASCredentialProviderViewController {
@@ -12,7 +12,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
         presentVault(services: serviceIdentifiers)
     }
 
-    override func provideCredentialWithoutUserInteraction(for credentialRequest: any ASCredentialRequest) {
+    override func provideCredentialWithoutUserInteraction(for _: any ASCredentialRequest) {
         extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userInteractionRequired.rawValue))
     }
 
@@ -20,7 +20,9 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
         presentVault(services: [credentialRequest.credentialIdentity.serviceIdentifier])
     }
 
-    override func prepareInterfaceForExtensionConfiguration() { presentVault(services: []) }
+    override func prepareInterfaceForExtensionConfiguration() {
+        presentVault(services: [])
+    }
 
     private func presentVault(services: [ASCredentialServiceIdentifier]) {
         let content = AutoFillView(services: services.map(\.identifier), complete: { [weak self] item in
@@ -29,16 +31,18 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
             self?.extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
         })
         #if os(iOS)
-        for child in children { child.willMove(toParent: nil); child.view.removeFromSuperview(); child.removeFromParent() }
-        let host = UIHostingController(rootView: content)
-        addChild(host); view.addSubview(host.view); host.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
-        host.didMove(toParent: self)
+            for child in children {
+                child.willMove(toParent: nil); child.view.removeFromSuperview(); child.removeFromParent()
+            }
+            let host = UIHostingController(rootView: content)
+            addChild(host); view.addSubview(host.view); host.view.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
+            host.didMove(toParent: self)
         #else
-        let host = NSHostingController(rootView: content)
-        children.forEach { $0.removeFromParent() }
-        addChild(host); view = host.view
-        preferredContentSize = NSSize(width: 420, height: 560)
+            let host = NSHostingController(rootView: content)
+            children.forEach { $0.removeFromParent() }
+            addChild(host); view = host.view
+            preferredContentSize = NSSize(width: 420, height: 560)
         #endif
     }
 }
@@ -98,26 +102,49 @@ private struct AutoFillView: View {
                             SecureField(L10n.text("welcome.master"), text: $password).textContentType(.password)
                         }.disabled(busy)
                         Button { unlock() } label: {
-                            HStack { if busy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(busy ? "action.unlocking" : "action.unlock")) }
+                            HStack {
+                                if busy {
+                                    ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                                }; Text(L10n.text(busy ? "action.unlocking" : "action.unlock"))
+                            }
                         }.buttonStyle(PrimaryButtonStyle()).disabled(password.isEmpty || busy)
                     }.padding(28)
                 }
             }
         }.background(AegisTheme.background).tint(AegisTheme.teal)
-        .alert(L10n.text("app.error"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button(L10n.text("action.done")) { error = nil }
-        } message: { Text(error ?? "") }
-        .confirmationDialog(L10n.text("autofill.confirm"), isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } }), titleVisibility: .visible) {
-            Button(L10n.text("autofill.confirm")) { if let selected { complete(selected) }; clear() }
-            Button(L10n.text("action.cancel"), role: .cancel) { selected = nil }
-        } message: {
-            Text([selected?.title, selected?.username, selected?.website].compactMap { $0 }.joined(separator: "\n"))
-        }
-        .onChange(of: scenePhase) { _, phase in if phase == .background { clear() } }
-        .onDisappear { clear() }.privacySensitive()
+            .alert(L10n.text("app.error"), isPresented: Binding(get: { error != nil }, set: {
+                if !$0 {
+                    error = nil
+                }
+            })) {
+                Button(L10n.text("action.done")) { error = nil }
+            } message: { Text(error ?? "") }
+            .confirmationDialog(L10n.text("autofill.confirm"), isPresented: Binding(get: { selected != nil }, set: {
+                if !$0 {
+                    selected = nil
+                }
+            }), titleVisibility: .visible) {
+                Button(L10n.text("autofill.confirm")) {
+                    if let selected {
+                        complete(selected)
+                    }; clear()
+                }
+                Button(L10n.text("action.cancel"), role: .cancel) { selected = nil }
+            } message: {
+                Text([selected?.title, selected?.username, selected?.website].compactMap(\.self).joined(separator: "\n"))
+            }
+            .onChange(of: scenePhase) {
+                _, phase in if phase == .background {
+                    clear()
+                }
+            }
+            .onDisappear { clear() }.privacySensitive()
     }
 
-    private func clear() { generation = UUID(); entries = []; password = ""; unlocked = false; selected = nil }
+    private func clear() {
+        generation = UUID(); entries = []; password = ""; unlocked = false; selected = nil
+    }
+
     private func unlock() {
         guard !busy, !password.isEmpty else { return }
         let submitted = password, token = generation
@@ -128,7 +155,8 @@ private struct AutoFillView: View {
             do {
                 guard let group = Bundle.main.object(forInfoDictionaryKey: "AegisAppGroup") as? String, !group.isEmpty,
                       let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
-                      let data = try? Data(contentsOf: directory.appendingPathComponent("autofill.aegis")), data.count <= 32 * 1024 * 1024 else {
+                      let data = try? Data(contentsOf: directory.appendingPathComponent("autofill.aegis")), data.count <= 32 * 1024 * 1024
+                else {
                     throw NSError(domain: "Aegis", code: 1, userInfo: [NSLocalizedDescriptionKey: L10n.text("autofill.unavailable")])
                 }
                 let backup = try JSONDecoder().decode(VaultBackup.self, from: data)
@@ -145,6 +173,7 @@ private struct AutoFillView: View {
             } catch { await crypto.lock(); self.error = error.localizedDescription }
         }
     }
+
     private func matches(_ website: String) -> Bool {
         func host(_ value: String) -> String? {
             URL(string: value.contains("://") ? value : "https://" + value)?.host?.lowercased()

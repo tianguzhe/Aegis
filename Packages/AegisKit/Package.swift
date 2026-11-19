@@ -9,7 +9,7 @@ let package = Package(
         .library(name: "AegisCore", targets: ["AegisCore"]),
         .library(name: "AegisStorage", targets: ["AegisStorage"]),
         .library(name: "AegisSync", targets: ["AegisSync"]),
-        .library(name: "AegisMarkdown", targets: ["AegisMarkdown"])
+        .library(name: "AegisMarkdown", targets: ["AegisMarkdown"]),
     ],
     dependencies: [.package(url: "https://github.com/swiftlang/swift-markdown.git", exact: "0.9.0")],
     targets: [
@@ -19,7 +19,7 @@ let package = Package(
         .target(name: "AegisStorage", dependencies: ["AegisCore"]),
         .target(name: "AegisSync", dependencies: ["AegisCore", "AegisStorage"]),
         .target(name: "AegisMarkdown", dependencies: ["AegisCore", .product(name: "Markdown", package: "swift-markdown")]),
-        .testTarget(name: "AegisCoreTests", dependencies: ["AegisCore", "AegisStorage", "AegisSync", "AegisMarkdown", "CArgon2"], exclude: ["Fixtures"])
+        .testTarget(name: "AegisCoreTests", dependencies: ["AegisCore", "AegisStorage", "AegisSync", "AegisMarkdown", "CArgon2"], exclude: ["Fixtures"]),
     ],
     swiftLanguageModes: [.v6]
 )

@@ -19,7 +19,7 @@ import Testing
     }
 
     @Test func proofBindsChallengeDirectionAndReceivedBytes() throws {
-        let challenge = Data(0..<32), other = Data(repeating: 1, count: 32)
+        let challenge = Data(0 ..< 32), other = Data(repeating: 1, count: 32)
         let request = try LocalTransferProtocol.proof(code: Self.code, challenge: challenge)
         // Independent Python hashlib/hmac vector, also used by future non-Swift implementations.
         #expect(request.map { String(format: "%02x", $0) }.joined() == "728885ed911a3f4246f0730afb778b8c4da3a2285030dd85f1cd606136be06fb")
@@ -33,8 +33,8 @@ import Testing
     }
 
     @Test func frameLengthsAreBoundedBeforeReadingTheBody() throws {
-        #expect(try LocalTransferProtocol.lengthBytes(65_536) == Data([0, 1, 0, 0]))
-        for count in [1, 65_536, BackupLimits.maxFileLength] {
+        #expect(try LocalTransferProtocol.lengthBytes(65536) == Data([0, 1, 0, 0]))
+        for count in [1, 65536, BackupLimits.maxFileLength] {
             #expect(try LocalTransferProtocol.fileLength(LocalTransferProtocol.lengthBytes(count)) == count)
         }
         for invalid in [Data(), Data([0, 0, 0]), Data([0, 0, 0, 0]), Data(repeating: 255, count: 4)] {
@@ -51,7 +51,7 @@ import Testing
         let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.deviceKey(),
                                               header: original.header, revisions: [revision])
         let file = try BackupCryptor.seal(payload, backupPassword: Self.code, includeVaultSlot: true)
-        let opened = try BackupCryptor.open(try BackupContainer.parse(file), credential: Self.code)
+        let opened = try BackupCryptor.open(BackupContainer.parse(file), credential: Self.code)
         _ = try await BackupValidator.validate(opened.payload)
         #expect(try await store.header() == nil)
         #expect(try await store.restoreNewVault(header: opened.payload.header, revisions: opened.payload.revisions).createdHeader)
@@ -68,7 +68,7 @@ import Testing
         }
         #expect(try await store.revisions() == [revision])
         #expect(throws: BackupError.wrongCredential) {
-            try BackupCryptor.open(try BackupContainer.parse(file), credential: String(repeating: "F", count: 32))
+            try BackupCryptor.open(BackupContainer.parse(file), credential: String(repeating: "F", count: 32))
         }
     }
 
@@ -86,31 +86,35 @@ import Testing
         try sender.offer(file, code: code)
         receiver.search()
         let discoveryDeadline = Date().addingTimeInterval(15)
-        while receiver.peers.first(where: { $0.name == sender.offerName }) == nil && Date() < discoveryDeadline {
+        while receiver.peers.first(where: { $0.name == sender.offerName }) == nil, Date() < discoveryDeadline {
             try await Task.sleep(for: .milliseconds(100))
         }
         let firstPeer = try #require(receiver.peers.first { $0.name == sender.offerName })
         try receiver.receive(from: firstPeer, code: code == Self.code ? String(repeating: "F", count: 32) : Self.code)
         let rejectionDeadline = Date().addingTimeInterval(5)
-        while receiver.state != .failed && Date() < rejectionDeadline { try await Task.sleep(for: .milliseconds(100)) }
+        while receiver.state != .failed, Date() < rejectionDeadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
         #expect(receiver.state == .failed)
         #expect(receiver.receivedData == nil)
         #expect(sender.state == .offering)
         // A failed pairing releases the connection; the actual new device can still join.
         receiver.search()
         let retryDeadline = Date().addingTimeInterval(10)
-        while receiver.peers.first(where: { $0.name == sender.offerName }) == nil && Date() < retryDeadline {
+        while receiver.peers.first(where: { $0.name == sender.offerName }) == nil, Date() < retryDeadline {
             try await Task.sleep(for: .milliseconds(100))
         }
         let peer = try #require(receiver.peers.first { $0.name == sender.offerName })
         try receiver.receive(from: peer, code: code)
         let transferDeadline = Date().addingTimeInterval(10)
-        while receiver.state != .received && receiver.state != .failed && Date() < transferDeadline {
+        while receiver.state != .received, receiver.state != .failed, Date() < transferDeadline {
             try await Task.sleep(for: .milliseconds(100))
         }
         #expect(receiver.receivedData == file)
         let receiptDeadline = Date().addingTimeInterval(5)
-        while sender.state != .sent && Date() < receiptDeadline { try await Task.sleep(for: .milliseconds(100)) }
+        while sender.state != .sent, Date() < receiptDeadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
         #expect(sender.state == .sent)
         #expect(sender.pairingCode.isEmpty)
         receiver.stop()

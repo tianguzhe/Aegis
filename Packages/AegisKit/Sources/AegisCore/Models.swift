@@ -22,13 +22,13 @@ public enum VaultError: Error, LocalizedError, Sendable {
 }
 
 public struct KDFParameters: Codable, Equatable, Sendable {
-    public var memoryKiB: UInt32 = 65_536
+    public var memoryKiB: UInt32 = 65536
     public var iterations: UInt32 = 3
     public var parallelism: UInt32 = 1
     public init() {}
     public func validate() throws {
-        guard (65_536...262_144).contains(memoryKiB), (3...10).contains(iterations),
-              (1...4).contains(parallelism) else { throw VaultError.invalidParameters }
+        guard (65536 ... 262_144).contains(memoryKiB), (3 ... 10).contains(iterations),
+              (1 ... 4).contains(parallelism) else { throw VaultError.invalidParameters }
     }
 }
 
@@ -41,9 +41,10 @@ public struct VaultHeader: Codable, Equatable, Sendable {
     public let recoveryWrappedKey: Data
 
     public init(vaultID: UUID, salt: Data, kdf: KDFParameters, wrappedKey: Data, recoveryWrappedKey: Data) {
-        self.formatVersion = 1; self.vaultID = vaultID; self.salt = salt; self.kdf = kdf
+        formatVersion = 1; self.vaultID = vaultID; self.salt = salt; self.kdf = kdf
         self.wrappedKey = wrappedKey; self.recoveryWrappedKey = recoveryWrappedKey
     }
+
     public func validate() throws {
         guard formatVersion == 1 else { throw VaultError.unsupportedFormat }
         try kdf.validate()
@@ -55,10 +56,14 @@ public struct VaultHeader: Codable, Equatable, Sendable {
 
 public enum ItemKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case login, card, note
-    public var id: String { rawValue }
+    public var id: String {
+        rawValue
+    }
+
     public var title: String {
         switch self { case .login: L10n.text("kind.login"); case .card: L10n.text("kind.card"); case .note: L10n.text("kind.note") }
     }
+
     public var symbol: String {
         switch self { case .login: "key.horizontal"; case .card: "creditcard"; case .note: "note.text" }
     }
@@ -85,7 +90,8 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var modifiedAt: Date
 
     public init(id: UUID = UUID(), kind: ItemKind = .login, title: String = "", username: String = "",
-                password: String = "", website: String = "", notes: String = "", isFavorite: Bool = false) {
+                password: String = "", website: String = "", notes: String = "", isFavorite: Bool = false)
+    {
         self.id = id; self.kind = kind; self.title = title; self.username = username; self.password = password
         self.website = website; self.notes = notes; self.isFavorite = isFavorite
         cardholder = ""; cardNumber = ""; expiry = ""; securityCode = ""; deletedAt = nil; modifiedAt = Date()
@@ -96,7 +102,7 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
 
 public enum TrashPolicy {
     public static let retentionDays = 7
-    public static let retentionInterval: TimeInterval = TimeInterval(retentionDays * 24 * 60 * 60)
+    public static let retentionInterval: TimeInterval = .init(retentionDays * 24 * 60 * 60)
 
     public static func expirationDate(for item: VaultItem) -> Date? {
         item.deletedAt?.addingTimeInterval(retentionInterval)
@@ -138,12 +144,15 @@ public struct EncryptedRevision: Codable, Equatable, Identifiable, Sendable {
 
     public static func aad(vaultID: UUID, itemID: UUID, id: UUID, parents: [UUID]) -> Data {
         Data((["aegis", "revision", "1", vaultID.uuidString, itemID.uuidString, id.uuidString] +
-              parents.map(\.uuidString).sorted()).joined(separator: "|").utf8)
+                parents.map(\.uuidString).sorted()).joined(separator: "|").utf8)
     }
 }
 
 public struct VaultEntry: Identifiable, Sendable {
-    public var id: UUID { revision.id }
+    public var id: UUID {
+        revision.id
+    }
+
     public let item: VaultItem
     public let revision: EncryptedRevision
     public let isConflict: Bool
@@ -168,6 +177,7 @@ public struct VaultBackup: Codable, Sendable {
     public init(header: VaultHeader, revisions: [EncryptedRevision]) {
         format = "aegis-encrypted-backup"; version = 1; self.header = header; self.revisions = revisions
     }
+
     public func validate() throws {
         guard format == "aegis-encrypted-backup", version == 1 else { throw VaultError.unsupportedFormat }
         try header.validate()

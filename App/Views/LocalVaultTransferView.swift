@@ -20,9 +20,17 @@ struct LocalVaultTransferView: View {
     @State private var operation: Task<Void, Never>?
     @State private var operationID = UUID()
 
-    private var busy: Bool { preparing || session.isBusy || transfer.state == .transferring }
-    private var peer: LocalVaultTransfer.Peer? { transfer.peers.first { $0.id == selectedPeer } }
-    private var validCode: Bool { (try? LocalTransferProtocol.normalizeCode(code)) != nil }
+    private var busy: Bool {
+        preparing || session.isBusy || transfer.state == .transferring
+    }
+
+    private var peer: LocalVaultTransfer.Peer? {
+        transfer.peers.first { $0.id == selectedPeer }
+    }
+
+    private var validCode: Bool {
+        (try? LocalTransferProtocol.normalizeCode(code)) != nil
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,7 +40,11 @@ struct LocalVaultTransferView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     Text(L10n.text(mode == .send ? "lan.send.description" : "lan.receive.description"))
                         .aegisFont(size: 13).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
-                    if mode == .send { sending } else { receiving }
+                    if mode == .send {
+                        sending
+                    } else {
+                        receiving
+                    }
                     if let error = transfer.error {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .aegisFont(size: 12).foregroundStyle(AegisTheme.danger).fixedSize(horizontal: false, vertical: true)
@@ -40,7 +52,11 @@ struct LocalVaultTransferView: View {
                     if transfer.state == .failed {
                         Button(L10n.text("lan.retry")) {
                             code = ""; selectedPeer = nil
-                            if mode == .receive { transfer.search() } else { transfer.stop() }
+                            if mode == .receive {
+                                transfer.search()
+                            } else {
+                                transfer.stop()
+                            }
                         }.buttonStyle(AegisButtonStyle(fullWidth: true))
                     }
                     Label(L10n.text("lan.networkHint"), systemImage: "info.circle")
@@ -53,21 +69,27 @@ struct LocalVaultTransferView: View {
             .task {
                 guard mode == .receive else { return }
                 #if DEBUG
-                if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
-                    preview = fixture; selectedItemIDs = fixture.selection.itemIDs
-                    return
-                }
+                    if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
+                        preview = fixture; selectedItemIDs = fixture.selection.itemIDs
+                        return
+                    }
                 #endif
                 transfer.search()
             }
-            .onChange(of: transfer.state) { _, state in if state == .received { validateReceived() } }
+            .onChange(of: transfer.state) {
+                _, state in if state == .received {
+                    validateReceived()
+                }
+            }
             .onChange(of: session.phase) { _, phase in
                 if (mode == .send && phase != .unlocked) || (mode == .receive && phase != .setup) {
                     cancel(); dismiss()
                 }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .background { cancel(); dismiss() }
+                if phase == .background {
+                    cancel(); dismiss()
+                }
             }
             .onDisappear { cancel() }
     }
@@ -104,7 +126,9 @@ struct LocalVaultTransferView: View {
             }
             Button(action: beginOffering) {
                 HStack {
-                    if preparing { ProgressView().controlSize(.small) }
+                    if preparing {
+                        ProgressView().controlSize(.small)
+                    }
                     Text(L10n.text(preparing ? "lan.preparing" : "lan.send.start"))
                 }
             }.buttonStyle(PrimaryButtonStyle()).disabled(busy || (needsMasterPassword && masterPassword.isEmpty))
@@ -130,11 +154,15 @@ struct LocalVaultTransferView: View {
             Button {
                 let token = operationID
                 operation = Task {
-                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs), token == operationID { dismiss() }
+                    if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs), token == operationID {
+                        dismiss()
+                    }
                 }
             } label: {
                 HStack {
-                    if session.isBusy { ProgressView().controlSize(.small) }
+                    if session.isBusy {
+                        ProgressView().controlSize(.small)
+                    }
                     Text(L10n.text("lan.receive.confirm"))
                 }
             }.buttonStyle(PrimaryButtonStyle()).disabled(busy || !preview.selection.canImport(selectedItemIDs))
@@ -163,9 +191,9 @@ struct LocalVaultTransferView: View {
                 TextField(L10n.text("lan.code.placeholder"), text: $code)
                     .autocorrectionDisabled().aegisFont(size: 14, design: .monospaced)
                     .accessibilityIdentifier("localPairingCodeInput")
-                    #if os(iOS)
+                #if os(iOS)
                     .textInputAutocapitalization(.characters)
-                    #endif
+                #endif
             }
             Button {
                 guard let peer else { return }
@@ -182,7 +210,11 @@ struct LocalVaultTransferView: View {
         preparing = true
         let token = operationID
         operation = Task {
-            defer { if token == operationID { preparing = false } }
+            defer {
+                if token == operationID {
+                    preparing = false
+                }
+            }
             if needsMasterPassword {
                 let submitted = masterPassword; masterPassword = ""
                 guard await session.authorizeExport(masterPassword: submitted) else { return }
@@ -199,7 +231,11 @@ struct LocalVaultTransferView: View {
                 try Task.checkCancellation()
                 guard token == operationID, session.phase == .unlocked else { return }
                 try transfer.offer(snapshot.data, code: code)
-            } catch { if token == operationID { session.error = error.localizedDescription } }
+            } catch {
+                if token == operationID {
+                    session.error = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -209,15 +245,25 @@ struct LocalVaultTransferView: View {
         transfer.discardReceivedBytes()
         preparing = true
         operation = Task {
-            defer { if token == operationID { preparing = false } }
+            defer {
+                if token == operationID {
+                    preparing = false
+                }
+            }
             do {
                 let container = try BackupContainer.parse(data)
                 let result = await session.previewBackup(container, credential: credential, requireNewVault: true)
                 guard token == operationID, !Task.isCancelled else { return }
                 preview = result
                 selectedItemIDs = result?.selection.itemIDs ?? []
-                if result == nil { transfer.search() }
-            } catch { if token == operationID { session.error = error.localizedDescription; transfer.search() } }
+                if result == nil {
+                    transfer.search()
+                }
+            } catch {
+                if token == operationID {
+                    session.error = error.localizedDescription; transfer.search()
+                }
+            }
         }
     }
 

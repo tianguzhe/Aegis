@@ -14,7 +14,7 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 20))
     }
 
-    func testBrowseEditAndPreviewMarkdown() throws {
+    func testBrowseEditAndPreviewMarkdown() {
         launchVault()
         unlockIfNeeded()
         let apple = app.buttons["record-Apple"]
@@ -41,7 +41,7 @@ final class InterfaceTests: XCTestCase {
         capture("05-saved-note")
     }
 
-    func testUtilitiesAndOrientation() throws {
+    func testUtilitiesAndOrientation() {
         launchVault()
         let generator = app.buttons["密码生成器"]
         XCTAssertTrue(generator.waitForExistence(timeout: 5))
@@ -57,7 +57,7 @@ final class InterfaceTests: XCTestCase {
         capture("08-settings")
     }
 
-    func testExpandedMarkdownEditorReturnsDraftAndSaves() throws {
+    func testExpandedMarkdownEditorReturnsDraftAndSaves() {
         launchVault()
         app.buttons["record-Apple"].tap()
         XCTAssertTrue(app.buttons["editItemButton"].waitForExistence(timeout: 5))
@@ -88,7 +88,7 @@ final class InterfaceTests: XCTestCase {
         capture("09-expanded-editor-return")
     }
 
-    func testOnboardingRequiresMatchingPasswordAndRecoveryConfirmation() throws {
+    func testOnboardingRequiresMatchingPasswordAndRecoveryConfirmation() {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["--preview-onboarding", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -135,7 +135,7 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 8))
     }
 
-    func testOnboardingOffersLocalImportBeforeCreatingAVault() throws {
+    func testOnboardingOffersLocalImportBeforeCreatingAVault() {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["--preview-onboarding", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -198,7 +198,7 @@ final class InterfaceTests: XCTestCase {
         XCTAssertFalse(app.buttons["record-Import note"].exists)
     }
 
-    func testUnnamedRecordCannotSaveAndGeneratorLimitIsDisabled() throws {
+    func testUnnamedRecordCannotSaveAndGeneratorLimitIsDisabled() {
         launchVault()
         app.buttons["addItemButton"].tap()
         let save = app.buttons["saveItemButton"]
@@ -219,10 +219,14 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(decrease.waitForExistence(timeout: 5))
         var decrements = 0
         defer {
-            for _ in 0..<decrements { app.buttons["increasePasswordLength"].tap() }
+            for _ in 0 ..< decrements {
+                app.buttons["increasePasswordLength"].tap()
+            }
         }
-        for _ in 0..<64 {
-            if !decrease.isEnabled { break }
+        for _ in 0 ..< 64 {
+            if !decrease.isEnabled {
+                break
+            }
             decrease.tap()
             decrements += 1
         }
@@ -231,8 +235,7 @@ final class InterfaceTests: XCTestCase {
         captureElement(decrease, name: "generator-limit-disabled")
     }
 
-
-    func testDraftSurvivesCloseLockUnlockAndSave() throws {
+    func testDraftSurvivesCloseLockUnlockAndSave() {
         launchVault()
         app.buttons["record-Apple"].tap()
         app.buttons["editItemButton"].tap()
@@ -242,7 +245,9 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["保留草稿并关闭"].waitForExistence(timeout: 5))
         app.buttons["保留草稿并关闭"].tap()
         let back = app.buttons["BackButton"]
-        if back.exists { back.tap() }
+        if back.exists {
+            back.tap()
+        }
         XCTAssertTrue(app.buttons["锁定保险库"].waitForExistence(timeout: 5))
         app.buttons["锁定保险库"].tap()
         unlockIfNeeded()
@@ -259,7 +264,7 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Retained draft after lock"].waitForExistence(timeout: 5))
     }
 
-    func testFormattingIsNotReplayedByPreviewSwitches() throws {
+    func testFormattingIsNotReplayedByPreviewSwitches() {
         launchVault()
         app.buttons["record-Apple"].tap()
         app.buttons["editItemButton"].tap()
@@ -268,14 +273,14 @@ final class InterfaceTests: XCTestCase {
         reveal(app.buttons["markdownFormat-task"])
         app.buttons["markdownFormat-task"].tap()
         let original = notes.value as? String
-        for _ in 0..<3 {
+        for _ in 0 ..< 3 {
             app.buttons["composerMode-preview"].tap()
             app.buttons["composerMode-write"].tap()
             XCTAssertEqual(notes.value as? String, original)
         }
     }
 
-    func testAccessibilitySizeScalesHeadline() throws {
+    func testAccessibilitySizeScalesHeadline() {
         launchVault()
         let title = app.staticTexts["vaultListTitle"]
         let normal = title.frame.height
@@ -288,7 +293,7 @@ final class InterfaceTests: XCTestCase {
         capture("12-accessibility-layout")
     }
 
-    func testAppearancePersistsAcrossLaunches() throws {
+    func testAppearancePersistsAcrossLaunches() {
         launchVault()
         app.buttons["设置"].tap()
         app.segmentedControls["settingsTabs"].buttons["外观与关于"].tap()
@@ -309,7 +314,7 @@ final class InterfaceTests: XCTestCase {
         appearance.buttons["跟随系统"].tap()
     }
 
-    func testBackupPasswordMustMeetPolicyBeforeExport() throws {
+    func testBackupPasswordMustMeetPolicyBeforeExport() {
         launchVault()
         openBackupExport()
         app.buttons["exportModePassword"].tap()
@@ -364,18 +369,23 @@ final class InterfaceTests: XCTestCase {
         export.tap()
         XCTAssertTrue(app.buttons["exportModeVault"].waitForExistence(timeout: 5))
     }
+
     /// Secure fields may clear on re-focus; deleting first makes the result independent of that.
     private func replaceText(in field: XCUIElement, with text: String) {
         field.tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40) + text)
     }
+
     private func reveal(_ element: XCUIElement) {
-        for _ in 0..<6 {
-            if element.isHittable { return }
+        for _ in 0 ..< 6 {
+            if element.isHittable {
+                return
+            }
             app.swipeUp()
         }
         XCTAssertTrue(element.isHittable)
     }
+
     private func unlockIfNeeded() {
         let master = app.secureTextFields["masterPassword"]
         if master.waitForExistence(timeout: 2) {
@@ -384,12 +394,14 @@ final class InterfaceTests: XCTestCase {
             app.buttons["unlockButton"].tap()
         }
     }
+
     private func capture(_ name: String) {
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
     }
+
     private func captureElement(_ element: XCUIElement, name: String) {
         let image = XCTAttachment(screenshot: element.screenshot())
         image.name = name
@@ -399,5 +411,7 @@ final class InterfaceTests: XCTestCase {
 }
 
 private extension String {
-    func repeated(_ count: Int) -> String { String(repeating: self, count: count) }
+    func repeated(_ count: Int) -> String {
+        String(repeating: self, count: count)
+    }
 }

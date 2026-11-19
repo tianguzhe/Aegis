@@ -3,13 +3,22 @@ import SwiftUI
 
 enum VaultFilter: String, CaseIterable, Identifiable {
     case all, favorites, login, card, note, trash
-    var id: String { rawValue }
-    var title: String { L10n.text(["all": "nav.all", "favorites": "nav.favorites", "login": "kind.login", "card": "kind.card", "note": "kind.note", "trash": "nav.trash"][rawValue]!) }
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        L10n.text(["all": "nav.all", "favorites": "nav.favorites", "login": "kind.login", "card": "kind.card", "note": "kind.note", "trash": "nav.trash"][rawValue]!)
+    }
+
     var symbol: String {
         switch self { case .all: "square.grid.2x2"; case .favorites: "star"; case .login: "key.horizontal"; case .card: "creditcard"; case .note: "note.text"; case .trash: "trash" }
     }
+
     func includes(_ entry: VaultEntry) -> Bool {
-        if self == .trash { return entry.item.deletedAt != nil }
+        if self == .trash {
+            return entry.item.deletedAt != nil
+        }
         guard entry.item.deletedAt == nil else { return false }
         switch self { case .all: return true; case .favorites: return entry.item.isFavorite
         case .login: return entry.item.kind == .login; case .card: return entry.item.kind == .card
@@ -36,6 +45,7 @@ struct VaultView: View {
             filter.includes(entry) && (search.isEmpty || [entry.item.title, entry.item.username, entry.item.website].contains { $0.localizedStandardContains(search) })
         }.sorted { recentFirst ? $0.item.modifiedAt > $1.item.modifiedAt : $0.item.title.localizedStandardCompare($1.item.title) == .orderedAscending }
     }
+
     private var selectedEntry: VaultEntry? {
         session.entries.first { $0.id == selection } ?? session.entries.first { $0.item.id == selectedItem }
     }
@@ -43,29 +53,31 @@ struct VaultView: View {
     var body: some View {
         Group {
             #if os(macOS)
-            HSplitView {
-                sidebar.frame(minWidth: 190, idealWidth: 208, maxWidth: 228)
-                recordsColumn(mobile: false).frame(minWidth: 290, idealWidth: 312, maxWidth: 350)
-                detail.frame(minWidth: 380, maxWidth: .infinity)
-            }
+                HSplitView {
+                    sidebar.frame(minWidth: 190, idealWidth: 208, maxWidth: 228)
+                    recordsColumn(mobile: false).frame(minWidth: 290, idealWidth: 312, maxWidth: 350)
+                    detail.frame(minWidth: 380, maxWidth: .infinity)
+                }
             #else
-            GeometryReader { geometry in
-                if geometry.size.width >= 900 {
-                    HStack(spacing: 0) {
-                        sidebar.frame(width: 220)
-                        Divider().overlay(AegisTheme.border)
-                        recordsColumn(mobile: false).frame(width: 310)
-                        Divider().overlay(AegisTheme.border)
-                        detail.frame(maxWidth: .infinity)
+                GeometryReader { geometry in
+                    if geometry.size.width >= 900 {
+                        HStack(spacing: 0) {
+                            sidebar.frame(width: 220)
+                            Divider().overlay(AegisTheme.border)
+                            recordsColumn(mobile: false).frame(width: 310)
+                            Divider().overlay(AegisTheme.border)
+                            detail.frame(maxWidth: .infinity)
+                        }
+                    } else {
+                        mobileTabs
                     }
-                } else { mobileTabs }
-            }
+                }
             #endif
         }
         .background(AegisTheme.background)
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
-            case .editor(let item, let parents):
+            case let .editor(item, parents):
                 ItemEditorView(item: item, parents: parents, onSaved: selectSavedItem).environment(session)
             case .settings: SettingsView().environment(session)
             case .generator: GeneratorView().environment(session)
@@ -76,38 +88,46 @@ struct VaultView: View {
         .onChange(of: search) { _, _ in session.touch() }
         .onChange(of: filtered.map(\.id)) { previous, _ in reconcileSelection(previousIDs: previous) }
         #if os(macOS)
-        .focusedSceneValue(\.vaultMenuActions, menuActions)
+            .focusedSceneValue(\.vaultMenuActions, menuActions)
         #endif
-        .alert(L10n.text("action.trash"), isPresented: Binding(
-            get: { pendingTrash != nil }, set: { if !$0 { pendingTrash = nil } }
-        ), presenting: pendingTrash) { entry in
-            Button(L10n.text("action.cancel"), role: .cancel) { }
-            Button(L10n.text("action.trash"), role: .destructive) { Task { await session.trash(entry) } }
-        } message: { _ in Text(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays))) }
-        .alert(L10n.text("trash.deleteConfirm"), isPresented: Binding(
-            get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }
-        ), presenting: pendingDeletion) { entry in
-            Button(L10n.text("action.deleteImmediately"), role: .destructive) { Task { await session.deleteImmediately(entry) } }
-            Button(L10n.text("action.cancel"), role: .cancel) { }
-        } message: { entry in Text(L10n.format("trash.deleteMessage", entry.item.title)) }
+            .alert(L10n.text("action.trash"), isPresented: Binding(
+                get: { pendingTrash != nil }, set: {
+                    if !$0 {
+                        pendingTrash = nil
+                    }
+                }
+            ), presenting: pendingTrash) { entry in
+                Button(L10n.text("action.cancel"), role: .cancel) {}
+                Button(L10n.text("action.trash"), role: .destructive) { Task { await session.trash(entry) } }
+            } message: { _ in Text(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays))) }
+            .alert(L10n.text("trash.deleteConfirm"), isPresented: Binding(
+                get: { pendingDeletion != nil }, set: {
+                    if !$0 {
+                        pendingDeletion = nil
+                    }
+                }
+            ), presenting: pendingDeletion) { entry in
+                Button(L10n.text("action.deleteImmediately"), role: .destructive) { Task { await session.deleteImmediately(entry) } }
+                Button(L10n.text("action.cancel"), role: .cancel) {}
+            } message: { entry in Text(L10n.format("trash.deleteMessage", entry.item.title)) }
     }
 
     #if os(iOS)
-    private var mobileTabs: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack(path: $mobilePath) {
-                recordsColumn(mobile: true)
-                    .toolbar(.hidden, for: .navigationBar)
-                    .navigationDestination(for: UUID.self) { id in
-                        if let entry = session.entries.first(where: { $0.item.id == id && $0.id == selection }) ?? session.entries.first(where: { $0.item.id == id }) {
-                            ItemDetailView(entry: entry, onEdit: { edit(entry) }).id(entry.item.id)
+        private var mobileTabs: some View {
+            TabView(selection: $selectedTab) {
+                NavigationStack(path: $mobilePath) {
+                    recordsColumn(mobile: true)
+                        .toolbar(.hidden, for: .navigationBar)
+                        .navigationDestination(for: UUID.self) { id in
+                            if let entry = session.entries.first(where: { $0.item.id == id && $0.id == selection }) ?? session.entries.first(where: { $0.item.id == id }) {
+                                ItemDetailView(entry: entry, onEdit: { edit(entry) }).id(entry.item.id)
+                            }
                         }
-                    }
-            }.tabItem { Label(L10n.text("nav.library"), systemImage: "square.grid.2x2") }.tag(0)
-            GeneratorView(embedded: true).tabItem { Label(L10n.text("nav.generator"), systemImage: "wand.and.stars") }.tag(1)
-            SettingsView(embedded: true).tabItem { Label(L10n.text("action.settings"), systemImage: "slider.horizontal.3") }.tag(2)
-        }.tint(AegisTheme.teal)
-    }
+                }.tabItem { Label(L10n.text("nav.library"), systemImage: "square.grid.2x2") }.tag(0)
+                GeneratorView(embedded: true).tabItem { Label(L10n.text("nav.generator"), systemImage: "wand.and.stars") }.tag(1)
+                SettingsView(embedded: true).tabItem { Label(L10n.text("action.settings"), systemImage: "slider.horizontal.3") }.tag(2)
+            }.tint(AegisTheme.teal)
+        }
     #endif
 
     private var sidebar: some View {
@@ -136,16 +156,19 @@ struct VaultView: View {
                 .overlay(alignment: .top) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
         }.frame(maxHeight: .infinity).background(AegisTheme.sidebar)
     }
+
     private func sidebarSection(_ title: String, values: [VaultFilter]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionCaption(title)
             VStack(spacing: 4) { ForEach(values) { sidebarRow($0) } }
         }
     }
+
     private func sectionCaption(_ key: String) -> some View {
         Text(L10n.text(key)).aegisFont(size: 10, weight: .semibold).foregroundStyle(AegisTheme.secondary)
             .padding(.horizontal, 10).tracking(0.3)
     }
+
     private func sidebarRow(_ value: VaultFilter) -> some View {
         let active = filter == value
         let count = session.entries.filter { value.includes($0) }.count
@@ -166,6 +189,7 @@ struct VaultView: View {
                 .contentShape(Rectangle())
         }.buttonStyle(AegisNavigationButtonStyle()).accessibilityAddTraits(active ? [.isSelected] : [])
     }
+
     private func sidebarAction(_ key: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(L10n.text(key), systemImage: symbol).aegisFont(size: 13).foregroundStyle(AegisTheme.secondary)
@@ -193,12 +217,12 @@ struct VaultView: View {
                     Spacer(minLength: 4)
                     if filter != .trash {
                         #if os(macOS)
-                        Button(action: addItem) { Label(L10n.text("action.new"), systemImage: "plus") }
-                            .buttonStyle(.bordered).controlSize(.regular).accessibilityIdentifier("addItemButton")
-                            .help(L10n.text("action.add") + " (⌘N)")
+                            Button(action: addItem) { Label(L10n.text("action.new"), systemImage: "plus") }
+                                .buttonStyle(.bordered).controlSize(.regular).accessibilityIdentifier("addItemButton")
+                                .help(L10n.text("action.add") + " (⌘N)")
                         #else
-                        AegisIconButton(symbol: "plus", label: L10n.text("action.add"), prominent: true, action: addItem)
-                            .accessibilityIdentifier("addItemButton")
+                            AegisIconButton(symbol: "plus", label: L10n.text("action.add"), prominent: true, action: addItem)
+                                .accessibilityIdentifier("addItemButton")
                         #endif
                     }
                 }.padding(.horizontal, 18).frame(minHeight: AegisMetrics.toolbarHeight)
@@ -211,7 +235,9 @@ struct VaultView: View {
                         AegisIconButton(symbol: "xmark.circle.fill", label: L10n.text("ui.clearSearch")) { search = "" }
                     }
                     #if os(macOS)
-                    if search.isEmpty { Text("⌘F").font(.system(size: 10)).foregroundStyle(AegisTheme.secondary).accessibilityHidden(true) }
+                        if search.isEmpty {
+                            Text("⌘F").font(.system(size: 10)).foregroundStyle(AegisTheme.secondary).accessibilityHidden(true)
+                        }
                     #endif
                 }
                 .padding(.leading, 11).padding(.trailing, search.isEmpty ? 11 : 2)
@@ -271,7 +297,7 @@ struct VaultView: View {
             if filtered.isEmpty {
                 VStack(spacing: 0) {
                     AegisEmptyState(title: L10n.text(emptyTitle), message: L10n.text(emptyDescription), symbol: search.isEmpty ? filter.symbol : "magnifyingglass")
-                    if filter != .trash && search.isEmpty {
+                    if filter != .trash, search.isEmpty {
                         Button(L10n.text("action.add")) { addItem() }.buttonStyle(AegisButtonStyle(primary: true)).padding(.bottom, 32)
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -282,27 +308,37 @@ struct VaultView: View {
                             ForEach(filtered) { entry in
                                 VaultRecordRow(entry: entry, selected: !mobile && selectedEntry?.id == entry.id) {
                                     select(entry)
-                                    if mobile { mobilePath.append(entry.item.id) }
-                                }.id(entry.id)
-                                .contextMenu {
-                                    if entry.item.deletedAt == nil {
-                                        Button(L10n.text("action.edit")) { edit(entry) }
-                                        Button(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) { Task { await session.toggleFavorite(entry) } }
-                                        Divider()
-                                        Button(L10n.text("action.trash"), role: .destructive) { pendingTrash = entry }
-                                    } else {
-                                        Button(L10n.text("action.restore")) { Task { await session.restore(entry) } }
-                                        Button(L10n.text("action.deleteImmediately"), role: .destructive) { pendingDeletion = entry }
+                                    if mobile {
+                                        mobilePath.append(entry.item.id)
                                     }
-                                }.disabled(session.pendingItemIDs.contains(entry.item.id))
+                                }.id(entry.id)
+                                    .contextMenu {
+                                        if entry.item.deletedAt == nil {
+                                            Button(L10n.text("action.edit")) { edit(entry) }
+                                            Button(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) { Task { await session.toggleFavorite(entry) } }
+                                            Divider()
+                                            Button(L10n.text("action.trash"), role: .destructive) { pendingTrash = entry }
+                                        } else {
+                                            Button(L10n.text("action.restore")) { Task { await session.restore(entry) } }
+                                            Button(L10n.text("action.deleteImmediately"), role: .destructive) { pendingDeletion = entry }
+                                        }
+                                    }.disabled(session.pendingItemIDs.contains(entry.item.id))
                             }
                         }.padding(.horizontal, 10).padding(.bottom, 16)
-                    }.onChange(of: selection) { _, id in if let id { proxy.scrollTo(id) } }
+                    }.onChange(of: selection) {
+                        _, id in if let id {
+                            proxy.scrollTo(id)
+                        }
+                    }
                     #if os(macOS)
                     .focusable().focusEffectDisabled().onMoveCommand { direction in
                         let index = filtered.firstIndex { $0.id == selection } ?? -1
-                        if direction == .down, index + 1 < filtered.count { select(filtered[index + 1]); proxy.scrollTo(selection) }
-                        if direction == .up, index > 0 { select(filtered[index - 1]); proxy.scrollTo(selection) }
+                        if direction == .down, index + 1 < filtered.count {
+                            select(filtered[index + 1]); proxy.scrollTo(selection)
+                        }
+                        if direction == .up, index > 0 {
+                            select(filtered[index - 1]); proxy.scrollTo(selection)
+                        }
                     }
                     #endif
                 }
@@ -318,38 +354,44 @@ struct VaultView: View {
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AegisTheme.surface)
     }
 
+    @ViewBuilder
     private var detail: some View {
-        Group {
-            if let entry = selectedEntry { ItemDetailView(entry: entry, onEdit: { edit(entry) }).id(entry.item.id) }
-            else {
-                VStack(spacing: 0) {
-                    HStack {
-                        Label(L10n.text("app.vault"), systemImage: "lock.shield")
-                            .aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
-                        Spacer()
-                    }.padding(.horizontal, 24).frame(height: AegisMetrics.toolbarHeight)
-                        .background(AegisTheme.surface)
-                        .overlay(alignment: .bottom) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
-                    AegisEmptyState(title: L10n.text(search.isEmpty ? "list.selectTitle" : "list.noResults"),
-                                    message: L10n.text(search.isEmpty ? "list.selectDescription" : "list.noResultsDescription"),
-                                    symbol: search.isEmpty ? "doc.text.magnifyingglass" : "magnifyingglass")
-                }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AegisTheme.background)
-            }
+        if let entry = selectedEntry {
+            ItemDetailView(entry: entry, onEdit: { edit(entry) }).id(entry.item.id)
+        } else {
+            VStack(spacing: 0) {
+                HStack {
+                    Label(L10n.text("app.vault"), systemImage: "lock.shield")
+                        .aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                    Spacer()
+                }.padding(.horizontal, 24).frame(height: AegisMetrics.toolbarHeight)
+                    .background(AegisTheme.surface)
+                    .overlay(alignment: .bottom) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
+                AegisEmptyState(title: L10n.text(search.isEmpty ? "list.selectTitle" : "list.noResults"),
+                                message: L10n.text(search.isEmpty ? "list.selectDescription" : "list.noResultsDescription"),
+                                symbol: search.isEmpty ? "doc.text.magnifyingglass" : "magnifyingglass")
+            }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AegisTheme.background)
         }
     }
+
     private func addItem() {
         presentedSheet = .editor(VaultItem(kind: newItemKind), [])
     }
+
     private func edit(_ entry: VaultEntry) {
         guard entry.item.deletedAt == nil else { return }
         presentedSheet = .editor(entry.item, [entry.id])
     }
+
     private func selectSavedItem(_ id: UUID) {
         guard let entry = session.entries.first(where: { $0.item.id == id }) else { return }
         search = ""
-        if !filter.includes(entry) { filter = .all }
+        if !filter.includes(entry) {
+            filter = .all
+        }
         select(entry)
     }
+
     private func reconcileSelection(previousIDs: [UUID] = []) {
         if let entry = filtered.first(where: { $0.id == selection }) ?? filtered.first(where: { $0.item.id == selectedItem }) {
             selection = entry.id; selectedItem = entry.item.id
@@ -358,39 +400,71 @@ struct VaultView: View {
         let index = previousIDs.firstIndex(where: { $0 == selection }) ?? 0
         selection = nil; selectedItem = nil
         #if os(macOS)
-        if !filtered.isEmpty {
-            let next = filtered[min(index, filtered.count - 1)]
-            selection = next.id; selectedItem = next.item.id
-        }
+            if !filtered.isEmpty {
+                let next = filtered[min(index, filtered.count - 1)]
+                selection = next.id; selectedItem = next.item.id
+            }
         #else
-        mobilePath = []
+            mobilePath = []
         #endif
     }
+
     #if os(macOS)
-    private var menuActions: VaultMenuActions? {
-        guard presentedSheet == nil, pendingTrash == nil, pendingDeletion == nil,
-              session.error == nil, session.recoveryKey == nil else { return nil }
-        let entry = selectedEntry
-        let available = entry.map { !session.pendingItemIDs.contains($0.item.id) } ?? false
-        return VaultMenuActions(
-            add: addItem, search: { searchFocused = true },
-            settings: { presentedSheet = .settings }, generator: { presentedSheet = .generator },
-            edit: { if let entry { edit(entry) } },
-            trash: { if let entry { if entry.item.deletedAt == nil { pendingTrash = entry } else { pendingDeletion = entry } } },
-            restore: { if let entry { Task { await session.restore(entry) } } },
-            favorite: { if let entry { Task { await session.toggleFavorite(entry) } } },
-            hasSelection: available, isTrashed: entry?.item.deletedAt != nil, isFavorite: entry?.item.isFavorite == true
-        )
-    }
+        private var menuActions: VaultMenuActions? {
+            guard presentedSheet == nil, pendingTrash == nil, pendingDeletion == nil,
+                  session.error == nil, session.recoveryKey == nil else { return nil }
+            let entry = selectedEntry
+            let available = entry.map { !session.pendingItemIDs.contains($0.item.id) } ?? false
+            return VaultMenuActions(
+                add: addItem, search: { searchFocused = true },
+                settings: { presentedSheet = .settings }, generator: { presentedSheet = .generator },
+                edit: {
+                    if let entry {
+                        edit(entry)
+                    }
+                },
+                trash: {
+                    if let entry {
+                        if entry.item.deletedAt == nil {
+                            pendingTrash = entry
+                        } else {
+                            pendingDeletion = entry
+                        }
+                    }
+                },
+                restore: {
+                    if let entry {
+                        Task { await session.restore(entry) }
+                    }
+                },
+                favorite: {
+                    if let entry {
+                        Task { await session.toggleFavorite(entry) }
+                    }
+                },
+                hasSelection: available, isTrashed: entry?.item.deletedAt != nil, isFavorite: entry?.item.isFavorite == true
+            )
+        }
     #endif
-    private func select(_ entry: VaultEntry) { selection = entry.id; selectedItem = entry.item.id; session.touch() }
-    private var newItemKind: ItemKind { switch filter { case .card: .card; case .note: .note; default: .login } }
+    private func select(_ entry: VaultEntry) {
+        selection = entry.id; selectedItem = entry.item.id; session.touch()
+    }
+
+    private var newItemKind: ItemKind {
+        switch filter { case .card: .card; case .note: .note; default: .login }
+    }
+
     private var emptyTitle: String {
-        if !search.isEmpty { return "list.noResults" }
+        if !search.isEmpty {
+            return "list.noResults"
+        }
         switch filter { case .trash: return "list.trashEmpty"; case .favorites: return "list.favoritesEmpty"; default: return "list.emptyTitle" }
     }
+
     private var emptyDescription: String {
-        if !search.isEmpty { return "list.noResultsDescription" }
+        if !search.isEmpty {
+            return "list.noResultsDescription"
+        }
         switch filter { case .trash: return "list.trashDescription"; case .favorites: return "list.favoritesDescription"; default: return "list.emptyDescription" }
     }
 }
@@ -404,11 +478,12 @@ private struct VaultRecordRow: View {
     @ScaledMetric(relativeTo: .caption) private var subtitleSize = 11
     private var rowPadding: CGFloat {
         #if os(macOS)
-        11
+            11
         #else
-        15
+            15
         #endif
     }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 13) {
@@ -419,8 +494,12 @@ private struct VaultRecordRow: View {
                         .font(.system(size: subtitleSize)).foregroundStyle(selected ? AegisTheme.teal : AegisTheme.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if entry.isConflict { Image(systemName: "exclamationmark.circle").foregroundStyle(.orange).accessibilityLabel(L10n.text("list.conflict")) }
-                if entry.item.isFavorite { Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(AegisTheme.gold) }
+                if entry.isConflict {
+                    Image(systemName: "exclamationmark.circle").foregroundStyle(.orange).accessibilityLabel(L10n.text("list.conflict"))
+                }
+                if entry.item.isFavorite {
+                    Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(AegisTheme.gold)
+                }
             }.padding(.horizontal, 13).padding(.vertical, rowPadding).frame(maxWidth: .infinity, alignment: .leading)
                 .background(selected ? AegisTheme.selected : hovered ? AegisTheme.inset : Color.clear, in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
                 .overlay(RoundedRectangle(cornerRadius: AegisMetrics.controlRadius).stroke(selected ? AegisTheme.teal.opacity(0.12) : Color.clear))
@@ -428,9 +507,14 @@ private struct VaultRecordRow: View {
         }.buttonStyle(.plain).onHover { hovered = $0 }.accessibilityAddTraits(selected ? [.isSelected] : [])
             .accessibilityIdentifier("record-\(entry.item.title)")
     }
+
     private var subtitle: String {
-        if entry.item.kind == .card { return entry.item.cardDescription }
-        if entry.item.kind == .login && !entry.item.username.isEmpty { return entry.item.username }
+        if entry.item.kind == .card {
+            return entry.item.cardDescription
+        }
+        if entry.item.kind == .login, !entry.item.username.isEmpty {
+            return entry.item.username
+        }
         return entry.item.kind.title
     }
 }
@@ -439,7 +523,7 @@ private enum VaultSheet: Identifiable {
     case editor(VaultItem, [UUID]), settings, generator
     var id: String {
         switch self {
-        case .editor(let item, _): "editor-\(item.id)"
+        case let .editor(item, _): "editor-\(item.id)"
         case .settings: "settings"
         case .generator: "generator"
         }
@@ -447,26 +531,28 @@ private enum VaultSheet: Identifiable {
 }
 
 #if os(macOS)
-struct VaultMenuActions {
-    let add: () -> Void
-    let search: () -> Void
-    let settings: () -> Void
-    let generator: () -> Void
-    let edit: () -> Void
-    let trash: () -> Void
-    let restore: () -> Void
-    let favorite: () -> Void
-    let hasSelection: Bool
-    let isTrashed: Bool
-    let isFavorite: Bool
-}
-private struct VaultMenuActionsKey: FocusedValueKey {
-    typealias Value = VaultMenuActions
-}
-extension FocusedValues {
-    var vaultMenuActions: VaultMenuActions? {
-        get { self[VaultMenuActionsKey.self] }
-        set { self[VaultMenuActionsKey.self] = newValue }
+    struct VaultMenuActions {
+        let add: () -> Void
+        let search: () -> Void
+        let settings: () -> Void
+        let generator: () -> Void
+        let edit: () -> Void
+        let trash: () -> Void
+        let restore: () -> Void
+        let favorite: () -> Void
+        let hasSelection: Bool
+        let isTrashed: Bool
+        let isFavorite: Bool
     }
-}
+
+    private struct VaultMenuActionsKey: FocusedValueKey {
+        typealias Value = VaultMenuActions
+    }
+
+    extension FocusedValues {
+        var vaultMenuActions: VaultMenuActions? {
+            get { self[VaultMenuActionsKey.self] }
+            set { self[VaultMenuActionsKey.self] = newValue }
+        }
+    }
 #endif

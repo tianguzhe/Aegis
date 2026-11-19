@@ -18,8 +18,8 @@ import Testing
         let revisions = [first, edited, conflict, skipped]
         let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
                                               vaultKey: crypto.deviceKey(), header: created.header, revisions: revisions)
-        let plan = BackupImportPlan(revisions: revisions, entries: try await BackupValidator.validate(payload),
-                                    existingRevisionIDs: [first.id])
+        let plan = try await BackupImportPlan(revisions: revisions, entries: BackupValidator.validate(payload),
+                                              existingRevisionIDs: [first.id])
         #expect(plan.items.count == 2)
         #expect(plan.items.first { $0.id == first.itemID }?.isConflict == true)
         let selection: Set<UUID> = [first.itemID]
@@ -29,7 +29,7 @@ import Testing
         #expect(plan.summary(for: selection).newRevisionCount == 2)
         try await target.restoreNewVault(header: created.header, revisions: selected)
         #expect(try await target.header() == created.header)
-        #expect(!Set(try await target.revisions().map(\.itemID)).contains(skipped.itemID))
+        #expect(try await !Set(target.revisions().map(\.itemID)).contains(skipped.itemID))
         let entries = try await crypto.entries(from: target.revisions())
         #expect(entries.count == 2)
         #expect(entries.allSatisfy { $0.isConflict && $0.item.title == "Selected" })
@@ -48,7 +48,7 @@ import Testing
         let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: crypto.decrypt(alive)), parents: [alive.id])
         let other = try await crypto.encrypt(VaultItem(title: "Keep local"), parents: [])
         let revisions = [trash, alive, marker, other]
-        let plan = BackupImportPlan(revisions: revisions, entries: try await crypto.entries(from: revisions))
+        let plan = try await BackupImportPlan(revisions: revisions, entries: crypto.entries(from: revisions))
         #expect(plan.items.first { $0.id == trash.itemID }?.isTrashed == true)
         #expect(plan.items.first { $0.id == alive.itemID }?.isPermanentlyDeleted == true)
         let target = try VaultStore.make(inMemory: true)
@@ -70,20 +70,20 @@ import Testing
                                               vaultKey: source.deviceKey(), header: original.header, revisions: [a, b])
         let local = try await destination.encrypt(VaultItem(title: "Existing"), parents: [])
         let migrated = try await BackupMigration.revisions(from: payload, to: header, key: destination.deviceKey(), existing: [local])
-        let plan = BackupImportPlan(revisions: migrated, entries: try await destination.entries(from: migrated))
+        let plan = try await BackupImportPlan(revisions: migrated, entries: destination.entries(from: migrated))
         let id = try #require(plan.items.first { $0.title == "Selected" }?.id)
         #expect(id != a.itemID)
         let target = try VaultStore.make(inMemory: true)
         try await target.restore(header: header, revisions: [local])
         try await target.restore(header: header, revisions: plan.selectedRevisions(for: [id]))
-        #expect(Set(try await destination.entries(from: target.revisions()).map(\.item.title)) == ["Existing", "Selected"])
+        #expect(try await Set(destination.entries(from: target.revisions()).map(\.item.title)) == ["Existing", "Selected"])
     }
 
     @Test func invalidOrEmptySelectionIsRejectedButEmptyVaultCanBeJoined() async throws {
         let crypto = VaultCrypto()
         _ = try await crypto.create(password: master)
         let revision = try await crypto.encrypt(VaultItem(title: "One"), parents: [])
-        let plan = BackupImportPlan(revisions: [revision], entries: try await crypto.entries(from: [revision]))
+        let plan = try await BackupImportPlan(revisions: [revision], entries: crypto.entries(from: [revision]))
         #expect(!plan.canImport([]))
         #expect(!plan.canImport([UUID()]))
         #expect(throws: BackupSelectionError.noSelection) { try plan.selectedRevisions(for: []) }

@@ -16,7 +16,7 @@ import Testing
         let revisions: [EncryptedRevision]
 
         func payload(vaultKey key: Data? = nil, incomplete: Bool = false) throws -> BackupPayload {
-            try BackupPayload(exportedAtMillis: 1_000, incompleteHistory: incomplete, vaultKey: key ?? vaultKey,
+            try BackupPayload(exportedAtMillis: 1000, incompleteHistory: incomplete, vaultKey: key ?? vaultKey,
                               header: header, revisions: revisions)
         }
     }
@@ -28,24 +28,24 @@ import Testing
         var edited = try await crypto.decrypt(first); edited.password = "pw-2"
         let second = try await crypto.encrypt(edited, parents: [first.id])
         let other = try await crypto.encrypt(VaultItem(kind: .note, title: "Note"), parents: [])
-        return Vault(crypto: crypto, header: created.header, recoveryKey: created.recoveryKey,
-                     vaultKey: try await crypto.deviceKey(), revisions: [first, second, other])
+        return try await Vault(crypto: crypto, header: created.header, recoveryKey: created.recoveryKey,
+                               vaultKey: crypto.deviceKey(), revisions: [first, second, other])
     }
 
     private static func open(_ file: Data, _ credential: String) throws -> OpenedBackup {
-        try BackupCryptor.open(try BackupContainer.parse(file), credential: credential)
+        try BackupCryptor.open(BackupContainer.parse(file), credential: credential)
     }
 
     // MARK: Modes and credentials
 
     @Test func vaultSlotOpensWithMasterPasswordOrRecoveryKey() async throws {
         let vault = try await Self.makeVault()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true)
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true)
         #expect(try BackupContainer.parse(file).header.slots.map(\.typeCode) == [0x02])
 
         let byMaster = try Self.open(file, Self.master)
         #expect(byMaster.openedWith == .masterPassword)
-        #expect(byMaster.payload == (try vault.payload()))
+        #expect(try byMaster.payload == (vault.payload()))
         let byRecovery = try Self.open(file, vault.recoveryKey.lowercased())
         #expect(byRecovery.openedWith == .recoveryKey)
         #expect(throws: BackupError.wrongCredential) { try Self.open(file, "not the master passphrase") }
@@ -53,7 +53,7 @@ import Testing
 
     @Test func bothSlotsOpenWithEveryCredential() async throws {
         let vault = try await Self.makeVault()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true)
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true)
         #expect(try BackupContainer.parse(file).header.slots.map(\.typeCode) == [0x01, 0x02])
 
         #expect(try Self.open(file, Self.backupPassword).openedWith == .backupPassword)
@@ -65,54 +65,56 @@ import Testing
 
     @Test func passwordOnlyBackupRejectsVaultCredentials() async throws {
         let vault = try await Self.makeVault()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: false)
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: false)
         #expect(try BackupContainer.parse(file).header.slots.map(\.typeCode) == [0x01])
-        #expect(try Self.open(file, Self.backupPassword).payload == (try vault.payload()))
+        #expect(try Self.open(file, Self.backupPassword).payload == (vault.payload()))
         #expect(throws: BackupError.wrongCredential) { try Self.open(file, Self.master) }
         #expect(throws: BackupError.wrongCredential) { try Self.open(file, vault.recoveryKey) }
-        #expect(throws: BackupError.wrongCredential) { try Self.open(file, String(repeating: "x", count: 4_097)) }
+        #expect(throws: BackupError.wrongCredential) { try Self.open(file, String(repeating: "x", count: 4097)) }
     }
 
     @Test func backupPasswordPolicyIsEnforcedOnExport() async throws {
         let vault = try await Self.makeVault()
         #expect(throws: BackupError.malformed) {
-            try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: false)
+            try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: false)
         }
         #expect(throws: BackupError.passwordPolicy) {
-            try BackupCryptor.seal(try vault.payload(), backupPassword: "eleven char", includeVaultSlot: false)
+            try BackupCryptor.seal(vault.payload(), backupPassword: "eleven char", includeVaultSlot: false)
         }
         #expect(throws: BackupError.passwordPolicy) {
-            try BackupCryptor.seal(try vault.payload(), backupPassword: String(repeating: "\u{4E2D}", count: 1_366), includeVaultSlot: false)
+            try BackupCryptor.seal(vault.payload(), backupPassword: String(repeating: "\u{4E2D}", count: 1366), includeVaultSlot: false)
         }
     }
 
     @Test func repeatedExportsUseFreshRandomness() async throws {
         let vault = try await Self.makeVault()
-        let first = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true)
-        let second = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true)
+        let first = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true)
+        let second = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true)
         let a = try BackupContainer.parse(first).header, b = try BackupContainer.parse(second).header
         #expect(a.payloadNonce != b.payloadNonce)
         #expect(a.commitment != b.commitment)
         #expect(first != second)
-        #expect(try Self.open(first, vault.recoveryKey).payload == (try Self.open(second, vault.recoveryKey).payload))
+        #expect(try Self.open(first, vault.recoveryKey).payload == (Self.open(second, vault.recoveryKey).payload))
     }
 
     // MARK: Tampering
 
     @Test func tamperingIsClassifiedByWhatTheCredentialProves() async throws {
         let vault = try await Self.makeVault()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true)
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true)
         let recovery = vault.recoveryKey
-        func flipped(_ offset: Int) -> Data { var copy = file; copy[offset] ^= 0x01; return copy }
+        func flipped(_ offset: Int) -> Data {
+            var copy = file; copy[offset] ^= 0x01; return copy
+        }
         let tagOffset = file.count - 16
         // The recovery key proves the credential, so any later failure is tampering.
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(396), recovery) }          // ciphertext
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(tagOffset), recovery) }    // payload tag
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(16), recovery) }           // payload nonce
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(40), recovery) }           // commitment
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(200), recovery) }          // vault slot wrappedKey
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(348), recovery) }          // vault slot wrap
-        #expect(throws: BackupError.tampered) { try Self.open(flipped(104), recovery) }          // password slot wrap
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(396), recovery) } // ciphertext
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(tagOffset), recovery) } // payload tag
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(16), recovery) } // payload nonce
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(40), recovery) } // commitment
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(200), recovery) } // vault slot wrappedKey
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(348), recovery) } // vault slot wrap
+        #expect(throws: BackupError.tampered) { try Self.open(flipped(104), recovery) } // password slot wrap
         // A password slot cannot tell a wrong password from an edited slot.
         #expect(throws: BackupError.wrongCredential) { try Self.open(flipped(104), Self.backupPassword) }
         // An untouched file still opens.
@@ -121,17 +123,17 @@ import Testing
 
     @Test func slotsCannotBeMovedBetweenFiles() async throws {
         let vault = try await Self.makeVault()
-        let target = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true)
-        let donor = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true)
+        let target = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true)
+        let donor = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true)
         var spliced = target
-        spliced.replaceSubrange(60..<304, with: donor[60..<304])
+        spliced.replaceSubrange(60 ..< 304, with: donor[60 ..< 304])
         #expect(throws: BackupError.tampered) { try Self.open(spliced, vault.recoveryKey) }
     }
 
     @Test func commitmentMismatchIsTamperingEvenWhenTheSlotOpens() async throws {
         let vault = try await Self.makeVault()
         var stream = DeterministicRandom()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: nil, includeVaultSlot: true,
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: nil, includeVaultSlot: true,
                                           random: { try stream.bytes($0) })
         let fileKey = stream.history[0]
         let original = try BackupContainer.parse(file)
@@ -142,7 +144,7 @@ import Testing
                                       commitment: Data(repeating: 0xAB, count: 32),
                                       slots: [.vault(header: header, hkdfSalt: hkdfSalt, wrap: placeholder)])
         let wrap = try BackupCryptor.wrapFileKey(fileKey, with: BackupCryptor.vaultSlotKey(vaultKey: vault.vaultKey, salt: hkdfSalt),
-                                                 nonce: Data(repeating: 7, count: 12), aad: try forged.slotAAD(at: 0))
+                                                 nonce: Data(repeating: 7, count: 12), aad: forged.slotAAD(at: 0))
         let rewrapped = try BackupHeader(payloadLength: forged.payloadLength, payloadNonce: forged.payloadNonce,
                                          commitment: forged.commitment, slots: [.vault(header: header, hkdfSalt: hkdfSalt, wrap: wrap)])
         let container = try BackupContainer(header: rewrapped, ciphertext: original.ciphertext, tag: original.tag)
@@ -152,7 +154,7 @@ import Testing
     @Test func selfConsistentForgedVaultKeyFailsRecordValidation() async throws {
         let vault = try await Self.makeVault()
         // An author who knows only the backup password substitutes another vault key everywhere.
-        let file = try BackupCryptor.seal(try vault.payload(vaultKey: Data(repeating: 0x5A, count: 32)),
+        let file = try BackupCryptor.seal(vault.payload(vaultKey: Data(repeating: 0x5A, count: 32)),
                                           backupPassword: Self.backupPassword, includeVaultSlot: true)
         let opened = try Self.open(file, Self.backupPassword)
         await #expect(throws: BackupError.invalidContent) { try await BackupValidator.validate(opened.payload) }
@@ -163,7 +165,7 @@ import Testing
     @Test func payloadVaultKeyMustMatchTheVaultSlot() async throws {
         let vault = try await Self.makeVault()
         var stream = DeterministicRandom()
-        let file = try BackupCryptor.seal(try vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true,
+        let file = try BackupCryptor.seal(vault.payload(), backupPassword: Self.backupPassword, includeVaultSlot: true,
                                           random: { try stream.bytes($0) })
         let original = try BackupContainer.parse(file), header = original.header
         // Re-encrypt a payload carrying a different vault key under the same header and file key.
@@ -182,10 +184,12 @@ import Testing
             let vaultID: UUID; let vaultKey, salt: String; let memoryKiB, iterations, parallelism: UInt32
             let masterWrapNonce, recoveryWrapNonce: String
         }
+
         struct Payload: Decodable { let exportedAtMillis: Int64; let incompleteHistory: Bool }
         struct Revision: Decodable {
             let itemID, revisionID: UUID; let nonce, title, username, password: String; let modifiedAtReferenceSeconds: Double
         }
+
         let masterPassword, backupPassword, recoveryKey: String
         let vault: Vault; let payload: Payload; let revision: Revision
     }
@@ -202,9 +206,9 @@ import Testing
             try AES.GCM.seal(vaultKey, using: key, nonce: AES.GCM.Nonce(data: hex(nonce)),
                              authenticating: Data("aegis|key|1|\(id.uuidString)|\(purpose)".utf8)).combined!
         }
-        let header = VaultHeader(vaultID: id, salt: hex(spec.vault.salt), kdf: kdf,
-                                 wrappedKey: try wrapVaultKey(masterKEK, nonce: spec.vault.masterWrapNonce, purpose: "master"),
-                                 recoveryWrappedKey: try wrapVaultKey(SymmetricKey(data: recoveryBytes),
+        let header = try VaultHeader(vaultID: id, salt: hex(spec.vault.salt), kdf: kdf,
+                                     wrappedKey: wrapVaultKey(masterKEK, nonce: spec.vault.masterWrapNonce, purpose: "master"),
+                                     recoveryWrappedKey: wrapVaultKey(SymmetricKey(data: recoveryBytes),
                                                                       nonce: spec.vault.recoveryWrapNonce, purpose: "recovery"))
         var item = VaultItem(id: spec.revision.itemID, title: spec.revision.title, username: spec.revision.username,
                              password: spec.revision.password)
@@ -229,10 +233,11 @@ import Testing
             try file.write(to: url)
             Issue.record("Recorded abb-v1-crypto.bin; verify it with the Python reference and rerun without AEGIS_RECORD_FIXTURES")
         } else {
-            #expect(file == (try Data(contentsOf: url)), "abb-v1-crypto.bin differs from the golden fixture")
+            #expect(try file == Data(contentsOf: url), "abb-v1-crypto.bin differs from the golden fixture")
         }
         for (credential, kind) in [(spec.backupPassword, BackupCredentialKind.backupPassword),
-                                   (spec.masterPassword, .masterPassword), (spec.recoveryKey, .recoveryKey)] {
+                                   (spec.masterPassword, .masterPassword), (spec.recoveryKey, .recoveryKey)]
+        {
             let opened = try Self.open(file, credential)
             #expect(opened.openedWith == kind)
             let entries = try await BackupValidator.validate(opened.payload)
@@ -244,7 +249,7 @@ import Testing
 
     @Test func validatorAcceptsAuthenticHistory() async throws {
         let vault = try await Self.makeVault()
-        let entries = try await BackupValidator.validate(try vault.payload())
+        let entries = try await BackupValidator.validate(vault.payload())
         #expect(Set(entries.map(\.item.title)) == ["Mail", "Note"])
         #expect(entries.first { $0.item.title == "Mail" }?.item.password == "pw-2")
     }
@@ -270,25 +275,25 @@ import Testing
         let key = SymmetricKey(data: vault.vaultKey), vaultID = vault.header.vaultID
         func revision(_ item: VaultItem, id: UUID, parents: [UUID]) throws -> EncryptedRevision {
             let aad = EncryptedRevision.aad(vaultID: vaultID, itemID: item.id, id: id, parents: parents)
-            let sealed = try AES.GCM.seal(JSONEncoder().encode(item), using: key, authenticating: aad).combined!
+            let sealed = try #require(try AES.GCM.seal(JSONEncoder().encode(item), using: key, authenticating: aad).combined)
             return EncryptedRevision(vaultID: vaultID, itemID: item.id, id: id, parents: parents, ciphertext: sealed)
         }
         func validate(_ revisions: [EncryptedRevision], incomplete: Bool = false) async throws -> [VaultEntry] {
-            try await BackupValidator.validate(try BackupPayload(exportedAtMillis: 0, incompleteHistory: incomplete,
-                                                                 vaultKey: vault.vaultKey, header: vault.header, revisions: revisions))
+            try await BackupValidator.validate(BackupPayload(exportedAtMillis: 0, incompleteHistory: incomplete,
+                                                             vaultKey: vault.vaultKey, header: vault.header, revisions: revisions))
         }
         let item = VaultItem(title: "Looped"), a = UUID(), b = UUID(), c = UUID()
         // Two- and three-node cycles would otherwise hide the item entirely.
         await #expect(throws: BackupError.invalidContent) {
-            try await validate([try revision(item, id: a, parents: [b]), try revision(item, id: b, parents: [a])])
+            try await validate([revision(item, id: a, parents: [b]), revision(item, id: b, parents: [a])])
         }
         await #expect(throws: BackupError.invalidContent) {
-            try await validate([try revision(item, id: a, parents: [c]), try revision(item, id: b, parents: [a]),
-                                try revision(item, id: c, parents: [b])])
+            try await validate([revision(item, id: a, parents: [c]), revision(item, id: b, parents: [a]),
+                                revision(item, id: c, parents: [b])])
         }
         // A parent from another item.
         let other = try revision(VaultItem(title: "Other"), id: c, parents: [])
-        await #expect(throws: BackupError.invalidContent) { try await validate([other, try revision(item, id: a, parents: [c])]) }
+        await #expect(throws: BackupError.invalidContent) { try await validate([other, revision(item, id: a, parents: [c])]) }
         // A parent missing from the file is allowed only when the history is flagged incomplete.
         let orphan = try revision(item, id: a, parents: [UUID()])
         await #expect(throws: BackupError.invalidContent) { try await validate([orphan]) }
@@ -302,7 +307,7 @@ private struct DeterministicRandom {
     private(set) var history: [Data] = []
 
     mutating func bytes(_ count: Int) throws -> Data {
-        let data = Data((0..<count).map { UInt8(truncatingIfNeeded: counter + $0 + 1) })
+        let data = Data((0 ..< count).map { UInt8(truncatingIfNeeded: counter + $0 + 1) })
         counter += count
         history.append(data)
         return data
@@ -313,7 +318,7 @@ private func hex(_ string: String) -> Data {
     var data = Data(), index = string.startIndex
     while index < string.endIndex {
         let next = string.index(index, offsetBy: 2)
-        data.append(UInt8(string[index..<next], radix: 16)!)
+        data.append(UInt8(string[index ..< next], radix: 16)!)
         index = next
     }
     return data

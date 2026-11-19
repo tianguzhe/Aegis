@@ -21,8 +21,8 @@ public enum Argon2id {
         var passwordBytes = Data(password.utf8)
         var output = Data(count: 32)
         defer {
-            passwordBytes.resetBytes(in: 0..<passwordBytes.count)
-            output.resetBytes(in: 0..<output.count)
+            passwordBytes.resetBytes(in: 0 ..< passwordBytes.count)
+            output.resetBytes(in: 0 ..< output.count)
         }
         let result = output.withUnsafeMutableBytes { out in
             passwordBytes.withUnsafeBytes { pwd in
@@ -50,10 +50,10 @@ public actor VaultCrypto {
         let kek = try Argon2id.derive(password: password, salt: salt, parameters: parameters)
         var raw = try SecureRandom.bytes(count: 32)
         var recovery = try SecureRandom.bytes(count: 32)
-        defer { raw.resetBytes(in: 0..<raw.count); recovery.resetBytes(in: 0..<recovery.count) }
+        defer { raw.resetBytes(in: 0 ..< raw.count); recovery.resetBytes(in: 0 ..< recovery.count) }
         let wrapped = try AES.GCM.seal(raw, using: kek, authenticating: Self.keyAAD(id, "master")).combined!
         let recoveryWrapped = try AES.GCM.seal(raw, using: SymmetricKey(data: recovery),
-                                              authenticating: Self.keyAAD(id, "recovery")).combined!
+                                               authenticating: Self.keyAAD(id, "recovery")).combined!
         let hex = recovery.map { String(format: "%02X", $0) }.joined()
         let formatted = stride(from: 0, to: 64, by: 8).map { start in
             String(hex.dropFirst(start).prefix(8))
@@ -65,13 +65,13 @@ public actor VaultCrypto {
 
     public func unlock(password: String, header: VaultHeader) throws {
         var raw = try Self.unwrapVaultKey(password: password, header: header)
-        defer { raw.resetBytes(in: 0..<raw.count) }
+        defer { raw.resetBytes(in: 0 ..< raw.count) }
         key = SymmetricKey(data: raw); vaultID = header.vaultID
     }
 
     public func recover(recoveryKey: String, header: VaultHeader) throws {
         var raw = try Self.unwrapVaultKey(recoveryKey: recoveryKey, header: header)
-        defer { raw.resetBytes(in: 0..<raw.count) }
+        defer { raw.resetBytes(in: 0 ..< raw.count) }
         key = SymmetricKey(data: raw); vaultID = header.vaultID
     }
 
@@ -98,7 +98,7 @@ public actor VaultCrypto {
             guard let byte = UInt8(hex.dropFirst(offset).prefix(2), radix: 16) else { throw VaultError.invalidRecoveryKey }
             recovery.append(byte)
         }
-        defer { recovery.resetBytes(in: 0..<recovery.count) }
+        defer { recovery.resetBytes(in: 0 ..< recovery.count) }
         do {
             return try AES.GCM.open(AES.GCM.SealedBox(combined: header.recoveryWrappedKey),
                                     using: SymmetricKey(data: recovery), authenticating: keyAAD(header.vaultID, "recovery"))
@@ -116,13 +116,15 @@ public actor VaultCrypto {
         return key.withUnsafeBytes { Data($0) }
     }
 
-    public func lock() { key = nil; vaultID = nil }
+    public func lock() {
+        key = nil; vaultID = nil
+    }
 
     public func encrypt(_ item: VaultItem, parents: [UUID], revisionID: UUID = UUID()) throws -> EncryptedRevision {
         guard let key, let vaultID else { throw VaultError.locked }
         let id = revisionID
         var plaintext = try JSONEncoder().encode(item)
-        defer { plaintext.resetBytes(in: 0..<plaintext.count) }
+        defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
         guard plaintext.count <= 262_144 else { throw VaultError.oversizedRecord }
         let aad = EncryptedRevision.aad(vaultID: vaultID, itemID: item.id, id: id, parents: parents)
         let sealed = try AES.GCM.seal(plaintext, using: key, authenticating: aad)
@@ -136,8 +138,8 @@ public actor VaultCrypto {
         guard revision.ciphertext.count <= 300_000 else { throw VaultError.oversizedRecord }
         do {
             var plaintext = try AES.GCM.open(AES.GCM.SealedBox(combined: revision.ciphertext), using: key,
-                                            authenticating: revision.authenticatedData)
-            defer { plaintext.resetBytes(in: 0..<plaintext.count) }
+                                             authenticating: revision.authenticatedData)
+            defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
             let item = try JSONDecoder().decode(VaultItem.self, from: plaintext)
             guard item.id == revision.itemID else { throw VaultError.damagedData }
             return item
@@ -149,14 +151,18 @@ public actor VaultCrypto {
         var items: [UUID: VaultItem] = [:]
         var known: [UUID: EncryptedRevision] = [:]
         for revision in revisions {
-            if let existing = known[revision.id], existing != revision { throw VaultError.damagedData }
+            if let existing = known[revision.id], existing != revision {
+                throw VaultError.damagedData
+            }
             guard !revision.parents.contains(revision.id) else { throw VaultError.damagedData }
             known[revision.id] = revision
             items[revision.id] = try decrypt(revision)
         }
         for revision in revisions {
             for parentID in revision.parents {
-                if let parent = known[parentID], parent.itemID != revision.itemID { throw VaultError.damagedData }
+                if let parent = known[parentID], parent.itemID != revision.itemID {
+                    throw VaultError.damagedData
+                }
             }
         }
         // A terminal deletion also suppresses late offline branches and stale restores.

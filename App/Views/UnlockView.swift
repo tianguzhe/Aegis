@@ -8,16 +8,26 @@ struct UnlockView: View {
     @State private var useRecovery = false
     @State private var showImport = false
     @State private var showLocalImport = false
-    private var creating: Bool { session.phase == .setup }
-    private var validCreationPassword: Bool { password.count >= 12 && password.utf8.count <= 4096 }
+    private var creating: Bool {
+        session.phase == .setup
+    }
+
+    private var validCreationPassword: Bool {
+        password.count >= 12 && password.utf8.count <= 4096
+    }
+
     private var canSubmit: Bool {
         !session.isBusy && session.storageAvailable && !password.isEmpty &&
-        (!creating || (validCreationPassword && password == confirmation))
+            (!creating || (validCreationPassword && password == confirmation))
     }
+
     private var confirmationHint: String {
-        if confirmation.isEmpty { return L10n.text("welcome.confirmHint") }
+        if confirmation.isEmpty {
+            return L10n.text("welcome.confirmHint")
+        }
         return L10n.text(password == confirmation ? "welcome.passwordMatch" : "error.passwordMismatch")
     }
+
     var body: some View {
         GeometryReader { geometry in
             if geometry.size.width >= 850 {
@@ -64,6 +74,7 @@ struct UnlockView: View {
         }.padding(36).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background(AegisTheme.navy)
     }
+
     private func brandFeature(_ key: String, symbol: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).font(.system(size: 15)).frame(width: 20)
@@ -112,9 +123,13 @@ struct UnlockView: View {
                 }
                 Button(action: submit) {
                     HStack(spacing: 10) {
-                        if session.isBusy { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }
+                        if session.isBusy {
+                            ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                        }
                         Text(L10n.text(session.isBusy ? (creating ? "action.creating" : "action.unlocking") : (creating ? "action.create" : "action.unlock")))
-                        if !session.isBusy { Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)) }
+                        if !session.isBusy {
+                            Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold))
+                        }
                     }
                 }.buttonStyle(PrimaryButtonStyle()).disabled(!canSubmit).accessibilityIdentifier("unlockButton")
                 if !creating {
@@ -129,13 +144,17 @@ struct UnlockView: View {
             Label(L10n.text("ui.unlockFooter"), systemImage: "lock.shield").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.top, 10)
         }
     }
+
     private func submit() {
         guard canSubmit else { return }
         let isCreating = creating, isRecovery = useRecovery
         let submitted = password; password = ""; confirmation = ""
         Task {
-            if isCreating { await session.create(password: submitted) }
-            else { await session.unlock(password: submitted, recovery: isRecovery) }
+            if isCreating {
+                await session.create(password: submitted)
+            } else {
+                await session.unlock(password: submitted, recovery: isRecovery)
+            }
         }
     }
 }
@@ -154,7 +173,9 @@ struct RecoveryView: View {
                             .aegisFont(size: 17, weight: .medium, design: .monospaced).lineSpacing(12).textSelection(.enabled)
                             .foregroundStyle(AegisTheme.text).frame(maxWidth: .infinity, alignment: .leading)
                         Button {
-                            if let key = session.recoveryKey { SecureClipboard.copy(key); copied = true }
+                            if let key = session.recoveryKey {
+                                SecureClipboard.copy(key); copied = true
+                            }
                         } label: { Label(L10n.text(copied ? "action.copied" : "recovery.copy"), systemImage: copied ? "checkmark" : "doc.on.doc") }
                             .buttonStyle(AegisButtonStyle(fullWidth: true))
                     }.aegisCard().privacySensitive()

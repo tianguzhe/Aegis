@@ -33,7 +33,9 @@ struct ItemDetailView: View {
                             SecretField(label: "field.username", value: entry.item.username)
                             fieldDivider
                             SecretField(label: "field.password", value: entry.item.password, secret: true)
-                            if !entry.item.website.isEmpty { fieldDivider; SecretField(label: "field.website", value: entry.item.website) }
+                            if !entry.item.website.isEmpty {
+                                fieldDivider; SecretField(label: "field.website", value: entry.item.website)
+                            }
                         } else {
                             SecretField(label: "field.cardholder", value: entry.item.cardholder)
                             fieldDivider; SecretField(label: "field.cardNumber", value: entry.item.cardNumber, secret: true)
@@ -42,8 +44,9 @@ struct ItemDetailView: View {
                         }
                     }
                 }
-                if !entry.item.notes.isEmpty { notes }
-                else if entry.item.kind == .note {
+                if !entry.item.notes.isEmpty {
+                    notes
+                } else if entry.item.kind == .note {
                     VStack(alignment: .leading, spacing: 12) {
                         Label(L10n.text("note.empty"), systemImage: "text.alignleft")
                             .aegisFont(size: 14, weight: .medium).foregroundStyle(AegisTheme.text)
@@ -63,7 +66,7 @@ struct ItemDetailView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }.background(AegisTheme.background).accessibilityIdentifier("itemDetailScroll")
         #if os(macOS)
-        .safeAreaInset(edge: .top, spacing: 0) { macActions }
+            .safeAreaInset(edge: .top, spacing: 0) { macActions }
         #endif
         #if os(iOS)
         .navigationTitle(entry.item.kind.title).navigationBarTitleDisplayMode(.inline)
@@ -73,43 +76,45 @@ struct ItemDetailView: View {
             Button(L10n.text("list.resolve")) { Task { await session.resolve(entry) } }
         } message: { Text(L10n.text("list.resolveMessage")) }
         .alert(L10n.text("action.trash"), isPresented: $confirmTrash) {
-            Button(L10n.text("action.cancel"), role: .cancel) { }
+            Button(L10n.text("action.cancel"), role: .cancel) {}
             Button(L10n.text("action.trash"), role: .destructive) { Task { await session.trash(entry) } }
         } message: { Text(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays))) }
         .alert(L10n.text("trash.deleteConfirm"), isPresented: $confirmDelete) {
             Button(L10n.text("action.deleteImmediately"), role: .destructive) { Task { await session.deleteImmediately(entry) } }
-            Button(L10n.text("action.cancel"), role: .cancel) { }
+            Button(L10n.text("action.cancel"), role: .cancel) {}
         } message: { Text(L10n.format("trash.deleteMessage", entry.item.title)) }
         .disabled(session.pendingItemIDs.contains(entry.item.id))
         .privacySensitive()
     }
+
     private var horizontalPadding: CGFloat {
         #if os(macOS)
-        28
+            28
         #else
-        22
+            22
         #endif
     }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 20) {
             #if os(iOS)
-            HStack {
-                AegisPill(title: entry.item.kind.title, symbol: entry.item.kind.symbol)
-                Spacer()
-                AegisIconButton(symbol: entry.item.isFavorite ? "star.fill" : "star", label: L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) {
-                    Task { await session.toggleFavorite(entry) }
-                }
-                Menu {
-                    if entry.item.deletedAt == nil {
-                        Button(L10n.text("action.trash"), role: .destructive) { confirmTrash = true }
-                    } else {
-                        Button(L10n.text("action.restore")) { Task { await session.restore(entry) } }
-                        Button(L10n.text("action.deleteImmediately"), role: .destructive) { confirmDelete = true }
+                HStack {
+                    AegisPill(title: entry.item.kind.title, symbol: entry.item.kind.symbol)
+                    Spacer()
+                    AegisIconButton(symbol: entry.item.isFavorite ? "star.fill" : "star", label: L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) {
+                        Task { await session.toggleFavorite(entry) }
                     }
-                } label: {
-                    Image(systemName: "ellipsis").font(.system(size: 18)).foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle())
-                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L10n.text("ui.moreActions"))
-            }
+                    Menu {
+                        if entry.item.deletedAt == nil {
+                            Button(L10n.text("action.trash"), role: .destructive) { confirmTrash = true }
+                        } else {
+                            Button(L10n.text("action.restore")) { Task { await session.restore(entry) } }
+                            Button(L10n.text("action.deleteImmediately"), role: .destructive) { confirmDelete = true }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 18)).foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle())
+                    }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L10n.text("ui.moreActions"))
+                }
             #endif
             HStack(alignment: .center, spacing: 16) {
                 ItemIcon(item: entry.item, size: 52)
@@ -128,58 +133,59 @@ struct ItemDetailView: View {
                 trashNotice
             }
             #if os(iOS)
-            HStack(spacing: 10) {
-                if entry.item.deletedAt == nil {
-                    Button(action: onEdit) { Label(L10n.text("action.edit"), systemImage: "square.and.pencil") }
-                        .buttonStyle(AegisButtonStyle()).accessibilityIdentifier("editItemButton")
-                } else {
-                    Button { Task { await session.restore(entry) } } label: {
-                        Label(L10n.text("action.restore"), systemImage: "arrow.uturn.backward")
-                    }.buttonStyle(.bordered)
-                    Button(L10n.text("action.deleteImmediately"), role: .destructive) { confirmDelete = true }
-                        .buttonStyle(.bordered).accessibilityIdentifier("deleteImmediatelyButton")
+                HStack(spacing: 10) {
+                    if entry.item.deletedAt == nil {
+                        Button(action: onEdit) { Label(L10n.text("action.edit"), systemImage: "square.and.pencil") }
+                            .buttonStyle(AegisButtonStyle()).accessibilityIdentifier("editItemButton")
+                    } else {
+                        Button { Task { await session.restore(entry) } } label: {
+                            Label(L10n.text("action.restore"), systemImage: "arrow.uturn.backward")
+                        }.buttonStyle(.bordered)
+                        Button(L10n.text("action.deleteImmediately"), role: .destructive) { confirmDelete = true }
+                            .buttonStyle(.bordered).accessibilityIdentifier("deleteImmediatelyButton")
+                    }
+                    Spacer()
                 }
-                Spacer()
-            }
             #endif
         }
     }
+
     #if os(macOS)
-    private var macActions: some View {
-        HStack(spacing: 10) {
-            if entry.item.deletedAt != nil {
-                Label(L10n.text("nav.trash"), systemImage: "trash")
-                    .font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
-                Spacer(minLength: 8)
-                Button { Task { await session.restore(entry) } } label: {
-                    Label(L10n.text("action.restore"), systemImage: "arrow.uturn.backward")
-                }.accessibilityIdentifier("restoreItemButton")
-                Button(role: .destructive) { confirmDelete = true } label: {
-                    Label(L10n.text("action.deleteImmediately"), systemImage: "trash")
-                }.foregroundStyle(AegisTheme.danger).accessibilityIdentifier("deleteImmediatelyButton")
-            } else {
-                Label(entry.item.kind.title, systemImage: entry.item.kind.symbol)
-                    .aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
-                Spacer(minLength: 8)
-                Button { Task { await session.toggleFavorite(entry) } } label: {
-                    Image(systemName: entry.item.isFavorite ? "star.fill" : "star")
+        private var macActions: some View {
+            HStack(spacing: 10) {
+                if entry.item.deletedAt != nil {
+                    Label(L10n.text("nav.trash"), systemImage: "trash")
+                        .font(.system(size: 12)).foregroundStyle(AegisTheme.secondary)
+                    Spacer(minLength: 8)
+                    Button { Task { await session.restore(entry) } } label: {
+                        Label(L10n.text("action.restore"), systemImage: "arrow.uturn.backward")
+                    }.accessibilityIdentifier("restoreItemButton")
+                    Button(role: .destructive) { confirmDelete = true } label: {
+                        Label(L10n.text("action.deleteImmediately"), systemImage: "trash")
+                    }.foregroundStyle(AegisTheme.danger).accessibilityIdentifier("deleteImmediatelyButton")
+                } else {
+                    Label(entry.item.kind.title, systemImage: entry.item.kind.symbol)
+                        .aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                    Spacer(minLength: 8)
+                    Button { Task { await session.toggleFavorite(entry) } } label: {
+                        Image(systemName: entry.item.isFavorite ? "star.fill" : "star")
+                    }
+                    .help(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
+                    .accessibilityLabel(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
+                    .tint(entry.item.isFavorite ? AegisTheme.gold : AegisTheme.teal)
+                    Button(action: onEdit) {
+                        Label(L10n.text("action.edit"), systemImage: "square.and.pencil")
+                    }.buttonStyle(.borderedProminent).tint(AegisTheme.accentFill).accessibilityIdentifier("editItemButton")
+                    Button { confirmTrash = true } label: {
+                        Label(L10n.text("action.trash"), systemImage: "trash")
+                    }.accessibilityIdentifier("trashItemButton")
                 }
-                .help(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
-                .accessibilityLabel(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
-                .tint(entry.item.isFavorite ? AegisTheme.gold : AegisTheme.teal)
-                Button(action: onEdit) {
-                    Label(L10n.text("action.edit"), systemImage: "square.and.pencil")
-                }.buttonStyle(.borderedProminent).tint(AegisTheme.accentFill).accessibilityIdentifier("editItemButton")
-                Button { confirmTrash = true } label: {
-                    Label(L10n.text("action.trash"), systemImage: "trash")
-                }.accessibilityIdentifier("trashItemButton")
             }
+            .buttonStyle(.bordered).controlSize(.regular)
+            .padding(.horizontal, 20).frame(height: AegisMetrics.toolbarHeight)
+            .background(AegisTheme.surface)
+            .overlay(alignment: .bottom) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
         }
-        .buttonStyle(.bordered).controlSize(.regular)
-        .padding(.horizontal, 20).frame(height: AegisMetrics.toolbarHeight)
-        .background(AegisTheme.surface)
-        .overlay(alignment: .bottom) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }
-    }
     #endif
 
     private var trashNotice: some View {
@@ -204,7 +210,11 @@ struct ItemDetailView: View {
         guard entry.item.kind == .login, !entry.item.website.isEmpty else { return nil }
         return URL(string: entry.item.website.contains("://") ? entry.item.website : "https://" + entry.item.website)?.host
     }
-    private var fieldDivider: some View { Rectangle().fill(AegisTheme.border).frame(height: 1).padding(.horizontal, 20) }
+
+    private var fieldDivider: some View {
+        Rectangle().fill(AegisTheme.border).frame(height: 1).padding(.horizontal, 20)
+    }
+
     private var notes: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

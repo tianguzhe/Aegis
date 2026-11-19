@@ -5,7 +5,7 @@ import Testing
 /// Byte-level tests for ABB v1 (Docs/BACKUP_FORMAT_DESIGN_V1.md §6–§8, §14.1).
 /// Offsets below are written out by hand from the spec on purpose, so a layout bug in the
 /// encoder cannot hide behind the decoder that shares it.
-@Suite struct BackupFormatTests {
+struct BackupFormatTests {
     // MARK: Golden fixtures
 
     private static let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures")
@@ -15,14 +15,17 @@ import Testing
             let vaultID: UUID; let salt: String; let memoryKiB, iterations, parallelism: UInt32
             let wrappedKey, recoveryWrappedKey: String
         }
+
         struct Wrap: Decodable { let wrapNonce, wrappedFileKey, wrapTag: String; let salt, hkdfSalt: String? }
         struct Header: Decodable {
             let payloadLength: UInt32; let payloadNonce, commitment: String; let passwordSlot, vaultSlot: Wrap
         }
+
         struct Revision: Decodable { let itemID, revisionID: UUID; let parents: [UUID]; let sealed: String }
         struct Payload: Decodable {
             let exportedAtMillis: Int64; let incompleteHistory: Bool; let vaultKey: String; let revisions: [Revision]
         }
+
         let vault: Vault; let header: Header; let tag: String; let payload: Payload
     }
 
@@ -43,13 +46,13 @@ import Testing
 
     private static func specContainer() throws -> BackupContainer {
         let spec = try spec(), header = spec.header
-        let slots: [BackupSlot] = [
-            .password(kdf: BackupLimits.passwordSlotKDF, salt: hex(header.passwordSlot.salt!), wrap: try wrap(header.passwordSlot)),
-            .vault(header: vaultHeader(spec), hkdfSalt: hex(header.vaultSlot.hkdfSalt!), wrap: try wrap(header.vaultSlot))
+        let slots: [BackupSlot] = try [
+            .password(kdf: BackupLimits.passwordSlotKDF, salt: hex(header.passwordSlot.salt!), wrap: wrap(header.passwordSlot)),
+            .vault(header: vaultHeader(spec), hkdfSalt: hex(header.vaultSlot.hkdfSalt!), wrap: wrap(header.vaultSlot)),
         ]
         let backupHeader = try BackupHeader(payloadLength: header.payloadLength, payloadNonce: hex(header.payloadNonce),
                                             commitment: hex(header.commitment), slots: slots)
-        let ciphertext = Data((0..<Int(header.payloadLength)).map { UInt8($0 % 251) })
+        let ciphertext = Data((0 ..< Int(header.payloadLength)).map { UInt8($0 % 251) })
         return try BackupContainer(header: backupHeader, ciphertext: ciphertext, tag: hex(spec.tag))
     }
 
@@ -70,14 +73,14 @@ import Testing
             Issue.record("Recorded \(name); verify it with Scripts/backup_format_reference.py and rerun without AEGIS_RECORD_FIXTURES")
             return
         }
-        #expect(data == (try Data(contentsOf: url)), "\(name) differs from the golden fixture")
+        #expect(try data == Data(contentsOf: url), "\(name) differs from the golden fixture")
     }
 
     @Test func containerMatchesGoldenFixture() throws {
         let encoded = try Self.specContainer().encoded()
         try Self.expectGolden(encoded, named: "abb-v1-container.bin")
         let parsed = try BackupContainer.parse(encoded)
-        #expect(parsed.header == (try Self.specContainer()).header)
+        #expect(try parsed.header == (Self.specContainer()).header)
         #expect(parsed.encoded() == encoded)
     }
 
@@ -88,7 +91,7 @@ import Testing
         let decoded = try BackupPayload.decode(encoded)
         #expect(decoded == payload)
         #expect(decoded.revisions.map(\.id.uuidString) == [
-            "0B000000-0000-4000-8000-000000000001", "A0000000-0000-4000-8000-000000000002", "F0000000-0000-4000-8000-000000000003"
+            "0B000000-0000-4000-8000-000000000001", "A0000000-0000-4000-8000-000000000002", "F0000000-0000-4000-8000-000000000003",
         ])
         #expect(try decoded.encoded() == encoded)
     }
@@ -121,15 +124,15 @@ import Testing
         #expect(slice(file, 336, 12) == hex(String(repeating: "e1", count: 12)))
         #expect(slice(file, 348, 32) == hex(String(repeating: "e2", count: 32)))
         #expect(slice(file, 380, 16) == hex(String(repeating: "e3", count: 16)))
-        #expect(file.count == 396 + 65_536 + 16)
-        #expect(slice(file, 396 + 65_536, 16) == hex(String(repeating: "f0", count: 16)))
+        #expect(file.count == 396 + 65536 + 16)
+        #expect(slice(file, 396 + 65536, 16) == hex(String(repeating: "f0", count: 16)))
     }
 
     @Test func singleSlotHeadersHaveSpecifiedLengthsAndAAD() throws {
         let full = try Self.specContainer().header
-        let password = try BackupHeader(payloadLength: 65_536, payloadNonce: full.payloadNonce, commitment: full.commitment,
+        let password = try BackupHeader(payloadLength: 65536, payloadNonce: full.payloadNonce, commitment: full.commitment,
                                         slots: [full.slots[0]])
-        let vault = try BackupHeader(payloadLength: 65_536, payloadNonce: full.payloadNonce, commitment: full.commitment,
+        let vault = try BackupHeader(payloadLength: 65536, payloadNonce: full.payloadNonce, commitment: full.commitment,
                                      slots: [full.slots[1]])
         #expect(password.encoded().count == 152)
         #expect(vault.encoded().count == 304)
@@ -146,8 +149,10 @@ import Testing
 
     @Test func truncatedOrExtendedFilesAreRejected() throws {
         let file = try Self.specContainer().encoded()
-        for length in 0..<8 { #expect(throws: BackupError.notABackup) { try BackupContainer.parse(file.prefix(length)) } }
-        for length in Array(8...400) + [file.count - 17, file.count - 16, file.count - 1] {
+        for length in 0 ..< 8 {
+            #expect(throws: BackupError.notABackup) { try BackupContainer.parse(file.prefix(length)) }
+        }
+        for length in Array(8 ... 400) + [file.count - 17, file.count - 16, file.count - 1] {
             #expect(throws: BackupError.malformed) { try BackupContainer.parse(file.prefix(length)) }
         }
         #expect(throws: BackupError.malformed) { try BackupContainer.parse(file + Data([0])) }
@@ -181,14 +186,14 @@ import Testing
 
     @Test func invalidHeadersCannotBeConstructed() throws {
         let full = try Self.specContainer().header
-        func make(_ slots: [BackupSlot], nonce: Data? = nil, length: UInt32 = 65_536) throws -> BackupHeader {
+        func make(_ slots: [BackupSlot], nonce: Data? = nil, length: UInt32 = 65536) throws -> BackupHeader {
             try BackupHeader(payloadLength: length, payloadNonce: nonce ?? full.payloadNonce, commitment: full.commitment, slots: slots)
         }
         #expect(throws: BackupError.malformed) { try make([]) }
         #expect(throws: BackupError.malformed) { try make([full.slots[1], full.slots[0]]) }
         #expect(throws: BackupError.malformed) { try make([full.slots[0], full.slots[0]]) }
         #expect(throws: BackupError.malformed) { try make(full.slots, nonce: Data(count: 11)) }
-        #expect(throws: BackupError.malformed) { try make(full.slots, length: 65_535) }
+        #expect(throws: BackupError.malformed) { try make(full.slots, length: 65535) }
         #expect(throws: BackupError.malformed) { try WrappedFileKey(nonce: Data(count: 12), ciphertext: Data(count: 31), tag: Data(count: 16)) }
     }
 
@@ -196,7 +201,7 @@ import Testing
 
     @Test func payloadFieldsSitAtSpecifiedOffsets() throws {
         let data = try Self.specPayload().encoded()
-        #expect(data.count == 65_536)
+        #expect(data.count == 65536)
         #expect(slice(data, 0, 8) == hex("7BB427AEA1010000"))
         #expect(slice(data, 8, 4) == hex("01000000"))
         #expect(slice(data, 12, 16) == hex("6F9619FF8B86D011B42D00C04FC964FF"))
@@ -217,26 +222,28 @@ import Testing
 
     @Test func payloadErrorsAreClassified() throws {
         let data = try Self.specPayload().encoded()
-        func decode(_ offset: Int, _ bytes: String) throws { _ = try BackupPayload.decode(patched(data, at: offset, bytes)) }
-        #expect(throws: BackupError.malformed) { try decode(8, "03000000") }            // unknown flag
-        #expect(throws: BackupError.malformed) { try decode(7, "80") }                   // negative time
-        #expect(throws: BackupError.malformed) { try decode(65_535, "01") }              // non-zero padding
-        #expect(throws: BackupError.limitExceeded) { try decode(208, "A1860100") }       // 100001 revisions
-        #expect(throws: BackupError.malformed) { try decode(208, "E8030000") }           // more than the bytes hold
-        #expect(throws: BackupError.malformed) { try decode(228, String(repeating: "FF", count: 16)) }  // unsorted
-        #expect(throws: BackupError.malformed) { try decode(228, "A0000000000040008000000000000002") }  // duplicate
-        #expect(throws: BackupError.malformed) { try decode(312, "A0000000000040008000000000000002") }  // parent is self
-        #expect(throws: BackupError.malformed) { try decode(406, "A0000000000040008000000000000002") }  // duplicate parent
-        #expect(throws: BackupError.malformed) { try decode(406, String(repeating: "FF", count: 16)) }  // unsorted parents
-        #expect(throws: BackupError.malformed) { try decode(246, "1B000000") }           // sealed below 28
-        #expect(throws: BackupError.limitExceeded) { try decode(246, "E1930400") }       // sealed above 300000
-        #expect(throws: BackupError.limitExceeded) { try decode(244, "E903") }           // 1001 parents
+        func decode(_ offset: Int, _ bytes: String) throws {
+            _ = try BackupPayload.decode(patched(data, at: offset, bytes))
+        }
+        #expect(throws: BackupError.malformed) { try decode(8, "03000000") } // unknown flag
+        #expect(throws: BackupError.malformed) { try decode(7, "80") } // negative time
+        #expect(throws: BackupError.malformed) { try decode(65535, "01") } // non-zero padding
+        #expect(throws: BackupError.limitExceeded) { try decode(208, "A1860100") } // 100001 revisions
+        #expect(throws: BackupError.malformed) { try decode(208, "E8030000") } // more than the bytes hold
+        #expect(throws: BackupError.malformed) { try decode(228, String(repeating: "FF", count: 16)) } // unsorted
+        #expect(throws: BackupError.malformed) { try decode(228, "A0000000000040008000000000000002") } // duplicate
+        #expect(throws: BackupError.malformed) { try decode(312, "A0000000000040008000000000000002") } // parent is self
+        #expect(throws: BackupError.malformed) { try decode(406, "A0000000000040008000000000000002") } // duplicate parent
+        #expect(throws: BackupError.malformed) { try decode(406, String(repeating: "FF", count: 16)) } // unsorted parents
+        #expect(throws: BackupError.malformed) { try decode(246, "1B000000") } // sealed below 28
+        #expect(throws: BackupError.limitExceeded) { try decode(246, "E1930400") } // sealed above 300000
+        #expect(throws: BackupError.limitExceeded) { try decode(244, "E903") } // 1001 parents
         #expect(throws: BackupError.unsupportedParameters) { try decode(76, "00040000") }
-        #expect(throws: BackupError.malformed) { _ = try BackupPayload.decode(data.prefix(65_535)) }
+        #expect(throws: BackupError.malformed) { _ = try BackupPayload.decode(data.prefix(65535)) }
         #expect(throws: BackupError.malformed) { _ = try BackupPayload.decode(Data()) }
-        #expect(throws: BackupError.limitExceeded) { _ = try BackupPayload.decode(Data(count: BackupLimits.maxPayloadLength + 65_536)) }
+        #expect(throws: BackupError.limitExceeded) { _ = try BackupPayload.decode(Data(count: BackupLimits.maxPayloadLength + 65536)) }
         // Extra all-zero padding blocks remain valid.
-        #expect(try BackupPayload.decode(data + Data(count: 65_536)) == (try Self.specPayload()))
+        #expect(try BackupPayload.decode(data + Data(count: 65536)) == (Self.specPayload()))
     }
 
     @Test func payloadConstructionEnforcesInvariantsAndLimits() throws {
@@ -254,16 +261,16 @@ import Testing
         #expect(throws: BackupError.malformed) { try make([revision(shared, parents: [shared])]) }
         #expect(throws: BackupError.malformed) { try make([revision(size: 27)]) }
         #expect(throws: BackupError.limitExceeded) { try make([revision(size: 300_001)]) }
-        #expect(throws: BackupError.limitExceeded) { try make([revision(parents: (0..<1_001).map { _ in UUID() })]) }
+        #expect(throws: BackupError.limitExceeded) { try make([revision(parents: (0 ..< 1001).map { _ in UUID() })]) }
         #expect(throws: BackupError.malformed) {
             try BackupPayload(exportedAtMillis: -1, incompleteHistory: false, vaultKey: key, header: header, revisions: [])
         }
 
         let empty = try make([]).encoded()
-        #expect(empty.count == 65_536)
+        #expect(empty.count == 65536)
         #expect(slice(empty, 208, 4) == hex("00000000"))
         // 112 records of 300000 bytes exceed the 32 MiB payload limit only after encoding.
-        let large = (0..<112).map { _ in revision(size: 300_000) }
+        let large = (0 ..< 112).map { _ in revision(size: 300_000) }
         #expect(throws: BackupError.limitExceeded) { try make(large).encoded() }
     }
 
@@ -273,9 +280,9 @@ import Testing
         let first = try await crypto.encrypt(VaultItem(title: "First"), parents: [])
         var edited = VaultItem(title: "Edited"); edited.id = try await crypto.decrypt(first).id
         let second = try await crypto.encrypt(edited, parents: [first.id])
-        let payload = try BackupPayload(exportedAtMillis: 1, incompleteHistory: false, vaultKey: try await crypto.deviceKey(),
-                                        header: created.header, revisions: [second, first])
-        let decoded = try BackupPayload.decode(try payload.encoded())
+        let payload = try await BackupPayload(exportedAtMillis: 1, incompleteHistory: false, vaultKey: crypto.deviceKey(),
+                                              header: created.header, revisions: [second, first])
+        let decoded = try BackupPayload.decode(payload.encoded())
         #expect(decoded.header == created.header)
         #expect(Set(decoded.revisions.map(\.authenticatedData)) == Set([first, second].map(\.authenticatedData)))
         #expect(Set(decoded.revisions.map(\.id)) == Set([first.id, second.id]))
@@ -289,19 +296,19 @@ private func hex(_ string: String) -> Data {
     var index = string.startIndex
     while index < string.endIndex {
         let next = string.index(index, offsetBy: 2)
-        data.append(UInt8(string[index..<next], radix: 16)!)
+        data.append(UInt8(string[index ..< next], radix: 16)!)
         index = next
     }
     return data
 }
 
 private func slice(_ data: Data, _ offset: Int, _ length: Int) -> Data {
-    Data(data[data.startIndex + offset..<data.startIndex + offset + length])
+    Data(data[data.startIndex + offset ..< data.startIndex + offset + length])
 }
 
 private func patched(_ data: Data, at offset: Int, _ bytes: String) -> Data {
     var copy = data
     let replacement = hex(bytes)
-    copy.replaceSubrange(offset..<offset + replacement.count, with: replacement)
+    copy.replaceSubrange(offset ..< offset + replacement.count, with: replacement)
     return copy
 }

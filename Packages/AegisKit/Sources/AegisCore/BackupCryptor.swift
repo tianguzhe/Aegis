@@ -18,7 +18,7 @@ public struct OpenedBackup: Sendable {
 /// from one credential. Security-sensitive: changes here need review against the design doc.
 public enum BackupCryptor {
     public static let minimumPasswordCharacters = 12
-    public static let maximumPasswordBytes = 4_096
+    public static let maximumPasswordBytes = 4096
 
     private static let payloadInfo = Data("aegis.backup.v1.payload".utf8)
     private static let commitmentInfo = Data("aegis.backup.v1.commit".utf8)
@@ -39,13 +39,14 @@ public enum BackupCryptor {
 
     /// `random` exists so tests can produce deterministic vectors; production uses `SecureRandom`.
     static func seal(_ payload: BackupPayload, backupPassword: String?, includeVaultSlot: Bool,
-                     random: (Int) throws -> Data) throws -> Data {
+                     random: (Int) throws -> Data) throws -> Data
+    {
         guard backupPassword != nil || includeVaultSlot else { throw BackupError.malformed }
         let normalizedPassword = try backupPassword.map(normalizedNewPassword)
         let plaintext = try payload.encoded()
 
         var fileKeyBytes = try random(32)
-        defer { fileKeyBytes.resetBytes(in: 0..<fileKeyBytes.count) }
+        defer { fileKeyBytes.resetBytes(in: 0 ..< fileKeyBytes.count) }
         let fileKey = SymmetricKey(data: fileKeyBytes)
         let payloadNonce = try random(BackupHeader.nonceLength)
 
@@ -55,7 +56,7 @@ public enum BackupCryptor {
         var draftSlots: [BackupSlot] = [], keys: [SymmetricKey] = []
         if let normalizedPassword {
             let salt = try random(BackupHeader.saltLength)
-            keys.append(try Argon2id.derive(password: normalizedPassword, salt: salt, parameters: BackupLimits.passwordSlotKDF))
+            try keys.append(Argon2id.derive(password: normalizedPassword, salt: salt, parameters: BackupLimits.passwordSlotKDF))
             draftSlots.append(.password(kdf: BackupLimits.passwordSlotKDF, salt: salt, wrap: placeholder))
         }
         if includeVaultSlot {
@@ -67,8 +68,8 @@ public enum BackupCryptor {
                                      commitment: commitment(for: fileKey), slots: draftSlots)
         var slots: [BackupSlot] = []
         for (index, slot) in draftSlots.enumerated() {
-            let wrap = try wrapFileKey(fileKeyBytes, with: keys[index], nonce: try random(WrappedFileKey.nonceLength),
-                                       aad: try draft.slotAAD(at: index))
+            let wrap = try wrapFileKey(fileKeyBytes, with: keys[index], nonce: random(WrappedFileKey.nonceLength),
+                                       aad: draft.slotAAD(at: index))
             switch slot {
             case let .password(kdf, salt, _): slots.append(.password(kdf: kdf, salt: salt, wrap: wrap))
             case let .vault(header, hkdfSalt, _): slots.append(.vault(header: header, hkdfSalt: hkdfSalt, wrap: wrap))
@@ -124,7 +125,7 @@ public enum BackupCryptor {
         if let vaultHeader {
             do {
                 var vaultKey = try VaultCrypto.unwrapVaultKey(recoveryKey: input, header: vaultHeader)
-                defer { vaultKey.resetBytes(in: 0..<vaultKey.count) }
+                defer { vaultKey.resetBytes(in: 0 ..< vaultKey.count) }
                 return try openVaultSlot(vaultKey, kind: .recoveryKey)
             } catch VaultError.invalidRecoveryKey, VaultError.invalidPassword {
                 // Not a recovery key, or not this vault's; try the remaining slots.
@@ -139,7 +140,7 @@ public enum BackupCryptor {
         if let vaultHeader {
             do {
                 var vaultKey = try VaultCrypto.unwrapVaultKey(password: input, header: vaultHeader)
-                defer { vaultKey.resetBytes(in: 0..<vaultKey.count) }
+                defer { vaultKey.resetBytes(in: 0 ..< vaultKey.count) }
                 return try openVaultSlot(vaultKey, kind: .masterPassword)
             } catch VaultError.invalidPassword {
                 // Fall through to the single wrong-credential error below.
@@ -153,11 +154,12 @@ public enum BackupCryptor {
     /// Verifies the commitment, decrypts and decodes the payload, then checks it against the slots.
     private static func openPayload(_ container: BackupContainer, fileKey bytes: Data, kind: BackupCredentialKind) throws -> OpenedBackup {
         var fileKeyBytes = bytes
-        defer { fileKeyBytes.resetBytes(in: 0..<fileKeyBytes.count) }
+        defer { fileKeyBytes.resetBytes(in: 0 ..< fileKeyBytes.count) }
         let fileKey = SymmetricKey(data: fileKeyBytes)
         let payload = try decryptPayload(container, fileKey: fileKey)
         if let index = container.header.slots.firstIndex(where: { $0.typeCode == VaultSlotLayout.type }),
-           case let .vault(slotHeader, hkdfSalt, _) = container.header.slots[index] {
+           case let .vault(slotHeader, hkdfSalt, _) = container.header.slots[index]
+        {
             // The vault slot must describe this payload's vault and wrap this file key under its vault key.
             guard slotHeader == payload.header,
                   let unwrapped = unwrapFileKey(in: container.header, at: index,
@@ -175,7 +177,7 @@ public enum BackupCryptor {
                                             ciphertext: container.ciphertext, tag: container.tag)
             plaintext = try AES.GCM.open(box, using: payloadKey(for: fileKey), authenticating: container.header.encoded())
         } catch { throw BackupError.tampered }
-        defer { plaintext.resetBytes(in: 0..<plaintext.count) }
+        defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
         do { return try BackupPayload.decode(plaintext) }
         catch BackupError.malformed { throw BackupError.invalidContent }
     }
@@ -187,13 +189,10 @@ public enum BackupCryptor {
 
     /// Returns nil when authentication fails, which callers classify by context.
     private static func unwrapFileKey(in header: BackupHeader, at index: Int, with key: SymmetricKey) -> Data? {
-        let wrap: WrappedFileKey
-        switch header.slots[index] {
-        case let .password(_, _, slotWrap), let .vault(_, _, slotWrap): wrap = slotWrap
+        let wrap: WrappedFileKey = switch header.slots[index] {
+        case let .password(_, _, slotWrap), let .vault(_, _, slotWrap): slotWrap
         }
-        guard let box = try? AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: wrap.nonce), ciphertext: wrap.ciphertext, tag: wrap.tag)
-        else { return nil }
-        guard let aad = try? header.slotAAD(at: index) else { return nil }
+        guard let box = try? AES.GCM.SealedBox(nonce: AES.GCM.Nonce(data: wrap.nonce), ciphertext: wrap.ciphertext, tag: wrap.tag), let aad = try? header.slotAAD(at: index) else { return nil }
         return try? AES.GCM.open(box, using: key, authenticating: aad)
     }
 

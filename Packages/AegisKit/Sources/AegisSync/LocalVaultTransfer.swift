@@ -46,8 +46,12 @@ public final class LocalVaultTransfer {
         browser.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
-                if case .failed(let error) = state { self.fail(error) }
-                if case .waiting(let error) = state { self.fail(error) }
+                if case let .failed(error) = state {
+                    self.fail(error)
+                }
+                if case let .waiting(error) = state {
+                    self.fail(error)
+                }
             }
         }
         browser.browseResultsChangedHandler = { [weak self] results, _ in
@@ -82,7 +86,7 @@ public final class LocalVaultTransfer {
                 guard let self, self.generation == token else { return }
                 switch state {
                 case .ready: self.state = .offering
-                case .failed(let error), .waiting(let error): self.fail(error)
+                case let .failed(error), let .waiting(error): self.fail(error)
                 default: break
                 }
             }
@@ -96,8 +100,8 @@ public final class LocalVaultTransfer {
         listener.start(queue: .global(qos: .userInitiated))
         expiryTask = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(LocalTransferProtocol.offerLifetime)) } catch { return }
-            guard let self, self.generation == token else { return }
-            self.fail(LocalTransferError.expired)
+            guard let self, generation == token else { return }
+            fail(LocalTransferError.expired)
         }
     }
 
@@ -125,14 +129,17 @@ public final class LocalVaultTransfer {
                 guard try LocalTransferProtocol.verify(receipt, code: code, challenge: challenge, receivedFile: data) else {
                     throw LocalTransferError.authenticationFailed
                 }
-                guard let self, self.generation == token else { return }
-                self.stop(); self.state = .sent
+                guard let self, generation == token else { return }
+                stop(); state = .sent
             } catch {
-                guard let self, self.generation == token else { return }
-                self.active = nil; self.transferTask = nil
-                self.failedAttempts += 1
-                if self.failedAttempts >= 3 { self.fail(LocalTransferError.authenticationFailed) }
-                else { self.state = .offering }
+                guard let self, generation == token else { return }
+                active = nil; transferTask = nil
+                failedAttempts += 1
+                if failedAttempts >= 3 {
+                    fail(LocalTransferError.authenticationFailed)
+                } else {
+                    state = .offering
+                }
             }
         }
     }
@@ -158,17 +165,19 @@ public final class LocalVaultTransfer {
                 let data = try await socket.read(count)
                 _ = try BackupContainer.parse(data)
                 try await socket.send(LocalTransferProtocol.proof(code: code, challenge: challenge, receivedFile: data))
-                guard let self, self.generation == token else { return }
-                self.active = nil; self.transferTask = nil
-                self.receivedData = data; self.state = .received
+                guard let self, generation == token else { return }
+                active = nil; transferTask = nil
+                receivedData = data; state = .received
             } catch {
-                guard let self, self.generation == token else { return }
-                self.fail(LocalTransferError.connectionLost)
+                guard let self, generation == token else { return }
+                fail(LocalTransferError.connectionLost)
             }
         }
     }
 
-    public func discardReceivedBytes() { receivedData = nil; pairingCode = "" }
+    public func discardReceivedBytes() {
+        receivedData = nil; pairingCode = ""
+    }
 
     public func stop() {
         generation = UUID()
@@ -201,8 +210,13 @@ private final class LocalTransferConnection {
     private let connection: NWConnection
     private var ready: CheckedContinuation<Void, Error>?
 
-    init(_ connection: NWConnection) { self.connection = connection }
-    func cancel() { connection.cancel() }
+    init(_ connection: NWConnection) {
+        self.connection = connection
+    }
+
+    func cancel() {
+        connection.cancel()
+    }
 
     func start() async throws {
         let connection = connection
@@ -215,7 +229,7 @@ private final class LocalTransferConnection {
                         guard let self, let pending = self.ready else { return }
                         switch state {
                         case .ready: self.ready = nil; pending.resume()
-                        case .failed(let error): self.ready = nil; pending.resume(throwing: error)
+                        case let .failed(error): self.ready = nil; pending.resume(throwing: error)
                         case .cancelled: self.ready = nil; pending.resume(throwing: CancellationError())
                         default: break
                         }
@@ -232,7 +246,11 @@ private final class LocalTransferConnection {
             try Task.checkCancellation()
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 connection.send(content: data, completion: .contentProcessed { error in
-                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume()
+                    }
                 })
             }
         } onCancel: { connection.cancel() }
@@ -245,11 +263,14 @@ private final class LocalTransferConnection {
             var data = Data()
             while data.count < count {
                 try Task.checkCancellation()
-                let remaining = min(count - data.count, 65_536)
+                let remaining = min(count - data.count, 65536)
                 let chunk: Data = try await withCheckedThrowingContinuation { continuation in
                     connection.receive(minimumIncompleteLength: 1, maximumLength: remaining) { bytes, _, _, error in
-                        if let bytes, !bytes.isEmpty { continuation.resume(returning: bytes) }
-                        else { continuation.resume(throwing: error.map { $0 as Error } ?? LocalTransferError.connectionLost) }
+                        if let bytes, !bytes.isEmpty {
+                            continuation.resume(returning: bytes)
+                        } else {
+                            continuation.resume(throwing: error.map { $0 as Error } ?? LocalTransferError.connectionLost)
+                        }
                     }
                 }
                 data.append(chunk)

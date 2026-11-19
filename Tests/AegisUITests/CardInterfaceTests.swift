@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class CardInterfaceTests: XCTestCase {
-    func testAppearancePersistsAndCardFaceStaysMasked() throws {
+    func testAppearancePersistsAndCardFaceStaysMasked() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--preview-vault", "--preview-cards", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -49,7 +49,7 @@ final class CardInterfaceTests: XCTestCase {
         XCTAssertTrue(app.buttons["cardType-credit"].isSelected)
     }
 
-    func testCardNumberFiltersCountsAndRequiresValidChecksum() throws {
+    func testCardNumberFiltersCountsAndRequiresValidChecksum() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["--preview-vault", "--preview-cards", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -81,8 +81,10 @@ final class CardInterfaceTests: XCTestCase {
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let scroll = app.scrollViews["itemEditorScroll"]
-        for _ in 0..<12 {
-            if element.isHittable { return }
+        for _ in 0 ..< 12 {
+            if element.isHittable {
+                return
+            }
             let frame = scroll.frame
             let keyboard = app.keyboards.firstMatch
             let bottom = keyboard.exists ? min(frame.maxY, keyboard.frame.minY) : frame.maxY

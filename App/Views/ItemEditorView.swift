@@ -2,7 +2,7 @@ import AegisCore
 import AegisMarkdown
 import SwiftUI
 #if os(iOS)
-import UIKit
+    import UIKit
 #endif
 
 struct ItemEditorView: View {
@@ -19,8 +19,14 @@ struct ItemEditorView: View {
     @State private var expandedEditorActive = false
     private let onSaved: (UUID) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
-    private var isDirty: Bool { item != baseline }
-    private var cardNumberValidation: CardNumberValidation { CardNumberRules.validate(item.cardNumber) }
+    private var isDirty: Bool {
+        item != baseline
+    }
+
+    private var cardNumberValidation: CardNumberValidation {
+        CardNumberRules.validate(item.cardNumber)
+    }
+
     private var canSave: Bool {
         !item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             (item.kind != .card || cardNumberValidation.allowsSaving)
@@ -41,29 +47,29 @@ struct ItemEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     #if os(macOS)
-                    Picker(L10n.text("editor.itemType"), selection: $item.kind) {
-                        ForEach(ItemKind.allCases) { kind in
-                            Label(kind.title, systemImage: kind.symbol).tag(kind)
-                        }
-                    }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("itemTypePicker")
+                        Picker(L10n.text("editor.itemType"), selection: $item.kind) {
+                            ForEach(ItemKind.allCases) { kind in
+                                Label(kind.title, systemImage: kind.symbol).tag(kind)
+                            }
+                        }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("itemTypePicker")
                     #else
-                    typeChoiceLayout {
-                        ForEach(ItemKind.allCases) { kind in
-                            Button {
-                                if kind == .card && item.kind != .card && item.cardBrand == nil && item.cardType == nil {
-                                    item.cardBrand = .unionPay; item.cardType = .debit
-                                }
-                                item.kind = kind
-                            } label: {
-                                Label(kind.title, systemImage: kind.symbol).aegisFont(size: 12, weight: .medium)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 13)
-                                    .foregroundStyle(item.kind == kind ? AegisTheme.teal : AegisTheme.secondary)
-                                    .background(item.kind == kind ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 11))
-                                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(item.kind == kind ? AegisTheme.teal.opacity(0.24) : AegisTheme.border))
-                            }.buttonStyle(.plain).accessibilityAddTraits(item.kind == kind ? [.isSelected] : [])
-                                .accessibilityIdentifier("itemKind-\(kind.rawValue)")
+                        typeChoiceLayout {
+                            ForEach(ItemKind.allCases) { kind in
+                                Button {
+                                    if kind == .card, item.kind != .card, item.cardBrand == nil, item.cardType == nil {
+                                        item.cardBrand = .unionPay; item.cardType = .debit
+                                    }
+                                    item.kind = kind
+                                } label: {
+                                    Label(kind.title, systemImage: kind.symbol).aegisFont(size: 12, weight: .medium)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                        .foregroundStyle(item.kind == kind ? AegisTheme.teal : AegisTheme.secondary)
+                                        .background(item.kind == kind ? AegisTheme.selected : AegisTheme.surface, in: RoundedRectangle(cornerRadius: 11))
+                                        .overlay(RoundedRectangle(cornerRadius: 11).stroke(item.kind == kind ? AegisTheme.teal.opacity(0.24) : AegisTheme.border))
+                                }.buttonStyle(.plain).accessibilityAddTraits(item.kind == kind ? [.isSelected] : [])
+                                    .accessibilityIdentifier("itemKind-\(kind.rawValue)")
+                            }
                         }
-                    }
                     #endif
                     AegisInput(title: L10n.text("field.title")) {
                         TextField(L10n.text("editor.titlePlaceholder"), text: $item.title).accessibilityIdentifier("itemTitle")
@@ -72,8 +78,12 @@ struct ItemEditorView: View {
                         Label(L10n.text("editor.titleRequiredHint"), systemImage: "info.circle")
                             .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
                     }
-                    if item.kind == .login { loginFields }
-                    if item.kind == .card { cardFields }
+                    if item.kind == .login {
+                        loginFields
+                    }
+                    if item.kind == .card {
+                        cardFields
+                    }
                     markdownEditor
                     Toggle(isOn: $item.isFavorite) {
                         Label(L10n.text("field.favorite"), systemImage: "star").aegisFont(size: 13).foregroundStyle(AegisTheme.text)
@@ -83,13 +93,17 @@ struct ItemEditorView: View {
             Divider().overlay(AegisTheme.border)
             footerLayout {
                 Label(L10n.text(isDirty ? "draft.protected" : "ui.savedEncrypted"), systemImage: "lock").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
-                if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                if !typeSize.isAccessibilitySize {
+                    Spacer(minLength: 0)
+                }
                 Button(L10n.text("action.cancel"), action: requestClose).buttonStyle(AegisButtonStyle()).disabled(saving)
                 Button {
                     guard !saving, canSave else { return }
                     saving = true
                     item.title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if item.kind == .card { item.cardNumber = CardNumberRules.digits(from: item.cardNumber) }
+                    if item.kind == .card {
+                        item.cardNumber = CardNumberRules.digits(from: item.cardNumber)
+                    }
                     Task {
                         if await session.save(item, parents: parents) {
                             baseline = item; session.discardDraft(item.id); onSaved(item.id); dismiss()
@@ -97,7 +111,11 @@ struct ItemEditorView: View {
                         saving = false
                     }
                 } label: {
-                    HStack(spacing: 8) { if saving { ProgressView().controlSize(.small).tint(AegisTheme.disabledText) }; Text(L10n.text(saving ? "action.saving" : "action.save")) }
+                    HStack(spacing: 8) {
+                        if saving {
+                            ProgressView().controlSize(.small).tint(AegisTheme.disabledText)
+                        }; Text(L10n.text(saving ? "action.saving" : "action.save"))
+                    }
                 }.buttonStyle(AegisButtonStyle(primary: true))
                     .disabled(!canSave || saving)
                     .accessibilityIdentifier("saveItemButton")
@@ -114,14 +132,18 @@ struct ItemEditorView: View {
                 }
                 session.observeDraft(draftObserverID) { VaultDraft(item: item, original: baseline, parents: parents) }
             }
-            .onDisappear { if !expandedEditorActive { session.stopObservingDraft(draftObserverID) } }
+            .onDisappear {
+                if !expandedEditorActive {
+                    session.stopObservingDraft(draftObserverID)
+                }
+            }
             .onChange(of: item) { _, _ in
                 guard loaded, !saving else { return }
                 session.retainDraft(VaultDraft(item: item, original: baseline, parents: parents))
                 session.touch()
             }
             .onChange(of: item.kind) { _, kind in
-                if kind == .card && item.cardBrand == nil && item.cardType == nil {
+                if kind == .card, item.cardBrand == nil, item.cardType == nil {
                     item.cardBrand = .unionPay; item.cardType = .debit
                 }
             }
@@ -133,9 +155,9 @@ struct ItemEditorView: View {
                 Button(L10n.text("draft.continue"), role: .cancel) {}
             } message: { Text(L10n.text("draft.closeMessage")) }
             .vaultErrorPresenter()
-            #if os(macOS)
+        #if os(macOS)
             .onExitCommand(perform: requestClose)
-            #else
+        #else
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
@@ -144,12 +166,18 @@ struct ItemEditorView: View {
                     }.accessibilityIdentifier("dismissEditorKeyboard")
                 }
             }
-            #endif
+        #endif
     }
+
     private func requestClose() {
         guard !saving else { return }
-        if isDirty { confirmClose = true } else { dismiss() }
+        if isDirty {
+            confirmClose = true
+        } else {
+            dismiss()
+        }
     }
+
     private var loginFields: some View {
         VStack(spacing: 16) {
             loginIdentityLayout {
@@ -163,8 +191,11 @@ struct ItemEditorView: View {
             VStack(alignment: .leading, spacing: 10) {
                 AegisInput(title: L10n.text("field.password"), icon: "key.horizontal") {
                     Group {
-                        if showPassword { TextField(L10n.text("field.password"), text: $item.password) }
-                        else { SecureField(L10n.text("field.password"), text: $item.password).textContentType(.newPassword) }
+                        if showPassword {
+                            TextField(L10n.text("field.password"), text: $item.password)
+                        } else {
+                            SecureField(L10n.text("field.password"), text: $item.password).textContentType(.newPassword)
+                        }
                     }.aegisNoCapitalization()
                     Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye").foregroundStyle(AegisTheme.secondary).frame(width: AegisMetrics.controlHeight, height: AegisMetrics.controlHeight).contentShape(Rectangle()) }
                         .buttonStyle(.plain).accessibilityLabel(L10n.text(showPassword ? "action.hide" : "action.show"))
@@ -183,13 +214,15 @@ struct ItemEditorView: View {
             }
         }
     }
+
     private var loginIdentityLayout: AnyLayout {
         #if os(macOS)
-        AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+            AnyLayout(HStackLayout(alignment: .top, spacing: 16))
         #else
-        AnyLayout(VStackLayout(spacing: 16))
+            AnyLayout(VStackLayout(spacing: 16))
         #endif
     }
+
     private var cardFields: some View {
         VStack(spacing: 18) {
             CardAppearancePicker(item: $item)
@@ -200,9 +233,9 @@ struct ItemEditorView: View {
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Label(cardNumberValidation.message, systemImage: cardNumberValidation == .valid ? "checkmark.circle.fill" :
-                            cardNumberValidation == .empty ? "info.circle" : "exclamationmark.circle")
+                        cardNumberValidation == .empty ? "info.circle" : "exclamationmark.circle")
                         .foregroundStyle(cardNumberValidation == .valid ? AegisTheme.teal :
-                                            cardNumberValidation == .empty ? AegisTheme.secondary : Color.red)
+                            cardNumberValidation == .empty ? AegisTheme.secondary : Color.red)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Text(L10n.format("card.number.count", Int64(CardNumberRules.digits(from: item.cardNumber).count), Int64(CardNumberRules.maximumLength)))
@@ -216,17 +249,21 @@ struct ItemEditorView: View {
             }
         }
     }
+
     private var cardFieldLayout: AnyLayout {
         typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 18)) : AnyLayout(HStackLayout(spacing: 14))
     }
+
     private var markdownEditor: some View {
         MarkdownComposer(text: $item.notes,
                          title: L10n.text(item.kind == .note ? "field.secureNote" : "field.notes"),
                          recordTitle: item.title, expanded: $expandedEditorActive)
     }
+
     private var typeChoiceLayout: AnyLayout {
         typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
     }
+
     private var footerLayout: AnyLayout {
         typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 12))
     }

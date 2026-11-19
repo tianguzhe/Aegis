@@ -45,7 +45,9 @@ public enum BackupValidator {
             visited += 1
             for child in children[id, default: []] {
                 pendingParents[child, default: 0] -= 1
-                if pendingParents[child] == 0 { ready.append(child) }
+                if pendingParents[child] == 0 {
+                    ready.append(child)
+                }
             }
         }
         guard visited == payload.revisions.count else { throw BackupError.invalidContent }

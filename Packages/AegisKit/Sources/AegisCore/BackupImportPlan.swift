@@ -33,7 +33,9 @@ public struct BackupImportPlan: Sendable {
         items = itemIDs.map { id in
             let group = groups[id] ?? []
             let representative = group.sorted {
-                if $0.item.modifiedAt != $1.item.modifiedAt { return $0.item.modifiedAt > $1.item.modifiedAt }
+                if $0.item.modifiedAt != $1.item.modifiedAt {
+                    return $0.item.modifiedAt > $1.item.modifiedAt
+                }
                 return $0.id.uuidString < $1.id.uuidString
             }.first?.item
             let title = representative?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -41,7 +43,9 @@ public struct BackupImportPlan: Sendable {
                         isTrashed: !group.isEmpty && group.allSatisfy { $0.item.deletedAt != nil },
                         isConflict: group.count > 1, isPermanentlyDeleted: group.isEmpty)
         }.sorted {
-            if $0.isPermanentlyDeleted != $1.isPermanentlyDeleted { return !$0.isPermanentlyDeleted }
+            if $0.isPermanentlyDeleted != $1.isPermanentlyDeleted {
+                return !$0.isPermanentlyDeleted
+            }
             let order = $0.title.localizedStandardCompare($1.title)
             return order == .orderedSame ? $0.id.uuidString < $1.id.uuidString : order == .orderedAscending
         }

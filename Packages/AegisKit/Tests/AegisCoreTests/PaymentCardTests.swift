@@ -6,8 +6,9 @@ struct PaymentCardTests {
     @Test func legacyCenturionSelectionBecomesAmericanExpress() throws {
         let brand = try JSONDecoder().decode(CardBrand.self, from: Data("\"centurion\"".utf8))
         #expect(brand == .americanExpress)
-        #expect(String(decoding: try JSONEncoder().encode(brand), as: UTF8.self) == "\"americanExpress\"")
+        #expect(try String(decoding: JSONEncoder().encode(brand), as: UTF8.self) == "\"americanExpress\"")
     }
+
     @Test func oldEncryptedItemPayloadNeedsNoNewFields() throws {
         var original = VaultItem(kind: .card, title: "Legacy card", notes: "Preserve my note")
         original.cardNumber = "1234 5678 9012 3456"
@@ -30,7 +31,7 @@ struct PaymentCardTests {
             for type in PaymentCardType.allCases {
                 var item = VaultItem(kind: .card, title: brand.rawValue)
                 item.cardBrand = brand; item.cardType = type
-                versions.append(try await crypto.encrypt(item, parents: []))
+                try await versions.append(crypto.encrypt(item, parents: []))
             }
         }
         await crypto.lock()

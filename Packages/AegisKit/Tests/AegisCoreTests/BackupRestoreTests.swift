@@ -22,15 +22,17 @@ import Testing
         var edited = try await crypto.decrypt(first); edited.password = "two"
         let second = try await crypto.encrypt(edited, parents: [first.id])
         let note = try await crypto.encrypt(VaultItem(kind: .note, title: "Note"), parents: [])
-        for revision in [first, second, note] { try await store.saveRevision(revision) }
+        for revision in [first, second, note] {
+            try await store.saveRevision(revision)
+        }
         return Source(crypto: crypto, store: store, header: created.header, revisions: [first, second, note])
     }
 
     private static func exportFile(from source: Source) async throws -> Data {
         let snapshot = try await source.store.snapshot()
-        let payload = try BackupPayload(exportedAtMillis: 1_793_923_200_000, incompleteHistory: snapshot.hasIncompleteHistory,
-                                        vaultKey: try await source.crypto.deviceKey(), header: snapshot.header,
-                                        revisions: snapshot.revisions)
+        let payload = try await BackupPayload(exportedAtMillis: 1_793_923_200_000, incompleteHistory: snapshot.hasIncompleteHistory,
+                                              vaultKey: source.crypto.deviceKey(), header: snapshot.header,
+                                              revisions: snapshot.revisions)
         return try BackupCryptor.seal(payload, backupPassword: nil, includeVaultSlot: true)
     }
 
@@ -46,7 +48,7 @@ import Testing
         let fileURL = directory.appendingPathComponent("backup.aegis")
         try await Self.exportFile(from: source).write(to: fileURL)
 
-        let opened = try BackupCryptor.open(try BackupContainer.parse(Data(contentsOf: fileURL)), credential: Self.master)
+        let opened = try BackupCryptor.open(BackupContainer.parse(Data(contentsOf: fileURL)), credential: Self.master)
         _ = try await BackupValidator.validate(opened.payload)
         let storeDirectory = directory.appendingPathComponent("store")
         let result = try await VaultStore.make(directory: storeDirectory)
@@ -56,10 +58,10 @@ import Testing
         // A new container on the same files sees the committed restore.
         let reopened = try VaultStore.make(directory: storeDirectory)
         #expect(try await reopened.header() == source.header)
-        #expect(Set(try await reopened.revisions().map(\.id)) == Set(source.revisions.map(\.id)))
+        #expect(try await Set(reopened.revisions().map(\.id)) == Set(source.revisions.map(\.id)))
         let crypto = VaultCrypto()
-        try await crypto.unlock(password: Self.master, header: try #require(try await reopened.header()))
-        let entries = try await crypto.entries(from: try await reopened.revisions())
+        try await crypto.unlock(password: Self.master, header: #require(try await reopened.header()))
+        let entries = try await crypto.entries(from: reopened.revisions())
         #expect(Set(entries.map(\.item.title)) == ["Bank", "Note"])
         #expect(entries.first { $0.item.title == "Bank" }?.item.password == "two")
     }
@@ -68,15 +70,15 @@ import Testing
         let source = try await Self.makeSource()
         let target = try VaultStore.make(inMemory: true)
         #expect(try await target.restore(header: source.header, revisions: [source.revisions[0]])
-                == RestoreResult(createdHeader: true, insertedRevisions: 1))
+            == RestoreResult(createdHeader: true, insertedRevisions: 1))
         let newer = try await source.crypto.encrypt(VaultItem(title: "Only local"), parents: [])
         try await target.saveRevision(newer)
 
         #expect(try await target.restore(header: source.header, revisions: source.revisions)
-                == RestoreResult(createdHeader: false, insertedRevisions: 2))
+            == RestoreResult(createdHeader: false, insertedRevisions: 2))
         #expect(try await target.restore(header: source.header, revisions: source.revisions)
-                == RestoreResult(createdHeader: false, insertedRevisions: 0))
-        #expect(Set(try await target.revisions().map(\.id)) == Set((source.revisions + [newer]).map(\.id)))
+            == RestoreResult(createdHeader: false, insertedRevisions: 0))
+        #expect(try await Set(target.revisions().map(\.id)) == Set((source.revisions + [newer]).map(\.id)))
     }
 
     @Test func restoreRejectsAnotherVaultWithoutWriting() async throws {
@@ -93,7 +95,7 @@ import Testing
 
     @Test func anotherDevicesBackupMigratesWithoutReplacingLocalDataOrCredentials() async throws {
         let source = try await Self.makeSource()
-        let opened = try await BackupCryptor.open(try BackupContainer.parse(Self.exportFile(from: source)), credential: Self.master)
+        let opened = try await BackupCryptor.open(BackupContainer.parse(Self.exportFile(from: source)), credential: Self.master)
         let crypto = VaultCrypto(), target = try VaultStore.make(inMemory: true)
         let password = "destination master password"
         let local = try await crypto.create(password: password)
@@ -104,7 +106,7 @@ import Testing
         try await target.saveRevision(localRevision)
         let key = try await crypto.deviceKey()
         let migrated = try await BackupMigration.revisions(from: opened.payload, to: local.header, key: key,
-                                                          existing: target.revisions())
+                                                           existing: target.revisions())
         // Preparing the preview has no storage side effects.
         #expect(try await target.revisions() == [localRevision])
         #expect(migrated.allSatisfy { $0.vaultID == local.header.vaultID })
@@ -128,7 +130,7 @@ import Testing
         let newer = try await crypto.encrypt(edited, parents: [bank.id])
         try await target.saveRevision(newer)
         let repeated = try await BackupMigration.revisions(from: opened.payload, to: local.header, key: key,
-                                                          existing: target.revisions())
+                                                           existing: target.revisions())
         #expect(repeated == migrated)
         #expect(try await target.restore(header: local.header, revisions: repeated).insertedRevisions == 0)
         let afterRepeat = try await crypto.entries(from: target.revisions())
@@ -148,12 +150,12 @@ import Testing
         let deletion = try await source.crypto.encrypt(deletedNote, parents: [source.revisions[2].id])
         let orphan = try await source.crypto.encrypt(VaultItem(title: "Partial history"), parents: [UUID()])
         let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: true,
-                                        vaultKey: source.crypto.deviceKey(), header: source.header,
-                                        revisions: source.revisions + [conflict, trashed, deletion, orphan])
+                                              vaultKey: source.crypto.deviceKey(), header: source.header,
+                                              revisions: source.revisions + [conflict, trashed, deletion, orphan])
         let targetCrypto = VaultCrypto()
         let local = try await targetCrypto.create(password: Self.master)
         let migrated = try await BackupMigration.revisions(from: payload, to: local.header,
-                                                          key: targetCrypto.deviceKey(), existing: [])
+                                                           key: targetCrypto.deviceKey(), existing: [])
         let entries = try await targetCrypto.entries(from: migrated)
         #expect(entries.filter { $0.item.title == "Bank" }.count == 2)
         #expect(entries.filter { $0.item.title == "Bank" }.allSatisfy { $0.isConflict })
@@ -161,14 +163,14 @@ import Testing
         #expect(!entries.contains { $0.item.title == "Note" })
         #expect(entries.contains { $0.item.title == "Partial history" })
         let migratedPayload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: true,
-                                                vaultKey: targetCrypto.deviceKey(), header: local.header, revisions: migrated)
+                                                      vaultKey: targetCrypto.deviceKey(), header: local.header, revisions: migrated)
         #expect(try await BackupValidator.validate(migratedPayload).count == 4)
     }
 
     @Test func migrationRejectsTamperedSourceAndConflictingDestination() async throws {
         let source = try await Self.makeSource()
         let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
-                                        vaultKey: source.crypto.deviceKey(), header: source.header, revisions: source.revisions)
+                                              vaultKey: source.crypto.deviceKey(), header: source.header, revisions: source.revisions)
         let crypto = VaultCrypto()
         let local = try await crypto.create(password: Self.master)
         let key = try await crypto.deviceKey()
@@ -220,7 +222,7 @@ import Testing
         try await target.saveHeader(source.header)
         #expect(try await target.revisions().isEmpty)
         #expect(try await target.restore(header: source.header, revisions: source.revisions)
-                == RestoreResult(createdHeader: false, insertedRevisions: 3))
+            == RestoreResult(createdHeader: false, insertedRevisions: 3))
     }
 
     @Test func snapshotReportsIncompleteHistory() async throws {

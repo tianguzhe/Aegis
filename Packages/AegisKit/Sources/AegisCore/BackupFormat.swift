@@ -43,12 +43,12 @@ public enum BackupError: Error, LocalizedError, Sendable, Equatable {
 /// Resource limits shared by export and import, so export never writes a file import rejects.
 public enum BackupLimits {
     /// Payload plaintext is padded to a multiple of this, hiding the approximate record count.
-    public static let paddingBlock = 65_536
+    public static let paddingBlock = 65536
     public static let maxPayloadLength = 33_554_432
     public static let maxRevisions = 100_000
-    public static let maxParentsPerRevision = 1_000
+    public static let maxParentsPerRevision = 1000
     public static let maxTotalParents = 250_000
-    public static let sealedRevisionLength = 28...300_000
+    public static let sealedRevisionLength = 28 ... 300_000
     /// Largest possible file: fixed header, both slots, maximum payload and its tag.
     public static let maxFileLength = BackupHeader.fixedLength + PasswordSlotLayout.length + VaultSlotLayout.length
         + maxPayloadLength + BackupContainer.tagLength
@@ -56,7 +56,7 @@ public enum BackupLimits {
     /// The only Argon2id profile a password slot may declare in format version 1.
     public static var passwordSlotKDF: KDFParameters {
         var parameters = KDFParameters()
-        parameters.memoryKiB = 65_536; parameters.iterations = 3; parameters.parallelism = 1
+        parameters.memoryKiB = 65536; parameters.iterations = 3; parameters.parallelism = 1
         return parameters
     }
 }
@@ -116,7 +116,9 @@ public struct BackupHeader: Equatable, Sendable {
     /// Exact header bytes; also the AAD of the payload.
     public func encoded() -> Data {
         var data = fixedBytes()
-        for slot in slots { data.append(Self.slotBytes(slot)) }
+        for slot in slots {
+            data.append(Self.slotBytes(slot))
+        }
         return data
     }
 
@@ -135,7 +137,7 @@ public struct BackupHeader: Equatable, Sendable {
         guard payloadNonce.count == Self.nonceLength, commitment.count == Self.commitmentLength else { throw BackupError.malformed }
         let types = slots.map(\.typeCode)
         guard types == [PasswordSlotLayout.type] || types == [VaultSlotLayout.type]
-                || types == [PasswordSlotLayout.type, VaultSlotLayout.type] else { throw BackupError.malformed }
+            || types == [PasswordSlotLayout.type, VaultSlotLayout.type] else { throw BackupError.malformed }
         for slot in slots {
             switch slot {
             case let .password(kdf, salt, _):
@@ -177,18 +179,20 @@ public struct BackupHeader: Equatable, Sendable {
     }
 
     static func parse(_ reader: inout ByteReader) throws -> BackupHeader {
-        guard reader.remaining >= Self.magic.count, try reader.bytes(Self.magic.count) == Self.magic else {
+        guard reader.remaining >= magic.count, try reader.bytes(magic.count) == magic else {
             throw BackupError.notABackup
         }
-        guard try reader.uint16() == Self.version else { throw BackupError.unsupportedVersion }
+        guard try reader.uint16() == version else { throw BackupError.unsupportedVersion }
         let slotCount = try reader.uint8()
         try reader.zeros(1)
         let payloadLength = try reader.uint32()
         let nonce = try reader.bytes(Self.nonceLength)
         let commitment = try reader.bytes(Self.commitmentLength)
-        guard (1...2).contains(slotCount) else { throw BackupError.malformed }
+        guard (1 ... 2).contains(slotCount) else { throw BackupError.malformed }
         var slots: [BackupSlot] = []
-        for _ in 0..<slotCount { slots.append(try parseSlot(&reader)) }
+        for _ in 0 ..< slotCount {
+            try slots.append(parseSlot(&reader))
+        }
         return try BackupHeader(payloadLength: payloadLength, payloadNonce: nonce, commitment: commitment, slots: slots)
     }
 
@@ -198,13 +202,13 @@ public struct BackupHeader: Equatable, Sendable {
         switch type {
         case PasswordSlotLayout.type:
             let kdf = try reader.kdf(), salt = try reader.bytes(saltLength)
-            return .password(kdf: kdf, salt: salt, wrap: try reader.wrappedFileKey())
+            return try .password(kdf: kdf, salt: salt, wrap: reader.wrappedFileKey())
         case VaultSlotLayout.type:
             let id = try reader.uuid(), salt = try reader.bytes(saltLength), kdf = try reader.kdf()
             let wrappedKey = try reader.bytes(60), recoveryWrappedKey = try reader.bytes(60)
             let hkdfSalt = try reader.bytes(saltLength)
             let header = VaultHeader(vaultID: id, salt: salt, kdf: kdf, wrappedKey: wrappedKey, recoveryWrappedKey: recoveryWrappedKey)
-            return .vault(header: header, hkdfSalt: hkdfSalt, wrap: try reader.wrappedFileKey())
+            return try .vault(header: header, hkdfSalt: hkdfSalt, wrap: reader.wrappedFileKey())
         default:
             throw BackupError.malformed
         }
@@ -237,7 +241,7 @@ public struct BackupContainer: Sendable {
         let header = try BackupHeader.parse(&reader)
         guard reader.remaining == Int(header.payloadLength) + tagLength else { throw BackupError.malformed }
         let ciphertext = try reader.bytes(Int(header.payloadLength))
-        return try BackupContainer(header: header, ciphertext: ciphertext, tag: try reader.bytes(tagLength))
+        return try BackupContainer(header: header, ciphertext: ciphertext, tag: reader.bytes(tagLength))
     }
 }
 
@@ -258,8 +262,9 @@ public struct BackupPayload: Equatable, Sendable {
     public let revisions: [EncryptedRevision]
 
     public init(exportedAtMillis: Int64, incompleteHistory: Bool, vaultKey: Data, header: VaultHeader,
-                revisions: [EncryptedRevision]) throws {
-        guard (0...Self.maxExportedAtMillis).contains(exportedAtMillis), vaultKey.count == 32 else { throw BackupError.malformed }
+                revisions: [EncryptedRevision]) throws
+    {
+        guard (0 ... Self.maxExportedAtMillis).contains(exportedAtMillis), vaultKey.count == 32 else { throw BackupError.malformed }
         do { try header.kdf.validate() } catch { throw BackupError.unsupportedParameters }
         guard header.formatVersion == 1, header.salt.count == BackupHeader.saltLength, header.wrappedKey.count == 60,
               header.recoveryWrappedKey.count == 60 else { throw BackupError.malformed }
@@ -289,7 +294,9 @@ public struct BackupPayload: Equatable, Sendable {
         for revision in revisions {
             data.append(revision.itemID); data.append(revision.id)
             data.appendLE(UInt16(revision.parents.count))
-            for parent in revision.parents.sorted(by: { $0.precedesBytes(of: $1) }) { data.append(parent) }
+            for parent in revision.parents.sorted(by: { $0.precedesBytes(of: $1) }) {
+                data.append(parent)
+            }
             data.appendLE(UInt32(revision.ciphertext.count))
             data.append(revision.ciphertext)
         }
@@ -306,24 +313,24 @@ public struct BackupPayload: Equatable, Sendable {
         guard plaintext.count <= BackupLimits.maxPayloadLength else { throw BackupError.limitExceeded }
         guard plaintext.count > 0, plaintext.count % BackupLimits.paddingBlock == 0 else { throw BackupError.malformed }
         var reader = ByteReader(plaintext)
-        let exportedAt = Int64(bitPattern: try reader.uint64())
+        let exportedAt = try Int64(bitPattern: reader.uint64())
         let flags = try reader.uint32()
         guard flags & ~incompleteHistoryFlag == 0 else { throw BackupError.malformed }
         let vaultID = try reader.uuid(), vaultKey = try reader.bytes(32), salt = try reader.bytes(BackupHeader.saltLength)
         let kdf = try reader.kdf(), wrappedKey = try reader.bytes(60), recoveryWrappedKey = try reader.bytes(60)
         let header = VaultHeader(vaultID: vaultID, salt: salt, kdf: kdf, wrappedKey: wrappedKey, recoveryWrappedKey: recoveryWrappedKey)
-        let count = Int(try reader.uint32())
+        let count = try Int(reader.uint32())
         guard count <= BackupLimits.maxRevisions else { throw BackupError.limitExceeded }
         guard count <= reader.remaining / minRecordLength else { throw BackupError.malformed }
         var revisions: [EncryptedRevision] = []
         revisions.reserveCapacity(count)
         var totalParents = 0
         var previousID: UUID?
-        for _ in 0..<count {
+        for _ in 0 ..< count {
             let itemID = try reader.uuid(), id = try reader.uuid()
             guard previousID.map({ $0.precedesBytes(of: id) }) ?? true else { throw BackupError.malformed }
             previousID = id
-            let parentCount = Int(try reader.uint16())
+            let parentCount = try Int(reader.uint16())
             totalParents += parentCount
             guard parentCount <= BackupLimits.maxParentsPerRevision, totalParents <= BackupLimits.maxTotalParents else {
                 throw BackupError.limitExceeded
@@ -331,16 +338,16 @@ public struct BackupPayload: Equatable, Sendable {
             guard parentCount <= reader.remaining / 16 else { throw BackupError.malformed }
             var parents: [UUID] = []
             parents.reserveCapacity(parentCount)
-            for _ in 0..<parentCount {
+            for _ in 0 ..< parentCount {
                 let parent = try reader.uuid()
                 guard parent != id, parents.last.map({ $0.precedesBytes(of: parent) }) ?? true else { throw BackupError.malformed }
                 parents.append(parent)
             }
-            let sealedLength = Int(try reader.uint32())
+            let sealedLength = try Int(reader.uint32())
             guard sealedLength <= BackupLimits.sealedRevisionLength.upperBound else { throw BackupError.limitExceeded }
             guard sealedLength >= BackupLimits.sealedRevisionLength.lowerBound else { throw BackupError.malformed }
-            revisions.append(EncryptedRevision(vaultID: vaultID, itemID: itemID, id: id, parents: parents,
-                                               ciphertext: try reader.bytes(sealedLength)))
+            try revisions.append(EncryptedRevision(vaultID: vaultID, itemID: itemID, id: id, parents: parents,
+                                                   ciphertext: reader.bytes(sealedLength)))
         }
         let padding = reader.remaining
         try reader.zeros(padding)
@@ -356,26 +363,40 @@ struct ByteReader {
     private let data: Data
     private var offset: Int
 
-    init(_ data: Data) { self.data = data; offset = data.startIndex }
+    init(_ data: Data) {
+        self.data = data; offset = data.startIndex
+    }
 
-    var remaining: Int { data.endIndex - offset }
+    var remaining: Int {
+        data.endIndex - offset
+    }
 
     mutating func bytes(_ count: Int) throws -> Data {
         guard count >= 0, count <= remaining else { throw BackupError.malformed }
         defer { offset += count }
-        return Data(data[offset..<offset + count])
+        return Data(data[offset ..< offset + count])
     }
 
     mutating func zeros(_ count: Int) throws {
-        guard count >= 0, count <= remaining else { throw BackupError.malformed }
-        guard data[offset..<offset + count].allSatisfy({ $0 == 0 }) else { throw BackupError.malformed }
+        guard count >= 0, count <= remaining, data[offset ..< offset + count].allSatisfy({ $0 == 0 }) else { throw BackupError.malformed }
         offset += count
     }
 
-    mutating func uint8() throws -> UInt8 { try bytes(1)[0] }
-    mutating func uint16() throws -> UInt16 { UInt16(try littleEndian(2)) }
-    mutating func uint32() throws -> UInt32 { UInt32(try littleEndian(4)) }
-    mutating func uint64() throws -> UInt64 { try littleEndian(8) }
+    mutating func uint8() throws -> UInt8 {
+        try bytes(1)[0]
+    }
+
+    mutating func uint16() throws -> UInt16 {
+        try UInt16(littleEndian(2))
+    }
+
+    mutating func uint32() throws -> UInt32 {
+        try UInt32(littleEndian(4))
+    }
+
+    mutating func uint64() throws -> UInt64 {
+        try littleEndian(8)
+    }
 
     mutating func uuid() throws -> UUID {
         try bytes(16).withUnsafeBytes { UUID(uuid: $0.loadUnaligned(as: uuid_t.self)) }
@@ -398,7 +419,7 @@ struct ByteReader {
 }
 
 extension Data {
-    mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
+    mutating func appendLE(_ value: some FixedWidthInteger) {
         Swift.withUnsafeBytes(of: value.littleEndian) { append(contentsOf: $0) }
     }
 

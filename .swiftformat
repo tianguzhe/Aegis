@@ -1,0 +1,4 @@
+# Run before every commit: `swiftformat .` (check only: `swiftformat --lint .`).
+# Default rule set; pinned Swift version so results match across machines.
+--swiftversion 6.0
+--exclude .build,Packages/AegisKit/.build,dist

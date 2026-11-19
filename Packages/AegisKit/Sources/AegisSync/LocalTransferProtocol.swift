@@ -17,7 +17,7 @@ public enum LocalTransferProtocol {
 
     public static func normalizeCode(_ input: String) throws -> String {
         let value = input.filter { !$0.isWhitespace && $0 != "-" }.uppercased()
-        guard value.utf8.count == 32, value.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) })
+        guard value.utf8.count == 32, value.utf8.allSatisfy({ (48 ... 57).contains($0) || (65 ... 70).contains($0) })
         else { throw LocalTransferError.invalidCode }
         return value
     }
@@ -32,7 +32,9 @@ public enum LocalTransferProtocol {
         var message = Data((receivedFile == nil ? "aegis.lan.v1.request" : "aegis.lan.v1.received").utf8)
         message.append(magic)
         message.append(challenge)
-        if let receivedFile { message.append(contentsOf: SHA256.hash(data: receivedFile)) }
+        if let receivedFile {
+            message.append(contentsOf: SHA256.hash(data: receivedFile))
+        }
         return Data(HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: Data(normalized.utf8))))
     }
 

@@ -9,7 +9,7 @@ import Testing
 struct VaultTests {
     private let password = "a unique master passphrase 2026"
 
-    @Test func officialArgon2idKnownAnswer() throws {
+    @Test func officialArgon2idKnownAnswer() {
         let pwd = Data("password".utf8), salt = Data("somesalt".utf8)
         var output = Data(count: 32)
         let result = output.withUnsafeMutableBytes { out in
@@ -125,7 +125,9 @@ struct VaultTests {
         let marker = TrashPolicy.deletionMarker(for: item)
         #expect(marker.title.isEmpty && marker.username.isEmpty && marker.password.isEmpty && marker.notes.isEmpty)
         let deleted = try await crypto.encrypt(marker, parents: [trashed.id])
-        for revision in [original, trashed, deleted] { try await source.saveRevision(revision) }
+        for revision in [original, trashed, deleted] {
+            try await source.saveRevision(revision)
+        }
         try await target.restore(header: created.header, revisions: source.snapshot().revisions)
         #expect(try await crypto.entries(from: target.revisions()).isEmpty)
 
@@ -164,8 +166,8 @@ struct VaultTests {
         let crypto = VaultCrypto(), source = try VaultStore.make(inMemory: true)
         let created = try await crypto.create(password: password)
         try await source.saveHeader(created.header)
-        try await source.saveRevision(try await crypto.encrypt(VaultItem(title: "Imported"), parents: []))
-        let backup = try JSONDecoder().decode(VaultBackup.self, from: try await source.backup())
+        try await source.saveRevision(crypto.encrypt(VaultItem(title: "Imported"), parents: []))
+        let backup = try await JSONDecoder().decode(VaultBackup.self, from: source.backup())
 
         struct InjectedCommitFailure: Error {}
         let target = try VaultStore.make(inMemory: true)
@@ -203,7 +205,7 @@ struct VaultTests {
 
     @Test func generatedPasswordsMeetSelectedPolicy() throws {
         var seen = Set<String>()
-        for _ in 0..<100 {
+        for _ in 0 ..< 100 {
             let password = try PasswordGenerator.generate()
             #expect(password.count == 16)
             #expect(password.contains { $0.isUppercase })

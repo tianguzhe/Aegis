@@ -1,5 +1,4 @@
 import AegisCore
-import AegisSync
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -133,10 +132,6 @@ struct SettingsView: View {
     @State private var showImport = false
     @State private var showLocalTransfer = false
     @AppStorage("aegis.appearance") private var appearance: AegisAppearance = .system
-    private var syncing: Bool {
-        if case .syncing = session.syncStatus { return true }
-        return session.isConnectingCloud
-    }
     private var versionLabel: String {
         L10n.format("settings.versionFormat", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
     }
@@ -193,29 +188,6 @@ struct SettingsView: View {
             AegisSection(title: L10n.text("lan.settings.title"), subtitle: L10n.text("lan.settings.description")) {
                 settingsAction("lan.send.title", symbol: "wifi") { showLocalTransfer = true }
                     .accessibilityIdentifier("sendLocalVaultButton")
-            }
-            AegisSection(title: L10n.text("sync.title")) {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "icloud").font(.system(size: 20)).foregroundStyle(AegisTheme.teal)
-                            .frame(width: 36, height: 36).background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 9))
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(session.syncTitle).aegisFont(size: 14, weight: .semibold).foregroundStyle(AegisTheme.text)
-                            Text(L10n.text(session.cloudConfigured ? "sync.description" : "sync.notAvailable"))
-                                .aegisFont(size: 12).lineSpacing(3).foregroundStyle(AegisTheme.secondary)
-                        }
-                    }
-                    if case .failed(let detail) = session.syncStatus { Text(detail).aegisFont(size: 12).foregroundStyle(AegisTheme.danger) }
-                    HStack {
-                        Spacer()
-                        Button { Task { await session.connectCloud() } } label: {
-                            HStack(spacing: 8) {
-                                if syncing { ProgressView().controlSize(.small) }
-                                Text(L10n.text(syncing ? "sync.syncing" : "sync.now"))
-                            }
-                        }.buttonStyle(AegisButtonStyle()).disabled(!session.cloudConfigured || syncing)
-                    }
-                }.padding(18)
             }
             AegisSection(title: L10n.text("settings.backup"), subtitle: L10n.text("settings.backupDescription")) {
                 settingsAction("settings.export", symbol: "square.and.arrow.up") { showExport = true }

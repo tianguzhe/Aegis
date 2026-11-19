@@ -1558,138 +1558,6 @@
         }
       }
     },
-    "sync.accountChanged": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud 账号已变更"
-          }
-        }
-      }
-    },
-    "sync.accountChangedDetail": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "检测到 iCloud 账号变更。已锁定保险库并停止同步，避免不同账号的数据混合。请切回原账号并重新启动应用。"
-          }
-        }
-      }
-    },
-    "sync.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只有加密后的保险库数据会同步到你的 iCloud 私有数据库。"
-          }
-        }
-      }
-    },
-    "sync.disabled": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地保险库"
-          }
-        }
-      }
-    },
-    "sync.failed": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "同步需要处理"
-          }
-        }
-      }
-    },
-    "sync.localDetail": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本地数据已保存。连接配置完成后即可在 iPhone 和 Mac 之间同步。"
-          }
-        }
-      }
-    },
-    "sync.now": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "立即同步"
-          }
-        }
-      }
-    },
-    "sync.ready": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已与 iCloud 同步"
-          }
-        }
-      }
-    },
-    "sync.setupRequired": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "需要在 Xcode 配置开发团队、CloudKit 容器和签名后启用 iCloud。详见项目中的配置说明。"
-          }
-        }
-      }
-    },
-    "sync.syncing": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在同步…"
-          }
-        }
-      }
-    },
-    "sync.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud 同步"
-          }
-        }
-      }
-    },
-    "sync.unavailable": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iCloud 暂不可用"
-          }
-        }
-      }
-    },
     "unlock.biometric": {
       "extractionState": "manual",
       "localizations": {
@@ -1763,28 +1631,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用恢复密钥"
-          }
-        }
-      }
-    },
-    "welcome.cloud": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "连接 iCloud"
-          }
-        }
-      }
-    },
-    "welcome.cloudHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已有保险库？先连接 iCloud，下载后使用原主密码解锁。"
           }
         }
       }
@@ -3641,16 +3487,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "版本 %@"
-          }
-        }
-      }
-    },
-    "sync.notAvailable": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当前版本使用本地保险库。你可以通过加密备份导出和迁移记录。"
           }
         }
       }

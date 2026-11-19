@@ -7,18 +7,11 @@ final class StoredObject {
     @Attribute(.unique) var name: String
     var kind: String
     var payload: Data
+    // No longer read since iCloud sync was removed. Kept so existing stores open without a
+    // SwiftData schema migration; older stores may also hold unused "metadata" rows.
     var pending: Bool
     init(name: String, kind: String, payload: Data, pending: Bool) {
         self.name = name; self.kind = kind; self.payload = payload; self.pending = pending
-    }
-}
-
-public struct SyncObject: Sendable {
-    public let name: String
-    public let kind: String
-    public let payload: Data
-    public init(name: String, kind: String, payload: Data) {
-        self.name = name; self.kind = kind; self.payload = payload
     }
 }
 
@@ -74,55 +67,6 @@ public actor VaultStore {
         let name = revision.id.uuidString
         guard try object(name) == nil else { return }
         modelContext.insert(StoredObject(name: name, kind: "revision", payload: try encode(revision), pending: true))
-        try modelContext.save()
-    }
-
-    public func pendingObjects() throws -> [SyncObject] {
-        try modelContext.fetch(FetchDescriptor<StoredObject>(predicate: #Predicate { $0.pending }))
-            .filter { $0.kind != "metadata" }.map { SyncObject(name: $0.name, kind: $0.kind, payload: $0.payload) }
-    }
-
-    public func syncObject(named name: String) throws -> SyncObject? {
-        try object(name).map { SyncObject(name: $0.name, kind: $0.kind, payload: $0.payload) }
-    }
-
-    public func acknowledge(name: String, payload: Data) throws {
-        if let obj = try object(name), obj.payload == payload { obj.pending = false; try modelContext.save() }
-    }
-
-    public func receive(_ incoming: SyncObject) throws {
-        let canonical: Data
-        if incoming.kind == "header" {
-            guard incoming.name == "header" else { throw VaultError.damagedData }
-            let header = try JSONDecoder().decode(VaultHeader.self, from: incoming.payload)
-            try header.validate()
-            if let existing = try self.header(), existing != header { throw VaultError.differentVault }
-            canonical = try encode(header)
-        } else if incoming.kind == "revision" {
-            let revision = try JSONDecoder().decode(EncryptedRevision.self, from: incoming.payload)
-            guard incoming.name == revision.id.uuidString, revision.formatVersion == 1,
-                  revision.ciphertext.count <= 300_000, revision.parents.count <= 1000 else { throw VaultError.damagedData }
-            if let header = try header(), revision.vaultID != header.vaultID { throw VaultError.differentVault }
-            canonical = try encode(revision)
-        } else { throw VaultError.unsupportedFormat }
-        if let existing = try object(incoming.name) {
-            // Immutable CloudKit records may only acknowledge identical bytes.
-            let existingCanonical: Data
-            if incoming.kind == "header" { existingCanonical = try encode(JSONDecoder().decode(VaultHeader.self, from: existing.payload)) }
-            else { existingCanonical = try encode(JSONDecoder().decode(EncryptedRevision.self, from: existing.payload)) }
-            guard existingCanonical == canonical else { throw VaultError.damagedData }
-            existing.pending = false
-        } else {
-            modelContext.insert(StoredObject(name: incoming.name, kind: incoming.kind, payload: canonical, pending: false))
-        }
-        try modelContext.save()
-    }
-
-    public func metadata(_ name: String) throws -> Data? { try object("meta.\(name)")?.payload }
-    public func setMetadata(_ name: String, data: Data) throws {
-        let key = "meta.\(name)"
-        if let existing = try object(key) { existing.payload = data }
-        else { modelContext.insert(StoredObject(name: key, kind: "metadata", payload: data, pending: false)) }
         try modelContext.save()
     }
 

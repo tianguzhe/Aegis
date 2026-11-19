@@ -8,10 +8,10 @@ SwiftUI 密码管理器，支持 **iOS 17+ / macOS 14+**。名字来自希腊神
 
 首次打开 Xcode 前运行 `python3 Scripts/build_isolation.py prepare`，再打开 `Aegis.xcodeproj`，选择 `Aegis-iOS` 或 `Aegis-macOS` Scheme。配置只写入被 Git 忽略的本机 workspace 设置；如果 Xcode 已经打开，重新打开项目以应用隔离路径。
 
-- Swift 6 严格并发、Observation、SwiftData、CKSyncEngine。
-- 本地包 `Packages/AegisKit`：加密、存储、同步与 Markdown 渲染。
-- 初始配置关闭云连接，避免未签名构建访问未授权 CloudKit 容器。
-- 启用 iCloud / 自动填充前，完成 [Apple 服务配置](Docs/APPLE_SETUP.md)。
+- Swift 6 严格并发、Observation、SwiftData。
+- 本地包 `Packages/AegisKit`：加密、存储、局域网传输与 Markdown 渲染。
+- 不使用 iCloud；数据只保存在本机，设备间通过局域网首次加入或加密备份迁移。
+- 启用自动填充前，完成 [Apple 服务配置](Docs/APPLE_SETUP.md)。
 - 初始界面只有简体中文，所有产品文案见 [本地化说明](Docs/LOCALIZATION.md)。
 - 界面采用浅灰工作区、白色内容面板与墨绿强调色，支持跟随系统、浅色和深色外观。Mac 使用紧凑三栏，iOS 根据窗口宽度切换导航；组件规范见 [UI 设计说明](Docs/UI_DESIGN.md)。
 
@@ -31,13 +31,13 @@ xcodegen generate
 - 备注面板右下角可展开：Mac 支持宽屏编辑／实时对照，iPhone 使用全屏编辑；提供光标处插入格式的快捷工具栏。
 - 未保存编辑会加密保留为本机草稿；关闭时可保留或放弃，锁定后解锁可继续。恢复密钥在确认前也以加密状态保留，支持中断后继续确认。
 - 加密本地存储、加密导出、验证后选择条目导入（文件与局域网均支持搜索、类型筛选、全选／清空）；支持将其他设备独立创建的保险库备份加密合并到当前保险库，保留本地数据和解锁凭据。
-- iCloud 私有数据库同步；不可变记录版本保留并发冲突；回收站使用加密删除标记。
+- 不可变记录版本保留并发冲突（例如合并来自其他设备的备份时）；回收站使用加密删除标记。
 - 回收站默认保留 7 天，解锁时及保持解锁期间检查到期记录；支持确认后立即删除。到期清理保留仍有有效或未到期分支的冲突记录。最终删除标记会同步并阻止旧分支重新出现；沿用不可变历史协议，不物理擦除历史密文或已导出的备份。
 - iOS / macOS Credential Provider 扩展：读取共享密文快照，输入主密码后选择凭据并确认填充。
 - 应用锁定时清除可见条目和密钥引用；5 分钟无交互后锁定；复制内容 30 秒后清理。
 - iOS 进入后台锁定，但保留本机剪贴板的 30 秒粘贴窗口；手动锁定立即清理。Mac 在系统睡眠、显示器休眠或切换系统用户时锁定，切换普通窗口不会立即锁定。
 
-这是可构建的首版实现。CloudKit 实机往返、生物识别与系统自动填充的签名设备验证仍需完成，详见配置文档。主密码修改 / 密钥轮换、共享保险库、Passkey、Chrome 扩展不在当前实现中。
+这是可构建的首版实现。生物识别与系统自动填充的签名设备验证仍需完成，详见配置文档。设备间持续同步、主密码修改 / 密钥轮换、共享保险库、Passkey、Chrome 扩展不在当前实现中。
 
 ## 验证
 
@@ -52,9 +52,9 @@ bash Scripts/test.sh --ui <simulator-UDID>    # 另加 iOS 实际界面测试
 
 iOS 的 `AegisUITests` 提供记录编辑、Markdown 预览保存和工具导航的实际界面测试。选择可用模拟器后，可通过 Xcode 的 Test 操作运行；测试仅使用独立内存示例保险库。
 
-Debug 构建可带 `--preview-vault` 启动，使用独立内存保险库和合成示例数据，不连接 iCloud，不写入正式数据库。预览数据随进程退出消失；不要在预览窗口保存真实凭据。预览解锁短语为 `Aegis preview fixture only`。
+Debug 构建可带 `--preview-vault` 启动，使用独立内存保险库和合成示例数据，不写入正式数据库。预览数据随进程退出消失；不要在预览窗口保存真实凭据。预览解锁短语为 `Aegis preview fixture only`。
 
-首次进入流程的 UI 测试使用 `--preview-onboarding`，从空的内存保险库开始，验证创建条件、恢复密钥确认和禁用态反馈；此模式同样不会访问现有保险库或 iCloud。
+首次进入流程的 UI 测试使用 `--preview-onboarding`，从空的内存保险库开始，验证创建条件、恢复密钥确认和禁用态反馈；此模式同样不会访问现有保险库。
 
 ## 打包与发布
 
@@ -63,7 +63,7 @@ bash Scripts/package.sh                      # dist/ 下生成 macOS 通用版 D
 bash Scripts/package.sh dmg --build-number 7 # 只打 DMG，并指定构建号
 ```
 
-无需 Apple 开发者账号：Mac App 为 ad-hoc 签名并保留 App Sandbox，未经公证；IPA 未签名，需自行重新签名。iCloud 同步与系统自动填充依赖描述文件授予的受限权限，这两类包中均不可用。打包时用命令行设置覆盖 `Config/Local.xcconfig`，开发者团队、Bundle 前缀、App Group 与 iCloud 容器不会进入安装包。DMG 需要 `uv`，用于按固定版本运行 `dmgbuild`。
+无需 Apple 开发者账号：Mac App 为 ad-hoc 签名并保留 App Sandbox，未经公证；IPA 未签名，需自行重新签名。系统自动填充依赖描述文件授予的受限权限，这两类包中均不可用。打包时用命令行设置覆盖 `Config/Local.xcconfig`，开发者团队、Bundle 前缀与 App Group 不会进入安装包。DMG 需要 `uv`，用于按固定版本运行 `dmgbuild`。
 
 发布版本：
 

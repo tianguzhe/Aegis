@@ -53,8 +53,6 @@ targetTemplates:
         NSFaceIDUsageDescription: biometric.permission
         NSLocalNetworkUsageDescription: 发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。
         NSBonjourServices: [_aegis-join._tcp]
-        AegisCloudContainer: $(AEGIS_CLOUD_CONTAINER)
-        AegisCloudEnabled: $(AEGIS_CLOUD_ENABLED)
         AegisAppGroup: $(AEGIS_APP_GROUP)
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: app.aegis.backup
@@ -64,8 +62,6 @@ targetTemplates:
     entitlements:
       path: Config/${target_name}.entitlements
       properties:
-        com.apple.developer.icloud-container-identifiers: [$(AEGIS_CLOUD_CONTAINER)]
-        com.apple.developer.icloud-services: [CloudKit]
         com.apple.security.application-groups: [$(AEGIS_APP_GROUP)]
   Extension:
     type: app-extension
@@ -127,12 +123,8 @@ targets:
     info:
       properties:
         UILaunchScreen: {}
-        UIBackgroundModes: [remote-notification]
         UIApplicationSupportsIndirectInputEvents: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
-    entitlements:
-      properties:
-        aps-environment: development
     dependencies:
       - target: AegisAutoFill-iOS
         embed: true
@@ -149,7 +141,6 @@ targets:
         com.apple.security.network.client: true
         com.apple.security.network.server: true
         com.apple.security.files.user-selected.read-write: true
-        com.apple.developer.aps-environment: development
     dependencies:
       - target: AegisAutoFill-macOS
         embed: true

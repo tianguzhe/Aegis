@@ -3,8 +3,8 @@
 ## 模块
 
 - `AegisCore`：纯数据结构、Argon2id / CryptoKit、密钥 Actor、密码生成、资源本地化。
-- `AegisStorage`：SwiftData `@ModelActor`，只存储密文版本、公开密钥包裹元数据与同步状态；显式关闭 SwiftData 自动 CloudKit 同步。
-- `AegisSync`：CloudKit 私有数据库 + CKSyncEngine Delegate Actor，以及 Bonjour 发现、临时配对和加密保险库单次传输。局域网首次加入协议见 [LOCAL_TRANSFER.md](LOCAL_TRANSFER.md)。
+- `AegisStorage`：SwiftData `@ModelActor`，只存储密文版本与公开密钥包裹元数据；显式关闭 SwiftData 自动 CloudKit 同步。不使用 iCloud。
+- `AegisSync`：Bonjour 发现、临时配对和加密保险库单次传输。局域网首次加入协议见 [LOCAL_TRANSFER.md](LOCAL_TRANSFER.md)。
 - `AegisMarkdown`：官方 Swift Markdown 解析器，SwiftUI 原生渲染。
 - `App`：`@MainActor @Observable` 会话、平台 Keychain、SwiftUI 功能视图。
 - `AutoFill`：独立扩展，读取 App Group 的原子写入密文快照，不与主应用并发打开同一 SwiftData 数据库。
@@ -17,7 +17,7 @@
 
 ## 可恢复的本机状态
 
-`LocalVaultStateStore` 使用独立用途 AAD（`aegis|local-state|1|<vaultID>`）和随机 nonce，将草稿及待确认恢复密钥以 AES-256-GCM 保存到数据库目录下的 `local-state-<vaultID>.aegis`。它不上传 CloudKit，也不包含在用户导出的保险库备份中。
+`LocalVaultStateStore` 使用独立用途 AAD（`aegis|local-state|1|<vaultID>`）和随机 nonce，将草稿及待确认恢复密钥以 AES-256-GCM 保存到数据库目录下的 `local-state-<vaultID>.aegis`。它不离开本机，也不包含在用户导出的保险库备份中。
 
 恢复配置先落盘，再提交保险库 header；创建中断后，主密码解锁会解密本机状态并继续确认。此机制覆盖升级后新建的保险库；旧版本已丢失且未保存的恢复密钥无法凭空还原。
 

@@ -4,10 +4,6 @@
 <dict>
 	<key>AegisAppGroup</key>
 	<string>$(AEGIS_APP_GROUP)</string>
-	<key>AegisCloudContainer</key>
-	<string>$(AEGIS_CLOUD_CONTAINER)</string>
-	<key>AegisCloudEnabled</key>
-	<string>$(AEGIS_CLOUD_ENABLED)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
@@ -42,10 +38,6 @@
 	<string>发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

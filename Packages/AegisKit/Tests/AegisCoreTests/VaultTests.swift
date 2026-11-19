@@ -114,7 +114,7 @@ struct VaultTests {
         #expect(TrashPolicy.expiredGroups(in: bothTrashed, now: deadline.addingTimeInterval(60)).first?.count == 2)
     }
 
-    @Test func terminalDeletionSurvivesSyncAndOldBackupMerge() async throws {
+    @Test func terminalDeletionSurvivesTransferAndOldBackupMerge() async throws {
         let crypto = VaultCrypto(), source = try VaultStore.make(inMemory: true), target = try VaultStore.make(inMemory: true)
         let created = try await crypto.create(password: password)
         try await source.saveHeader(created.header)
@@ -126,9 +126,7 @@ struct VaultTests {
         #expect(marker.title.isEmpty && marker.username.isEmpty && marker.password.isEmpty && marker.notes.isEmpty)
         let deleted = try await crypto.encrypt(marker, parents: [trashed.id])
         for revision in [original, trashed, deleted] { try await source.saveRevision(revision) }
-        for object in try await source.pendingObjects().sorted(by: { $0.kind == "header" && $1.kind != "header" }) {
-            try await target.receive(object)
-        }
+        try await target.restore(header: created.header, revisions: source.snapshot().revisions)
         #expect(try await crypto.entries(from: target.revisions()).isEmpty)
 
         item.deletedAt = nil
@@ -150,7 +148,7 @@ struct VaultTests {
         #expect(decoded == item)
     }
 
-    @Test func restoreAndSyncAcknowledgement() async throws {
+    @Test func repeatedRestoreIsIdempotent() async throws {
         let crypto = VaultCrypto(), first = try VaultStore.make(inMemory: true), second = try VaultStore.make(inMemory: true)
         let created = try await crypto.create(password: password)
         try await first.saveHeader(created.header)
@@ -160,11 +158,6 @@ struct VaultTests {
         try await second.restore(header: snapshot.header, revisions: snapshot.revisions)
         try await second.restore(header: snapshot.header, revisions: snapshot.revisions)
         #expect(try await second.revisions().count == 1)
-        for pending in try await first.pendingObjects() {
-            try await first.acknowledge(name: pending.name, payload: pending.payload)
-        }
-        #expect(try await first.pendingObjects().isEmpty)
-        #expect(try await second.pendingObjects().count == 2)
     }
 
     @Test func failedImportSaveDoesNotLeakIntoLaterSaves() async throws {
@@ -180,10 +173,10 @@ struct VaultTests {
             try await target.restore(header: backup.header, revisions: backup.revisions, beforeSave: { throw InjectedCommitFailure() })
         }
 
-        try await target.setMetadata("probe", data: Data([1]))
         #expect(try await target.header() == nil)
+        // An unrelated later save must not commit the rolled-back revision inserts.
+        try await target.saveHeader(backup.header)
         #expect(try await target.revisions().isEmpty)
-        #expect(try await target.pendingObjects().isEmpty)
     }
 
     @Test func differentVaultCannotReplaceHeader() async throws {
@@ -192,27 +185,12 @@ struct VaultTests {
         let second = try await crypto.create(password: password)
         try await store.saveHeader(first.header)
         await #expect(throws: VaultError.self) { try await store.saveHeader(second.header) }
-        let incoming = SyncObject(name: "header", kind: "header", payload: try JSONEncoder().encode(second.header))
-        await #expect(throws: VaultError.self) { try await store.receive(incoming) }
         #expect(try await store.header() == first.header)
     }
 
     @Test func parametersAreBoundedBeforeAllocation() throws {
         var params = KDFParameters(); params.memoryKiB = UInt32.max
         #expect(throws: VaultError.self) { try Argon2id.derive(password: password, salt: Data(repeating: 0, count: 16), parameters: params) }
-    }
-
-    @Test func equivalentRecordsWithDifferentJSONOrderAreAccepted() async throws {
-        let crypto = VaultCrypto(), store = try VaultStore.make(inMemory: true)
-        let created = try await crypto.create(password: password)
-        try await store.saveHeader(created.header)
-        let revision = try await crypto.encrypt(VaultItem(title: "Order independent"), parents: [])
-        try await store.saveRevision(revision)
-        let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted]
-        try await store.receive(SyncObject(name: "header", kind: "header", payload: encoder.encode(created.header)))
-        try await store.receive(SyncObject(name: revision.id.uuidString, kind: "revision", payload: encoder.encode(revision)))
-        #expect(try await store.pendingObjects().isEmpty)
-        #expect(try await store.revisions().count == 1)
     }
 
     @Test func revisionCannotHideAnUnrelatedItem() async throws {

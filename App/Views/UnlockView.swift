@@ -126,16 +126,6 @@ struct UnlockView: View {
                         .aegisFont(size: 12).foregroundStyle(session.isBusy ? AegisTheme.disabledText : AegisTheme.teal).buttonStyle(.plain).frame(maxWidth: .infinity).padding(.top, 4).disabled(session.isBusy)
                 }
             }
-            if creating {
-                VStack(spacing: 16) {
-                    Rectangle().fill(AegisTheme.border).frame(height: 1)
-                    if session.cloudConfigured {
-                        Button { Task { await session.connectCloud() } } label: { Label(L10n.text("welcome.cloud"), systemImage: "icloud") }
-                            .buttonStyle(AegisButtonStyle(fullWidth: true)).disabled(session.isBusy || session.isConnectingCloud)
-                        Text(L10n.text("welcome.cloudHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
-                    }
-                }
-            }
             Label(L10n.text("ui.unlockFooter"), systemImage: "lock.shield").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.top, 10)
         }
     }

@@ -66,8 +66,6 @@ def metadata(app, platform):
     for key, pattern in [("CFBundleShortVersionString", r"\d+\.\d+\.\d+"), ("CFBundleVersion", r"[1-9]\d*")]:
         if not re.fullmatch(pattern, str(values.get(key, ""))):
             raise ValueError(f"Invalid {key} in {app}: {values.get(key)!r}")
-    if str(values.get("AegisCloudEnabled", "")).upper() != "NO":
-        raise ValueError("Distribution packages must keep CloudKit disabled (AegisCloudEnabled = NO)")
     if values.get("AegisAppGroup", "") != "":
         raise ValueError("Distribution packages must not reference an App Group")
     return values

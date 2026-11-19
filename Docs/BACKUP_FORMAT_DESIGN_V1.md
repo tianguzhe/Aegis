@@ -518,7 +518,6 @@ VaultHeader.formatVersion 隐含为 1。若文件含有保险库槽：槽中的 
 - [会话与文件恢复](../App/Services/VaultSession.swift)
 - [导入导出界面](../App/Views/UtilityViews.swift)
 - [自动填充读取](../AutoFill/CredentialProviderViewController.swift)
-- [CloudKit 同步](../Packages/AegisKit/Sources/AegisSync/CloudSync.swift)
 - [架构约定](ARCHITECTURE.md)
 - [现有测试](../Packages/AegisKit/Tests/AegisCoreTests/VaultTests.swift)
 - [项目与文件类型注册](../project.yml)

@@ -25,7 +25,7 @@
 
 ## 入口
 
-`bash Scripts/build.sh [macos|ios-simulator|ios] [Debug|Release]` 先构建，再核验主应用与嵌入 Credential Provider 的版本号、最低系统、平台和 Bundle ID 关系。命令行入口为无签名编译验证，不生成 IPA 或可发布的 CloudKit 安装包；真机与正式发布仍使用已配置团队的 Xcode 流程。macOS Release 编译 Apple Silicon 与 Intel 两个架构。
+`bash Scripts/build.sh [macos|ios-simulator|ios] [Debug|Release]` 先构建，再核验主应用与嵌入 Credential Provider 的版本号、最低系统、平台和 Bundle ID 关系。命令行入口为无签名编译验证，不生成 IPA 或已签名的安装包；真机与正式发布仍使用已配置团队的 Xcode 流程。macOS Release 编译 Apple Silicon 与 Intel 两个架构。
 
 `bash Scripts/test.sh` 运行 Python 边界测试、本地化检查和 Swift Testing；`--ui <UDID>` 追加对应模拟器的 XCUITest。测试失败的退出码会传回调用方。
 
@@ -65,4 +65,4 @@ python3 Scripts/build_isolation.py archive-legacy
 
 `.github/workflows/ci.yml` 在 main 的 push / PR 以及手动触发时运行：脚本与 Swift 测试、Mac Debug 构建、iOS Simulator Debug 构建。诊断包含 `.build/artifacts.noindex/logs/` 与测试结果，使用 `include-hidden-files: true` 上传，保留 7 天。
 
-推送 `v<MARKETING_VERSION>` tag 时，`.github/workflows/package.yml` 运行完整测试，并行构建 ad-hoc 签名的 macOS DMG 与无签名 iOS IPA，生成构建来源证明后发布 GitHub Release；手动触发只构建不发布。打包产物与日志位于 `.build/artifacts.noindex/package/`，最终文件位于 `dist/`。Apple 签名、公证、CloudKit schema 部署与 App Store 发行仍需单独完成。
+推送 `v<MARKETING_VERSION>` tag 时，`.github/workflows/package.yml` 运行完整测试，并行构建 ad-hoc 签名的 macOS DMG 与无签名 iOS IPA，生成构建来源证明后发布 GitHub Release；手动触发只构建不发布。打包产物与日志位于 `.build/artifacts.noindex/package/`，最终文件位于 `dist/`。Apple 签名、公证与 App Store 发行仍需单独完成。

@@ -13,8 +13,8 @@ Usage: bash Scripts/package.sh [all|dmg|ipa] [options]
   --output-dir PATH   Artifact directory (default: <project>/dist).
   -h, --help          Show this help.
 
-The marketing version always comes from project.yml. Packages keep iCloud sync and AutoFill
-disabled: both need restricted entitlements that only a provisioning profile can grant.
+The marketing version always comes from project.yml. Packages keep AutoFill disabled: it needs
+restricted entitlements that only a provisioning profile can grant.
 Requires macOS, Xcode 26+ and uv (DMG only).
 USAGE
 }
@@ -65,11 +65,11 @@ package_cleanup() {
 trap package_cleanup EXIT
 
 # Command-line settings override Config/Local.xcconfig, so a developer's team, bundle prefix,
-# App Group or iCloud container can never leak into a distribution package.
+# or App Group can never leak into a distribution package.
 build_settings=(
     -project Aegis.xcodeproj -configuration Release
     ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM=
-    ENABLE_DEBUG_DYLIB=NO AEGIS_BUNDLE_PREFIX=app.aegis AEGIS_APP_GROUP= AEGIS_CLOUD_ENABLED=NO
+    ENABLE_DEBUG_DYLIB=NO AEGIS_BUNDLE_PREFIX=app.aegis AEGIS_APP_GROUP=
 )
 [[ -z "$build_number" ]] || build_settings+=("CURRENT_PROJECT_VERSION=$build_number")
 

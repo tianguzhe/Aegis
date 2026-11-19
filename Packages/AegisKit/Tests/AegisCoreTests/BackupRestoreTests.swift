@@ -57,7 +57,6 @@ import Testing
         let reopened = try VaultStore.make(directory: storeDirectory)
         #expect(try await reopened.header() == source.header)
         #expect(Set(try await reopened.revisions().map(\.id)) == Set(source.revisions.map(\.id)))
-        #expect(try await reopened.pendingObjects().count == 4)
         let crypto = VaultCrypto()
         try await crypto.unlock(password: Self.master, header: try #require(try await reopened.header()))
         let entries = try await crypto.entries(from: try await reopened.revisions())
@@ -216,11 +215,12 @@ import Testing
         await #expect(throws: InjectedCommitFailure.self) {
             try await target.restore(header: source.header, revisions: source.revisions, beforeSave: { throw InjectedCommitFailure() })
         }
-        try await target.setMetadata("probe", data: Data([1]))
         #expect(try await target.header() == nil)
-        #expect(try await target.pendingObjects().isEmpty)
+        // An unrelated later save must not commit the rolled-back revision inserts.
+        try await target.saveHeader(source.header)
+        #expect(try await target.revisions().isEmpty)
         #expect(try await target.restore(header: source.header, revisions: source.revisions)
-                == RestoreResult(createdHeader: true, insertedRevisions: 3))
+                == RestoreResult(createdHeader: false, insertedRevisions: 3))
     }
 
     @Test func snapshotReportsIncompleteHistory() async throws {

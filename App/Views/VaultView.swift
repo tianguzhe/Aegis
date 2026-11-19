@@ -129,10 +129,7 @@ struct VaultView: View {
             HStack(spacing: 10) {
                 Image(systemName: "lock.shield").font(.system(size: 18)).foregroundStyle(AegisTheme.teal)
                     .frame(width: 34, height: 34).background(AegisTheme.surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 9))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.text("ui.personalVault")).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.text)
-                    Text(session.syncTitle).aegisFont(size: 10).foregroundStyle(AegisTheme.secondary).lineLimit(1)
-                }
+                Text(L10n.text("ui.personalVault")).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.text)
                 Spacer(minLength: 0)
                 AegisIconButton(symbol: "lock", label: L10n.text("action.lock")) { session.lock() }
             }.padding(14)
@@ -317,13 +314,6 @@ struct VaultView: View {
                     .padding(12).background(AegisTheme.selected, in: RoundedRectangle(cornerRadius: 8))
                     .padding(.horizontal, 16).padding(.bottom, 12)
                     .accessibilityIdentifier("operationNotice")
-            }
-            if !mobile {
-                HStack(spacing: 6) {
-                    Circle().fill(AegisTheme.teal).frame(width: 5, height: 5)
-                    Text(session.syncTitle).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
-                    Spacer()
-                }.padding(.horizontal, 18).padding(.vertical, 12)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AegisTheme.surface)
     }

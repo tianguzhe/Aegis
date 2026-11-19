@@ -4,10 +4,6 @@
 <dict>
 	<key>AegisAppGroup</key>
 	<string>$(AEGIS_APP_GROUP)</string>
-	<key>AegisCloudContainer</key>
-	<string>$(AEGIS_CLOUD_CONTAINER)</string>
-	<key>AegisCloudEnabled</key>
-	<string>$(AEGIS_CLOUD_ENABLED)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>

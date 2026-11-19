@@ -1,6 +1,5 @@
 import AegisCore
 import AegisStorage
-import AegisSync
 import Foundation
 import LocalAuthentication
 import Observation
@@ -16,10 +15,8 @@ final class VaultSession {
     private(set) var pendingItemIDs: Set<UUID> = []
     private(set) var notice: String?
     private(set) var isUpdatingBiometrics = false
-    private(set) var isConnectingCloud = false
     var recoveryKey: String?
     var recoveryAcknowledged = false
-    var syncStatus: SyncStatus = .disabled
     var header: VaultHeader?
     var biometricEnabled = false
     var storageAvailable = true
@@ -30,10 +27,8 @@ final class VaultSession {
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private let crypto = VaultCrypto()
     @ObservationIgnored private var store: VaultStore?
-    @ObservationIgnored private var sync: CloudSync?
     @ObservationIgnored private var idleTask: Task<Void, Never>?
     @ObservationIgnored private var lockingTask: Task<Void, Never>?
-    @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var trashCleanupTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var localState: LocalVaultStateStore?
@@ -42,8 +37,6 @@ final class VaultSession {
     /// Session generation in which the user last passed the export check (DEC-4); a lock invalidates it.
     @ObservationIgnored private var exportAuthorization: UUID?
 
-    var cloudConfigured: Bool { !isPreview && Bundle.main.object(forInfoDictionaryKey: "AegisCloudEnabled") as? String == "YES" }
-    var cloudContainer: String { Bundle.main.object(forInfoDictionaryKey: "AegisCloudContainer") as? String ?? "" }
     var appGroup: String { Bundle.main.object(forInfoDictionaryKey: "AegisAppGroup") as? String ?? "" }
     private var isPreview: Bool {
         #if DEBUG
@@ -52,16 +45,6 @@ final class VaultSession {
         #else
         false
         #endif
-    }
-    var syncTitle: String {
-        switch syncStatus {
-        case .disabled: L10n.text("sync.disabled")
-        case .syncing: L10n.text("sync.syncing")
-        case .ready: L10n.text("sync.ready")
-        case .unavailable: L10n.text("sync.unavailable")
-        case .accountChanged: L10n.text("sync.accountChanged")
-        case .failed: L10n.text("sync.failed")
-        }
     }
 
     func bootstrap() async {
@@ -99,32 +82,7 @@ final class VaultSession {
             localState = LocalVaultStateStore(directory: directory)
             try await refresh()
             phase = header == nil ? .setup : .locked
-            if cloudConfigured { await connectCloud() }
         } catch { storageAvailable = false; phase = .locked; self.error = error.localizedDescription }
-    }
-
-    func connectCloud() async {
-        guard !isConnectingCloud else { return }
-        guard cloudConfigured, let store else { error = L10n.text("sync.setupRequired"); return }
-        isConnectingCloud = true; defer { isConnectingCloud = false }
-        if sync == nil {
-            sync = CloudSync(containerID: cloudContainer, store: store, update: { [weak self] status in
-                await self?.updateSync(status)
-            }, changed: { [weak self] in await self?.cloudChanged() })
-        }
-        await sync?.start()
-    }
-
-    private func updateSync(_ status: SyncStatus) {
-        syncStatus = status
-        if case .accountChanged = status { lock(); error = L10n.text("sync.accountChangedDetail") }
-    }
-
-    private func cloudChanged() async {
-        do {
-            try await refresh()
-            if phase == .setup, header != nil { phase = .locked }
-        } catch { self.error = error.localizedDescription }
     }
 
     private func refresh() async throws {
@@ -146,7 +104,6 @@ final class VaultSession {
             if !expired.isEmpty {
                 loaded = try await crypto.entries(from: store.revisions())
                 guard token == generation, phase == .unlocked else { return }
-                scheduleSync()
             }
             entries = loaded
             permanentlyDeletedItemIDs = Set(revisions.map(\.itemID)).subtracting(loaded.map(\.item.id))
@@ -181,7 +138,6 @@ final class VaultSession {
             header = result.header; recoveryKey = result.recoveryKey; recoveryAcknowledged = false
             phase = .unlocked
             try await refresh(); touch()
-            scheduleSync()
         } catch {
             phase = header == nil ? .setup : .locked
             entries = []; recoveryKey = nil; recoverableDrafts = []; localState?.lock()
@@ -288,7 +244,6 @@ final class VaultSession {
             guard token == generation else { return false }
             try await store.saveRevision(revision)
             try await refresh(); touch()
-            scheduleSync()
             guard token == generation, phase == .unlocked else { return false }
             showNotice(L10n.text("notice.saved"))
             return true
@@ -545,7 +500,6 @@ final class VaultSession {
             if !(error is CancellationError) { self.error = L10n.format("backup.restoredWithIssue", error.localizedDescription) }
         }
         if phase == .setup { phase = .locked }
-        scheduleSync()
         return true
     }
 
@@ -571,11 +525,6 @@ final class VaultSession {
         #else
         try data.write(to: url, options: .atomic)
         #endif
-    }
-
-    private func scheduleSync() {
-        guard let sync else { return }
-        syncTask = Task { await sync.synchronize() }
     }
 
     private func unlockLocalState(header: VaultHeader) async throws {

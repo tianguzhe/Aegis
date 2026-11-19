@@ -202,6 +202,7 @@
 "error.randomFailure" = "系统无法生成安全随机数。";
 "error.titleRequired" = "请为这条记录填写名称。";
 "error.unsupportedFormat" = "此保险库需要更新版本的 Aegis。";
+"error.vaultChanged" = "保险库在操作期间发生了变化，未做任何修改。请重试。";
 "error.weakMasterPassword" = "主密码至少需要 12 个字符，建议使用较长的独特短语。";
 "field.cardNumber" = "卡号";
 "field.cardholder" = "持卡人";
@@ -301,6 +302,7 @@
 "note.empty" = "这条笔记还没有内容";
 "note.emptyHint" = "点击编辑，开始记录文字、清单或 Markdown。";
 "notice.deleted" = "记录已从回收站删除";
+"notice.passwordChanged" = "主密码已修改，保险库已用新密钥重新加密";
 "notice.restored" = "已恢复到保险库";
 "notice.saved" = "记录已保存";
 "notice.trashed" = "已移至回收站，7 天内可以恢复";
@@ -316,6 +318,18 @@
 "recovery.saved" = "我已在安全位置保存恢复密钥";
 "recovery.title" = "留好最后一把钥匙。";
 "recovery.warning" = "任何持有它的人都能解锁保险库。确认保存前，恢复配置会加密保留在本机。";
+"rotation.action" = "修改主密码";
+"rotation.biometricFailed" = "主密码已修改，但未能重新启用生物识别解锁：%@";
+"rotation.confirm" = "确认新主密码";
+"rotation.current" = "当前主密码";
+"rotation.description" = "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密全部记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。";
+"rotation.error.unsavedDrafts" = "请先保存或放弃正在编辑的记录，再修改主密码。";
+"rotation.finishedWithIssue" = "主密码已修改，保险库已锁定。请使用新主密码解锁。详情：%@";
+"rotation.new" = "新主密码";
+"rotation.requirement" = "至少 12 个字符。可以与当前主密码相同，但建议更换。";
+"rotation.title" = "修改主密码";
+"rotation.warning" = "已导出的备份和其他设备上的保险库不会更新，仍可用旧主密码打开。建议删除旧备份，其他设备需要重新加入。";
+"rotation.working" = "正在重新加密…";
 "settings.about" = "关于 Aegis";
 "settings.aboutDescription" = "得名于希腊神话中雅典娜的神盾。以原生体验，守护你的数字生活。";
 "settings.autofill" = "系统自动填充";

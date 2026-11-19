@@ -314,6 +314,49 @@ final class InterfaceTests: XCTestCase {
         appearance.buttons["跟随系统"].tap()
     }
 
+    func testChangeMasterPasswordRotatesCredentials() {
+        launchVault()
+        let settings = app.buttons["设置"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.tap()
+        let open = app.buttons["changeMasterPasswordButton"]
+        reveal(open)
+        open.tap()
+        let current = app.secureTextFields["currentMasterPassword"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        let submit = app.buttons["changeMasterPasswordSubmit"]
+        replaceText(in: current, with: "Aegis preview fixture only")
+        replaceText(in: app.secureTextFields["newMasterPassword"], with: "rotated preview passphrase")
+        replaceText(in: app.secureTextFields["confirmNewMasterPassword"], with: "rotated preview passphrase!")
+        XCTAssertFalse(submit.isEnabled, "mismatched confirmation must block the change")
+        replaceText(in: app.secureTextFields["confirmNewMasterPassword"], with: "rotated preview passphrase")
+        XCTAssertTrue(submit.isEnabled)
+        submit.tap()
+
+        // The new recovery key is shown in the same sheet and must be confirmed before it closes.
+        let acknowledgement = app.switches["recoveryAcknowledgement"]
+        XCTAssertTrue(acknowledgement.waitForExistence(timeout: 30))
+        capture("10-rotation-recovery-key")
+        acknowledgement.tap()
+        app.buttons["enterVaultButton"].tap()
+        XCTAssertTrue(acknowledgement.waitForNonExistence(timeout: 8))
+
+        app.buttons["保险库"].tap()
+        let lock = app.buttons["锁定保险库"]
+        XCTAssertTrue(lock.waitForExistence(timeout: 5))
+        lock.tap()
+        let master = app.secureTextFields["masterPassword"]
+        XCTAssertTrue(master.waitForExistence(timeout: 8))
+        master.tap(); master.typeText("Aegis preview fixture only")
+        app.buttons["unlockButton"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 15), "the old master password must no longer unlock")
+        app.alerts.firstMatch.buttons.firstMatch.tap()
+        replaceText(in: master, with: "rotated preview passphrase")
+        app.buttons["unlockButton"].tap()
+        XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["record-Apple"].waitForExistence(timeout: 5), "records survive the rotation")
+    }
+
     func testBackupPasswordMustMeetPolicyBeforeExport() {
         launchVault()
         openBackupExport()

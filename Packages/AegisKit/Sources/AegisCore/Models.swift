@@ -2,7 +2,7 @@ import Foundation
 
 public enum VaultError: Error, LocalizedError, Sendable {
     case invalidPassword, unsupportedFormat, invalidParameters, locked, damagedData, differentVault
-    case randomFailure, derivationFailed, weakMasterPassword, invalidRecoveryKey, oversizedRecord
+    case randomFailure, derivationFailed, weakMasterPassword, invalidRecoveryKey, oversizedRecord, vaultChanged
 
     public var errorDescription: String? {
         switch self {
@@ -17,6 +17,7 @@ public enum VaultError: Error, LocalizedError, Sendable {
         case .weakMasterPassword: L10n.text("error.weakMasterPassword")
         case .invalidRecoveryKey: L10n.text("error.invalidRecoveryKey")
         case .oversizedRecord: L10n.text("error.oversizedRecord")
+        case .vaultChanged: L10n.text("error.vaultChanged")
         }
     }
 }

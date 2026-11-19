@@ -45,6 +45,15 @@ public final class LocalVaultStateStore {
         key = nil; vaultID = nil; state = LocalVaultState()
     }
 
+    /// Removes the stored state of a vault that no longer exists on this device, such as the
+    /// previous identity after a key rotation. Does not touch the currently unlocked state.
+    public func discard(vaultID id: UUID) throws {
+        memory[id] = nil
+        if let file = file(for: id), FileManager.default.fileExists(atPath: file.path) {
+            try FileManager.default.removeItem(at: file)
+        }
+    }
+
     private func file(for id: UUID) -> URL? {
         directory?.appendingPathComponent("local-state-\(id.uuidString).aegis")
     }

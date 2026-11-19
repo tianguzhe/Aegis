@@ -716,6 +716,17 @@
         }
       }
     },
+    "error.vaultChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库在操作期间发生了变化，未做任何修改。请重试。"
+          }
+        }
+      }
+    },
     "error.weakMasterPassword": {
       "extractionState": "manual",
       "localizations": {
@@ -4311,6 +4322,149 @@
           "stringUnit": {
             "state": "translated",
             "value": "未选择"
+          }
+        }
+      }
+    },
+    "notice.passwordChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码已修改，保险库已用新密钥重新加密"
+          }
+        }
+      }
+    },
+    "rotation.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改主密码"
+          }
+        }
+      }
+    },
+    "rotation.biometricFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码已修改，但未能重新启用生物识别解锁：%@"
+          }
+        }
+      }
+    },
+    "rotation.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认新主密码"
+          }
+        }
+      }
+    },
+    "rotation.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前主密码"
+          }
+        }
+      }
+    },
+    "rotation.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将生成新的保险库密钥和恢复密钥，并用新密钥重新加密全部记录。完成后旧主密码和旧恢复密钥都无法打开本机保险库。"
+          }
+        }
+      }
+    },
+    "rotation.error.unsavedDrafts": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先保存或放弃正在编辑的记录，再修改主密码。"
+          }
+        }
+      }
+    },
+    "rotation.finishedWithIssue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码已修改，保险库已锁定。请使用新主密码解锁。详情：%@"
+          }
+        }
+      }
+    },
+    "rotation.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新主密码"
+          }
+        }
+      }
+    },
+    "rotation.requirement": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "至少 12 个字符。可以与当前主密码相同，但建议更换。"
+          }
+        }
+      }
+    },
+    "rotation.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改主密码"
+          }
+        }
+      }
+    },
+    "rotation.warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导出的备份和其他设备上的保险库不会更新，仍可用旧主密码打开。建议删除旧备份，其他设备需要重新加入。"
+          }
+        }
+      }
+    },
+    "rotation.working": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新加密…"
           }
         }
       }

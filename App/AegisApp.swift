@@ -102,6 +102,6 @@ struct RootView: View {
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.sessionDidResignActiveNotification)) { _ in session.lock(reason: .system) }
         #endif
         .vaultErrorPresenter()
-        .sheet(isPresented: Binding(get: { session.recoveryKey != nil }, set: { _ in })) { RecoveryView().environment(session) }
+        .sheet(isPresented: Binding(get: { session.recoveryKey != nil && !session.recoveryPresentedInline }, set: { _ in })) { RecoveryView().environment(session) }
     }
 }

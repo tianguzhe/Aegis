@@ -104,6 +104,41 @@ public actor VaultStore {
         return try restore(header: header, revisions: revisions)
     }
 
+    /// `beforeSave` lets tests fail the commit after rows are changed; production passes a no-op.
+    func replaceVault(expected: VaultSnapshot, header: VaultHeader, revisions incoming: [EncryptedRevision],
+                      beforeSave: @Sendable () throws -> Void) throws
+    {
+        try header.validate()
+        guard header.vaultID != expected.header.vaultID,
+              incoming.allSatisfy({ $0.vaultID == header.vaultID && $0.formatVersion == 1 }),
+              Set(incoming.map(\.id)).count == incoming.count else { throw VaultError.damagedData }
+        guard let current = try object("header"),
+              try JSONDecoder().decode(VaultHeader.self, from: current.payload) == expected.header
+        else { throw VaultError.vaultChanged }
+        let all = try modelContext.fetch(FetchDescriptor<StoredObject>())
+        let storedRevisionIDs = Set(all.filter { $0.kind == "revision" }.map(\.name))
+        guard storedRevisionIDs == Set(expected.revisions.map(\.id.uuidString)) else { throw VaultError.vaultChanged }
+        do {
+            // The header row is updated in place: deleting and re-inserting the unique name
+            // "header" in one save would rely on SwiftData's upsert behaviour.
+            current.payload = try encode(header)
+            current.pending = true
+            // Leftover "metadata" rows from the removed iCloud sync are dropped along with revisions.
+            for object in all where object.kind != "header" {
+                modelContext.delete(object)
+            }
+            for revision in incoming {
+                try modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
+                                                     payload: encode(revision), pending: true))
+            }
+            try beforeSave()
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
     /// `beforeSave` lets tests fail the commit after rows are inserted; production passes a no-op.
     func restore(header: VaultHeader, revisions incoming: [EncryptedRevision],
                  beforeSave: @Sendable () throws -> Void) throws -> RestoreResult
@@ -141,6 +176,21 @@ public actor VaultStore {
             throw error
         }
         return RestoreResult(createdHeader: localHeader == nil, insertedRevisions: additions.count)
+    }
+}
+
+public extension VaultStore {
+    /// Replaces the stored vault with a rotated one in one transaction (Docs/KEY_ROTATION_DESIGN.md §3).
+    ///
+    /// `expected` is the snapshot the rotation was prepared from. Any save after it would be lost by
+    /// the swap, so a changed header or revision set rejects the replacement. Every old revision is
+    /// deleted, so the store no longer holds ciphertext under the old vault key (SQLite may still
+    /// keep freed pages on disk until they are reused).
+    /// - Throws: `VaultError.vaultChanged` when the store differs from `expected`,
+    ///   `VaultError.damagedData` for revisions not belonging to `header`, or the save error.
+    ///   On any error nothing is written.
+    func replaceVault(expected: VaultSnapshot, header: VaultHeader, revisions: [EncryptedRevision]) throws {
+        try replaceVault(expected: expected, header: header, revisions: revisions, beforeSave: {})
     }
 }
 

@@ -19,7 +19,9 @@ public final class LANSyncService {
     @ObservationIgnored private var key: SymmetricKey?
     @ObservationIgnored private var snapshot: LANSyncRound.Snapshot?
     @ObservationIgnored private var apply: LANSyncRound.Apply?
-    @ObservationIgnored private var peers: [UUID: NWEndpoint] = [:]
+    // A replayed discovery tag can advertise a peer's ID from another host, so keep every endpoint.
+    @ObservationIgnored private var peers: [UUID: [NWEndpoint]] = [:]
+    @ObservationIgnored private var endpointFailures: [NWEndpoint: Int] = [:]
     @ObservationIgnored private var nextAttempt: [UUID: (at: ContinuousClock.Instant, failures: Int)] = [:]
     @ObservationIgnored private var changedDuringRound = false
     @ObservationIgnored private var scheduler: Task<Void, Never>?
@@ -82,15 +84,17 @@ public final class LANSyncService {
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             Task { @MainActor [weak self] in
                 guard let self, instance == token, let key = self.key else { return }
-                var found: [UUID: NWEndpoint] = [:]
+                var found: [UUID: [NWEndpoint]] = [:]
                 for result in results {
                     guard case let .bonjour(record) = result.metadata,
                           let text = record.dictionary["t"], let tag = Data(base64Encoded: text),
                           let id = LANSyncHandshake.discover(tag, key: key), token.uuidString < id.uuidString else { continue }
-                    found[id] = result.endpoint
+                    found[id, default: []].append(result.endpoint)
                 }
                 peers = found
                 nextAttempt = nextAttempt.filter { found[$0.key] != nil }
+                let present = Set(found.values.joined())
+                endpointFailures = endpointFailures.filter { present.contains($0.key) }
                 requestSync()
             }
         }
@@ -136,21 +140,33 @@ public final class LANSyncService {
         transfer?.cancel(); transfer = nil
         scheduler?.cancel(); scheduler = nil
         key = nil; snapshot = nil; apply = nil
-        peers = [:]; nextAttempt = [:]; blocked = []
+        peers = [:]; endpointFailures = [:]; nextAttempt = [:]; blocked = []
         changedDuringRound = false
         lastSuccess = nil
         state = .idle
     }
 
+    nonisolated static let maxEndpointFailures = 3
+
+    /// The endpoint with the fewest consecutive failures, keeping discovery order on ties, so an
+    /// endpoint that succeeded stays preferred over replayed ones. Nil once every endpoint is paused.
+    nonisolated static func preferredEndpoint<Endpoint: Hashable>(_ endpoints: [Endpoint], failures: [Endpoint: Int]) -> Endpoint? {
+        endpoints.filter { failures[$0, default: 0] < maxEndpointFailures }.min { failures[$0, default: 0] < failures[$1, default: 0] }
+    }
+
     private func dialIfReady() {
         guard active == nil else { return }
         let now = ContinuousClock.now
-        let eligible = peers.filter { id, _ in nextAttempt[id].map { $0.failures < 3 && $0.at <= now } ?? true }
-        guard let peer = eligible.min(by: { (nextAttempt[$0.key]?.at ?? now - .seconds(1)) < (nextAttempt[$1.key]?.at ?? now - .seconds(1)) }) else { return }
-        exchange(NWConnection(to: peer.value, using: LocalVaultTransfer.parameters()), expectedPeer: peer.key)
+        let eligible = peers.compactMap { id, endpoints -> (id: UUID, endpoint: NWEndpoint)? in
+            guard nextAttempt[id].map({ $0.at <= now }) ?? true,
+                  let endpoint = Self.preferredEndpoint(endpoints, failures: endpointFailures) else { return nil }
+            return (id, endpoint)
+        }
+        guard let peer = eligible.min(by: { (nextAttempt[$0.id]?.at ?? now - .seconds(1)) < (nextAttempt[$1.id]?.at ?? now - .seconds(1)) }) else { return }
+        exchange(NWConnection(to: peer.endpoint, using: LocalVaultTransfer.parameters()), expectedPeer: peer.id, endpoint: peer.endpoint)
     }
 
-    private func exchange(_ connection: NWConnection, expectedPeer: UUID?) {
+    private func exchange(_ connection: NWConnection, expectedPeer: UUID?, endpoint: NWEndpoint? = nil) {
         guard let key, let snapshot, let apply else { connection.cancel(); return }
         let token = instance
         let socket = LocalTransferConnection(connection, maxRead: LANSyncFrames.maxLength)
@@ -170,18 +186,22 @@ public final class LANSyncService {
                 try await round.run(snapshot: snapshot, apply: apply)
                 guard let self, instance == token else { return }
                 lastSuccess = Date()
-                finish(expectedPeer, succeeded: true)
+                finish(expectedPeer, endpoint: endpoint, succeeded: true)
             } catch {
                 guard let self, instance == token else { return }
-                finish(expectedPeer, succeeded: false)
+                finish(expectedPeer, endpoint: endpoint, succeeded: false)
             }
         }
     }
 
-    private func finish(_ peer: UUID?, succeeded: Bool) {
+    private func finish(_ peer: UUID?, endpoint: NWEndpoint?, succeeded: Bool) {
         active = nil; transfer = nil
-        if let peer {
-            let delay = succeeded ? (changedDuringRound ? 1 : 15) : 30
+        if let peer, let endpoint {
+            endpointFailures[endpoint] = succeeded ? 0 : endpointFailures[endpoint, default: 0] + 1
+            // Fail over to an untried endpoint at once; otherwise back off.
+            let untried = Self.preferredEndpoint(peers[peer] ?? [], failures: endpointFailures)
+                .map { endpointFailures[$0, default: 0] == 0 } ?? false
+            let delay = succeeded ? (changedDuringRound ? 1 : 15) : (untried ? 1 : 30)
             let failures = succeeded ? 0 : (nextAttempt[peer]?.failures ?? 0) + 1
             nextAttempt[peer] = (at: .now + .seconds(delay), failures: failures)
         }

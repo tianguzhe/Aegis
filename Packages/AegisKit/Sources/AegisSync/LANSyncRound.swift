@@ -19,7 +19,24 @@ struct LANSyncRound {
     let initiating: Bool
     private var frames: LANSyncFrames
 
-    static func authenticate(socket: any LANSyncSocket, instance: UUID, expectedPeer: UUID?, key: SymmetricKey) async throws -> Self {
+    static let handshakeTimeout: Duration = .seconds(10)
+
+    /// Authenticates within `timeout` so a connection that never proves the sync key cannot hold the
+    /// service's single round slot until the 60-second round deadline. Throws `timedOut` on expiry.
+    static func authenticate(socket: any LANSyncSocket, instance: UUID, expectedPeer: UUID?, key: SymmetricKey,
+                             timeout: Duration = handshakeTimeout) async throws -> Self
+    {
+        try await withThrowingTaskGroup(of: Self?.self) { group in
+            group.addTask { try await handshake(socket: socket, instance: instance, expectedPeer: expectedPeer, key: key) }
+            group.addTask { try await Task.sleep(for: timeout); return nil }
+            // The socket must fail pending reads on cancellation, or the group would wait for them.
+            defer { group.cancelAll() }
+            guard let round = try await group.next() ?? nil else { throw LANSyncError.timedOut }
+            return round
+        }
+    }
+
+    private static func handshake(socket: any LANSyncSocket, instance: UUID, expectedPeer: UUID?, key: SymmetricKey) async throws -> Self {
         let handshake = try LANSyncHandshake(instance: instance)
         let initiating = expectedPeer != nil
         if initiating {
@@ -85,9 +102,8 @@ struct LANSyncRound {
             if !initiating {
                 try await sendRevisions(outgoing)
             }
-            // Keep the merged vault within the same limits needed for its next exchange.
-            try LANSyncManifest.checkBudget(local.revisions + incoming)
-            try await apply(local, incoming, Set(remote.keys), flag == 1)
+            try await Self.commit(incoming, base: local, remoteIDs: Set(remote.keys), remoteIncomplete: flag == 1,
+                                  snapshot: snapshot, apply: apply)
         }
 
         if initiating {
@@ -96,6 +112,35 @@ struct LANSyncRound {
         guard try await receive(.done).isEmpty else { throw LANSyncError.invalidMessage }
         if !initiating {
             try await send(.done)
+        }
+    }
+
+    static let commitAttempts = 5
+
+    /// A local save or a busy session between the snapshot and the commit is transient. Revalidate the
+    /// authenticated batch against a fresh store cut instead of failing the round, which the dialer
+    /// would count toward pausing the peer. Other errors and the last `vaultChanged` propagate.
+    private static func commit(_ incoming: [EncryptedRevision], base: VaultSnapshot, remoteIDs: Set<UUID>,
+                               remoteIncomplete: Bool, snapshot: Snapshot, apply: Apply) async throws
+    {
+        var local = base, pending = incoming
+        for attempt in 1 ... commitAttempts {
+            // Keep the merged vault within the same limits needed for its next exchange.
+            try LANSyncManifest.checkBudget(local.revisions + pending)
+            do {
+                try await apply(local, pending, remoteIDs, remoteIncomplete)
+                return
+            } catch VaultError.vaultChanged where attempt < commitAttempts {
+                try await Task.sleep(for: .milliseconds(200))
+                local = try await snapshot()
+                guard local.header == base.header else { throw LANSyncError.differentVault }
+                let stored = Dictionary(local.revisions.map { ($0.id, $0) }) { first, _ in first }
+                // Another path may have stored the same immutable version meanwhile; it must match exactly.
+                guard pending.allSatisfy({ revision in stored[revision.id].map { $0 == revision } ?? true }) else {
+                    throw LANSyncError.conflictingRevision
+                }
+                pending.removeAll { stored[$0.id] != nil }
+            }
         }
     }
 

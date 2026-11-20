@@ -3,7 +3,7 @@ import CryptoKit
 import Foundation
 
 public enum LANSyncError: Error, Equatable, Sendable {
-    case authenticationFailed, invalidMessage, limitExceeded, differentVault, conflictingRevision
+    case authenticationFailed, invalidMessage, limitExceeded, differentVault, conflictingRevision, timedOut
 }
 
 struct LANSyncHandshake {

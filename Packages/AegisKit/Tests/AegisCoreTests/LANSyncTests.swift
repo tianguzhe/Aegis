@@ -186,3 +186,120 @@ struct LANSyncTests {
         #expect(try await store.revisions() == [local])
     }
 }
+
+/// Byte pipe that honors cancellation like `LocalTransferConnection`, so rounds run without Network.
+private actor MemorySocket: LANSyncSocket {
+    private var buffer = Data()
+    private var waiter: (count: Int, continuation: CheckedContinuation<Data, Error>)?
+    private var peer: MemorySocket?
+
+    static func pair() async -> (MemorySocket, MemorySocket) {
+        let left = MemorySocket(), right = MemorySocket()
+        await left.connect(right)
+        await right.connect(left)
+        return (left, right)
+    }
+
+    private func connect(_ socket: MemorySocket) {
+        peer = socket
+    }
+
+    func send(_ data: Data) async throws {
+        try Task.checkCancellation()
+        await peer?.deliver(data)
+    }
+
+    private func deliver(_ data: Data) {
+        buffer.append(data)
+        fulfill()
+    }
+
+    func read(_ count: Int) async throws -> Data {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                waiter = (count, continuation)
+                fulfill()
+            }
+        } onCancel: {
+            Task { await self.cancelRead() }
+        }
+    }
+
+    private func cancelRead() {
+        waiter?.continuation.resume(throwing: CancellationError())
+        waiter = nil
+    }
+
+    private func fulfill() {
+        guard let pending = waiter, buffer.count >= pending.count else { return }
+        waiter = nil
+        let data = Data(buffer.prefix(pending.count))
+        buffer.removeFirst(pending.count)
+        pending.continuation.resume(returning: data)
+    }
+}
+
+struct LANSyncRecoveryTests {
+    @Test func silentPeerReleasesTheRoundSlotAfterTheHandshakeTimeout() async throws {
+        let (socket, _) = await MemorySocket.pair()
+        let started = ContinuousClock.now
+        await #expect(throws: LANSyncError.timedOut) {
+            _ = try await LANSyncRound.authenticate(socket: socket, instance: UUID(), expectedPeer: nil,
+                                                    key: SymmetricKey(size: .bits256), timeout: .milliseconds(100))
+        }
+        #expect(ContinuousClock.now - started < .seconds(5))
+    }
+
+    @Test func dialingPrefersTheLeastFailedEndpointAndPausesWhenAllFailed() {
+        #expect(LANSyncService.preferredEndpoint(["replayed", "real"], failures: [:]) == "replayed")
+        #expect(LANSyncService.preferredEndpoint(["replayed", "real"], failures: ["replayed": 1]) == "real")
+        #expect(LANSyncService.preferredEndpoint(["replayed", "real"], failures: ["replayed": 3, "real": 2]) == "real")
+        #expect(LANSyncService.preferredEndpoint(["replayed", "real"], failures: ["replayed": 3, "real": 3]) == nil)
+    }
+
+    @Test func roundRetriesACommitRacedByALocalSave() async throws {
+        let crypto = VaultCrypto()
+        let header = try await crypto.create(password: "synthetic LAN test password").header
+        let key = try await crypto.lanSyncKey(vaultID: header.vaultID)
+        let left = try VaultStore.make(inMemory: true), right = try VaultStore.make(inMemory: true)
+        try await left.saveHeader(header)
+        try await right.saveHeader(header)
+        let remote = try await crypto.encrypt(VaultItem(title: "From peer"), parents: [])
+        let racing = try await crypto.encrypt(VaultItem(title: "Saved during the round"), parents: [])
+        try await left.saveRevision(remote)
+
+        let ids = [UUID(), UUID()].sorted { $0.uuidString < $1.uuidString }
+        let (dialer, listener) = await MemorySocket.pair()
+        let raced = Raced()
+        func snapshot(_ store: VaultStore) -> LANSyncRound.Snapshot {
+            { try await store.snapshot() }
+        }
+        func apply(_ store: VaultStore, raceOnce: Bool) -> LANSyncRound.Apply {
+            { snapshot, incoming, remoteIDs, incomplete in
+                guard !incoming.isEmpty else { return }
+                if raceOnce, await raced.first() {
+                    try await store.saveRevision(racing)
+                }
+                try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming,
+                                                      remoteIDs: remoteIDs, remoteIncomplete: incomplete)
+                _ = try await store.appendSyncedRevisions(incoming, expected: snapshot)
+            }
+        }
+        async let initiator: Void = {
+            var round = try await LANSyncRound.authenticate(socket: dialer, instance: ids[0], expectedPeer: ids[1], key: key)
+            try await round.run(snapshot: snapshot(left), apply: apply(left, raceOnce: false))
+        }()
+        var round = try await LANSyncRound.authenticate(socket: listener, instance: ids[1], expectedPeer: nil, key: key)
+        try await round.run(snapshot: snapshot(right), apply: apply(right, raceOnce: true))
+        try await initiator
+        #expect(try await Set(right.revisions().map(\.id)) == [remote.id, racing.id])
+    }
+}
+
+private actor Raced {
+    private var done = false
+    func first() -> Bool {
+        defer { done = true }
+        return !done
+    }
+}

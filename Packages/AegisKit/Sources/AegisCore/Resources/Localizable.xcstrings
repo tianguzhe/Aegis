@@ -1079,6 +1079,17 @@
         }
       }
     },
+    "list.damagedHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 个版本无法读取。可见记录可能较旧，当前仅可查看和复制。"
+          }
+        }
+      }
+    },
     "list.emptyDescription": {
       "extractionState": "manual",
       "localizations": {

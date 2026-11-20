@@ -21,6 +21,7 @@ struct ItemDetailView: View {
                         Label(L10n.text("list.conflict"), systemImage: "exclamationmark.triangle").aegisFont(size: 14, weight: .semibold)
                         Text(L10n.text("list.conflictDetail")).aegisFont(size: 13).lineSpacing(4)
                         Button(L10n.text("list.resolve")) { confirmResolution = true }.buttonStyle(AegisButtonStyle())
+                            .disabled(session.unreadableRevisionCount > 0)
                     }.foregroundStyle(AegisTheme.text).aegisCard()
                 }
                 if entry.item.kind == .card {
@@ -53,6 +54,7 @@ struct ItemDetailView: View {
                         Text(L10n.text("note.emptyHint")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
                         if entry.item.deletedAt == nil {
                             Button(L10n.text("action.edit"), action: onEdit).buttonStyle(AegisButtonStyle())
+                                .disabled(session.unreadableRevisionCount > 0)
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).aegisCard()
                 }
@@ -114,7 +116,7 @@ struct ItemDetailView: View {
                     } label: {
                         Image(systemName: "ellipsis").font(.system(size: 18)).foregroundStyle(AegisTheme.secondary).frame(width: 44, height: 44).contentShape(Rectangle())
                     }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(L10n.text("ui.moreActions"))
-                }
+                }.disabled(session.unreadableRevisionCount > 0)
             #endif
             HStack(alignment: .center, spacing: 16) {
                 ItemIcon(item: entry.item, size: 52)
@@ -145,7 +147,7 @@ struct ItemDetailView: View {
                             .buttonStyle(.bordered).accessibilityIdentifier("deleteImmediatelyButton")
                     }
                     Spacer()
-                }
+                }.disabled(session.unreadableRevisionCount > 0)
             #endif
         }
     }
@@ -182,6 +184,7 @@ struct ItemDetailView: View {
                 }
             }
             .buttonStyle(.bordered).controlSize(.regular)
+            .disabled(session.unreadableRevisionCount > 0)
             .padding(.horizontal, 20).frame(height: AegisMetrics.toolbarHeight)
             .background(AegisTheme.surface)
             .overlay(alignment: .bottom) { Rectangle().fill(AegisTheme.border).frame(height: 0.5) }

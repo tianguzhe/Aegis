@@ -65,10 +65,30 @@ public actor VaultStore {
         cachedHeader = header
     }
 
-    public func revisions() throws -> [EncryptedRevision] {
+    private func revisionObjects() throws -> [StoredObject] {
         let kind = "revision"
         return try modelContext.fetch(FetchDescriptor<StoredObject>(predicate: #Predicate { $0.kind == kind }))
-            .map { try JSONDecoder().decode(EncryptedRevision.self, from: $0.payload) }
+    }
+
+    public func revisions() throws -> [EncryptedRevision] {
+        let decoder = JSONDecoder()
+        return try revisionObjects().map { try decoder.decode(EncryptedRevision.self, from: $0.payload) }
+    }
+
+    /// Reads local revision rows for display. Counts undecodable rows without modifying them.
+    /// Store fetch errors still propagate. Decoded revisions must be authenticated by the caller.
+    public func localRevisions() throws -> (revisions: [EncryptedRevision], unreadableRowCount: Int) {
+        let decoder = JSONDecoder()
+        var revisions: [EncryptedRevision] = []
+        var unreadable = 0
+        for object in try revisionObjects() {
+            do {
+                try revisions.append(decoder.decode(EncryptedRevision.self, from: object.payload))
+            } catch is DecodingError {
+                unreadable += 1
+            }
+        }
+        return (revisions, unreadable)
     }
 
     public func saveRevision(_ revision: EncryptedRevision) throws {

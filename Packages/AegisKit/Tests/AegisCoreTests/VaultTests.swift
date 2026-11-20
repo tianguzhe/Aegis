@@ -3,6 +3,7 @@ import AegisCore
 import CArgon2
 import CryptoKit
 import Foundation
+import SwiftData
 import Testing
 
 @Suite(.serialized)
@@ -46,6 +47,96 @@ struct VaultTests {
         await #expect(throws: VaultError.self) { try await crypto.decrypt(tampered) }
         await #expect(throws: VaultError.self) { try await crypto.decrypt(swapped) }
         await #expect(throws: VaultError.self) { try await crypto.entries(from: [parents]) }
+    }
+
+    @Test func damagedLocalRevisionDoesNotHideReadableHistory() async throws {
+        let crypto = VaultCrypto(), store = try VaultStore.make(inMemory: true)
+        let created = try await crypto.create(password: password)
+        try await store.saveHeader(created.header)
+        let item = VaultItem(title: "Local record")
+        let original = try await crypto.encrypt(item, parents: [])
+        let damaged = EncryptedRevision(vaultID: original.vaultID, itemID: item.id, id: UUID(),
+                                        parents: [original.id], ciphertext: Data())
+        try await store.saveRevision(original)
+        try await store.saveRevision(damaged)
+        let read = try await crypto.localEntries(from: store.revisions())
+        #expect(read.entries.map(\.id) == [original.id])
+        #expect(read.readableRevisionCount == 1)
+        #expect(read.unreadableRevisionCount == 1)
+        await #expect(throws: VaultError.damagedData) { try await crypto.cachedEntries(from: store.revisions()) }
+        #expect(try await store.revisions().contains(damaged))
+
+        let onlyDamaged = try await crypto.localEntries(from: [damaged])
+        #expect(onlyDamaged.readableRevisionCount == 0)
+        #expect(onlyDamaged.unreadableRevisionCount == 1)
+        let empty = try await crypto.localEntries(from: [])
+        #expect(empty.readableRevisionCount == 0)
+        #expect(empty.unreadableRevisionCount == 0)
+    }
+
+    @MainActor @Test func localStoreReadCountsMalformedRowsWithoutDroppingThem() async throws {
+        let schema = Schema([StoredObject.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: config)
+        container.mainContext.insert(StoredObject(name: UUID().uuidString, kind: "revision", payload: Data(), pending: false))
+        try container.mainContext.save()
+        let crypto = VaultCrypto(), store = VaultStore(modelContainer: container)
+        let created = try await crypto.create(password: password)
+        try await store.saveHeader(created.header)
+        let revision = try await crypto.encrypt(VaultItem(title: "Readable"), parents: [])
+        try await store.saveRevision(revision)
+
+        let local = try await store.localRevisions()
+        #expect(local.revisions == [revision])
+        #expect(local.unreadableRowCount == 1)
+        await #expect(throws: DecodingError.self) { try await store.snapshot() }
+        #expect(try await store.localRevisions().unreadableRowCount == 1)
+    }
+
+    @Test func localReadChecksLinksBeforeProjectingTheGraph() async throws {
+        let crypto = VaultCrypto()
+        let created = try await crypto.create(password: password)
+        let item = VaultItem(title: "Readable")
+        let original = try await crypto.encrypt(item, parents: [])
+        let unrelated = try await crypto.encrypt(VaultItem(title: "Unrelated"), parents: [original.id])
+        let conflictID = UUID()
+        let conflictA = try await crypto.encrypt(item, parents: [original.id], revisionID: conflictID)
+        let conflictB = try await crypto.encrypt(item, parents: [], revisionID: conflictID)
+        let selfID = UUID()
+        let selfLink = try await crypto.encrypt(item, parents: [selfID], revisionID: selfID)
+        let incomplete = try await crypto.encrypt(VaultItem(title: "Missing parent"), parents: [UUID()])
+        let deleted = try await crypto.encrypt(TrashPolicy.deletionMarker(for: VaultItem(title: "Deleted")), parents: [])
+        let candidates = [conflictA, original, unrelated, original, selfLink, conflictB, deleted, incomplete]
+        for revisions in [candidates, Array(candidates.reversed())] {
+            let read = try await crypto.localEntries(from: revisions)
+            #expect(Set(read.entries.map(\.id)) == [original.id, incomplete.id])
+            #expect(read.entries.allSatisfy { !$0.isConflict })
+            #expect(read.readableRevisionCount == 3)
+            #expect(read.unreadableRevisionCount == 4)
+        }
+        try await crypto.unlock(deviceKey: Data(repeating: 0, count: 32), header: created.header)
+        let wrongKey = try await crypto.localEntries(from: [original])
+        #expect(wrongKey.readableRevisionCount == 0)
+        #expect(wrongKey.unreadableRevisionCount == 1)
+    }
+
+    @Test func localReadReauthenticatesChangedVersionsAndKeepsValidDeletionMarkers() async throws {
+        let crypto = VaultCrypto()
+        _ = try await crypto.create(password: password)
+        let item = VaultItem(title: "Previously deleted")
+        let original = try await crypto.encrypt(item, parents: [])
+        let deletion = try await crypto.encrypt(TrashPolicy.deletionMarker(for: item), parents: [original.id])
+        let unrelated = try await crypto.encrypt(VaultItem(title: "Other record"), parents: [])
+        let complete = try await crypto.localEntries(from: [original, deletion, unrelated])
+        #expect(complete.entries.map(\.id) == [unrelated.id])
+        let unavailable = EncryptedRevision(vaultID: deletion.vaultID, itemID: deletion.itemID, id: deletion.id,
+                                            parents: deletion.parents, ciphertext: Data())
+        let degraded = try await crypto.localEntries(from: [original, unavailable, unrelated])
+        #expect(Set(degraded.entries.map(\.id)) == [original.id, unrelated.id])
+        #expect(degraded.unreadableRevisionCount == 1)
+        let recovered = try await crypto.localEntries(from: [original, deletion, unrelated])
+        #expect(recovered.entries.map(\.id) == [unrelated.id])
+        #expect(recovered.unreadableRevisionCount == 0)
     }
 
     @Test func encryptionUsesFreshNonce() async throws {

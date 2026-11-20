@@ -266,6 +266,7 @@
 "list.conflict" = "存在同步冲突";
 "list.conflictDetail" = "另一台设备同时修改了这条记录。两个版本都已保存，请比较后选择保留的版本。";
 "list.count" = "%lld 条记录";
+"list.damagedHistory" = "有 %lld 个版本无法读取。可见记录可能较旧，当前仅可查看和复制。";
 "list.emptyDescription" = "添加一个账号，剩下的交给 Aegis。";
 "list.emptyTitle" = "从第一条秘密开始。";
 "list.favoritesDescription" = "点亮星标，即可快速找到常用记录。";

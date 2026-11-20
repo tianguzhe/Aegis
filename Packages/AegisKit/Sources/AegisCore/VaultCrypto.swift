@@ -185,6 +185,70 @@ public actor VaultCrypto {
         try entries(from: revisions, usingCache: true)
     }
 
+    /// Reads local history for display, reporting rejected revisions without editing the store.
+    /// Throws `VaultError.locked` without an active key. This result is not valid for export or migration.
+    public func localEntries(from revisions: [EncryptedRevision]) throws -> (
+        entries: [VaultEntry], readableRevisionCount: Int, unreadableRevisionCount: Int
+    ) {
+        guard key != nil else { throw VaultError.locked }
+        var authenticated: [UUID: (revision: EncryptedRevision, item: VaultItem, count: Int)] = [:]
+        var conflictingOwners: [UUID: Set<UUID>] = [:]
+        var unreadable = 0
+        // Failed authentication cannot establish an ID collision or an item's ownership of a parent.
+        for revision in revisions {
+            let id = revision.id
+            if authenticated[id]?.revision == revision {
+                authenticated[id]?.count += 1
+                continue
+            }
+            let item: VaultItem
+            do {
+                if let cached = decryptedRevisions[id], cached.revision == revision {
+                    item = cached.item
+                } else {
+                    item = try decrypt(revision)
+                }
+            } catch VaultError.damagedData, VaultError.differentVault, VaultError.unsupportedFormat, VaultError.oversizedRecord {
+                unreadable += 1
+                continue
+            }
+            if let existing = authenticated[id] {
+                conflictingOwners[id, default: [existing.item.id]].insert(item.id)
+                authenticated[id]?.count += 1
+            } else {
+                authenticated[id] = (revision, item, 1)
+            }
+        }
+        var accepted: [EncryptedRevision] = []
+        var items: [UUID: VaultItem] = [:]
+        for record in authenticated.values {
+            let revision = record.revision
+            // Validate links against the authenticated batch before dropping invalid graph nodes.
+            let invalidLink = revision.parents.contains { parentID in
+                if parentID == revision.id {
+                    return true
+                }
+                if let owners = conflictingOwners[parentID] {
+                    return owners.contains { $0 != record.item.id }
+                }
+                if let parent = authenticated[parentID] {
+                    return parent.item.id != record.item.id
+                }
+                return false
+            }
+            if conflictingOwners[revision.id] != nil || invalidLink {
+                unreadable += record.count
+            } else {
+                accepted.append(revision)
+                items[revision.id] = record.item
+            }
+        }
+        decryptedRevisions = authenticated.compactMapValues { record in
+            items[record.revision.id].map { (record.revision, $0) }
+        }
+        return (Self.projectEntries(from: accepted, items: items), accepted.count, unreadable)
+    }
+
     private func entries(from revisions: [EncryptedRevision], usingCache: Bool) throws -> [VaultEntry] {
         if usingCache, key == nil {
             throw VaultError.locked
@@ -214,6 +278,10 @@ public actor VaultCrypto {
         if usingCache {
             decryptedRevisions = known.compactMapValues { revision in items[revision.id].map { (revision, $0) } }
         }
+        return Self.projectEntries(from: revisions, items: items)
+    }
+
+    private static func projectEntries(from revisions: [EncryptedRevision], items: [UUID: VaultItem]) -> [VaultEntry] {
         // A terminal deletion also suppresses late offline branches and stale restores.
         // Only authenticated markers may suppress an item, even when no longer a graph head.
         let deletedIDs = Set(items.values.filter { $0.permanentlyDeletedAt != nil }.map(\.id))

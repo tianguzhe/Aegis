@@ -14,6 +14,7 @@ final class VaultSession {
     var isBusy = false
     private(set) var pendingItemIDs: Set<UUID> = []
     private(set) var notice: String?
+    private(set) var unreadableRevisionCount = 0
     private(set) var isUpdatingBiometrics = false
     var recoveryKey: String?
     var recoveryAcknowledged = false
@@ -75,6 +76,18 @@ final class VaultSession {
                     for item in PreviewFixtures.items {
                         try await store?.saveRevision(crypto.encrypt(item, parents: []))
                     }
+                    if ProcessInfo.processInfo.arguments.contains("--preview-damaged-vault"), let localState {
+                        let item = VaultItem(title: "Unreadable test record")
+                        let revision = EncryptedRevision(vaultID: result.header.vaultID, itemID: item.id, id: UUID(),
+                                                         parents: [], ciphertext: Data())
+                        try await store?.saveRevision(revision)
+                        var updated = item
+                        updated.notes = "Unsaved test notes"
+                        var state = localState.state
+                        state.retain(VaultDraft(item: updated, original: item, parents: [revision.id]))
+                        try localState.write(state)
+                        recoverableDrafts = state.drafts
+                    }
                     phase = .unlocked
                     try await refresh(); touch()
                     return
@@ -108,22 +121,35 @@ final class VaultSession {
             biometricEnabled = UserDefaults.standard.bool(forKey: "biometry.\(header.vaultID)")
         }
         if phase == .unlocked {
-            let revisions = try await store.revisions()
-            var loaded = try await crypto.cachedEntries(from: revisions)
+            var stored = try await store.localRevisions()
+            var loaded = try await crypto.localEntries(from: stored.revisions)
             guard token == generation, requestID == refreshID, phase == .unlocked else { return }
-            let expired = TrashPolicy.expiredGroups(in: loaded)
-            for group in expired {
-                guard let first = group.first else { continue }
-                let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id))
-                guard token == generation, requestID == refreshID, phase == .unlocked else { return }
-                try await store.saveRevision(marker)
+            if stored.unreadableRowCount == 0, loaded.unreadableRevisionCount == 0 {
+                let expired = TrashPolicy.expiredGroups(in: loaded.entries)
+                for group in expired {
+                    guard let first = group.first else { continue }
+                    let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id))
+                    guard token == generation, requestID == refreshID, phase == .unlocked else { return }
+                    try await store.saveRevision(marker)
+                }
+                if !expired.isEmpty {
+                    stored = try await store.localRevisions()
+                    loaded = try await crypto.localEntries(from: stored.revisions)
+                    guard token == generation, requestID == refreshID, phase == .unlocked else { return }
+                }
             }
-            if !expired.isEmpty {
-                loaded = try await crypto.cachedEntries(from: store.revisions())
-                guard token == generation, requestID == refreshID, phase == .unlocked else { return }
+            entries = loaded.entries
+            unreadableRevisionCount = stored.unreadableRowCount + loaded.unreadableRevisionCount
+            if unreadableRevisionCount > 0 {
+                // A partial view cannot establish trash expiry, deletion, or the latest login revision.
+                trashCleanupTask?.cancel()
+                trashCleanupTask = nil
+                permanentlyDeletedItemIDs = []
+                do { try invalidateAutoFillSnapshot() } catch { self.error = error.localizedDescription }
+                guard loaded.readableRevisionCount > 0 else { throw VaultError.damagedData }
+                return
             }
-            entries = loaded
-            permanentlyDeletedItemIDs = Set(revisions.map(\.itemID)).subtracting(loaded.map(\.item.id))
+            permanentlyDeletedItemIDs = Set(stored.revisions.map(\.itemID)).subtracting(entries.map(\.item.id))
             if let localState {
                 var state = localState.state
                 state.drafts.removeAll { permanentlyDeletedItemIDs.contains($0.id) }
@@ -225,11 +251,13 @@ final class VaultSession {
         }
         draftSnapshots.removeAll()
         let previousLock = lockingTask
-        let pendingWrite = phase == .unlocked && !replacingVault && (autoFillTask != nil || !pendingItemIDs.isEmpty || isBusy)
+        let pendingWrite = phase == .unlocked && unreadableRevisionCount == 0 && !replacingVault &&
+            (autoFillTask != nil || !pendingItemIDs.isEmpty || isBusy)
         autoFillTask?.cancel()
         autoFillTask = nil
         generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel(); trashCleanupTask?.cancel()
         permanentlyDeletedItemIDs = []
+        unreadableRevisionCount = 0
         noticeTask?.cancel(); notice = nil
         localState?.lock()
         // iOS already enforces the local-only clipboard expiration while suspended.
@@ -262,6 +290,7 @@ final class VaultSession {
     @discardableResult
     func save(_ item: VaultItem, parents: [UUID]) async -> Bool {
         guard phase == .unlocked, let store, !isBusy, !pendingItemIDs.contains(item.id) else { return false }
+        guard unreadableRevisionCount == 0 else { error = L10n.text("error.damagedData"); return false }
         pendingItemIDs.insert(item.id)
         defer { pendingItemIDs.remove(item.id) }
         let token = generation
@@ -282,7 +311,7 @@ final class VaultSession {
             }
             var updated = item; updated.modifiedAt = Date()
             let revision = try await crypto.encrypt(updated, parents: parents)
-            guard token == generation, phase == .unlocked else { return false }
+            guard token == generation, phase == .unlocked, unreadableRevisionCount == 0 else { return false }
             try await store.saveRevision(revision)
             try await refresh(); touch()
             guard token == generation, phase == .unlocked else { return false }
@@ -339,6 +368,7 @@ final class VaultSession {
 
     private func scheduleTrashCleanup() {
         trashCleanupTask?.cancel()
+        guard unreadableRevisionCount == 0 else { return }
         // A conflict expires only once all its branches have reached their deadlines.
         let deadlines = Dictionary(grouping: entries, by: \.item.id).values.compactMap { group -> Date? in
             let dates = group.compactMap { TrashPolicy.expirationDate(for: $0.item) }
@@ -690,7 +720,7 @@ final class VaultSession {
     }
 
     private func scheduleAutoFillSnapshot() {
-        guard !replacingVault, let header, let directory = autoFillDirectory else { return }
+        guard !replacingVault, unreadableRevisionCount == 0, let header, let directory = autoFillDirectory else { return }
         autoFillTask?.cancel()
         autoFillTask = nil
         let version = AutoFillVersion(header: header, entries: entries)

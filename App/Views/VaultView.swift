@@ -219,10 +219,12 @@ struct VaultView: View {
                         #if os(macOS)
                             Button(action: addItem) { Label(L10n.text("action.new"), systemImage: "plus") }
                                 .buttonStyle(.bordered).controlSize(.regular).accessibilityIdentifier("addItemButton")
+                                .disabled(session.unreadableRevisionCount > 0)
                                 .help(L10n.text("action.add") + " (⌘N)")
                         #else
                             AegisIconButton(symbol: "plus", label: L10n.text("action.add"), prominent: true, action: addItem)
                                 .accessibilityIdentifier("addItemButton")
+                                .disabled(session.unreadableRevisionCount > 0)
                         #endif
                     }
                 }.padding(.horizontal, 18).frame(minHeight: AegisMetrics.toolbarHeight)
@@ -262,6 +264,15 @@ struct VaultView: View {
                     }.scrollIndicators(.hidden).padding(.bottom, 12)
                 }
             }
+            if session.unreadableRevisionCount > 0 {
+                Label(L10n.format("list.damagedHistory", Int64(session.unreadableRevisionCount)), systemImage: "exclamationmark.triangle")
+                    .aegisFont(size: 12).foregroundStyle(AegisTheme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12).background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 16).padding(.bottom, 12)
+                    .accessibilityIdentifier("vaultIntegrityWarning")
+            }
             if filter == .trash {
                 Label(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays)), systemImage: "clock")
                     .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
@@ -297,7 +308,7 @@ struct VaultView: View {
             if filtered.isEmpty {
                 VStack(spacing: 0) {
                     AegisEmptyState(title: L10n.text(emptyTitle), message: L10n.text(emptyDescription), symbol: search.isEmpty ? filter.symbol : "magnifyingglass")
-                    if filter != .trash, search.isEmpty {
+                    if filter != .trash, search.isEmpty, session.unreadableRevisionCount == 0 {
                         Button(L10n.text("action.add")) { addItem() }.buttonStyle(AegisButtonStyle(primary: true)).padding(.bottom, 32)
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -313,7 +324,9 @@ struct VaultView: View {
                                     }
                                 }.id(entry.id)
                                     .contextMenu {
-                                        if entry.item.deletedAt == nil {
+                                        if session.unreadableRevisionCount > 0 {
+                                            EmptyView()
+                                        } else if entry.item.deletedAt == nil {
                                             Button(L10n.text("action.edit")) { edit(entry) }
                                             Button(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) { Task { await session.toggleFavorite(entry) } }
                                             Divider()
@@ -375,11 +388,12 @@ struct VaultView: View {
     }
 
     private func addItem() {
+        guard session.unreadableRevisionCount == 0 else { return }
         presentedSheet = .editor(VaultItem(kind: newItemKind), [])
     }
 
     private func edit(_ entry: VaultEntry) {
-        guard entry.item.deletedAt == nil else { return }
+        guard session.unreadableRevisionCount == 0, entry.item.deletedAt == nil else { return }
         presentedSheet = .editor(entry.item, [entry.id])
     }
 
@@ -414,7 +428,8 @@ struct VaultView: View {
             guard presentedSheet == nil, pendingTrash == nil, pendingDeletion == nil,
                   session.error == nil, session.recoveryKey == nil else { return nil }
             let entry = selectedEntry
-            let available = entry.map { !session.pendingItemIDs.contains($0.item.id) } ?? false
+            let available = session.unreadableRevisionCount == 0 &&
+                (entry.map { !session.pendingItemIDs.contains($0.item.id) } ?? false)
             return VaultMenuActions(
                 add: addItem, search: { searchFocused = true },
                 settings: { presentedSheet = .settings }, generator: { presentedSheet = .generator },

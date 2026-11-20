@@ -235,6 +235,33 @@ final class InterfaceTests: XCTestCase {
         captureElement(decrease, name: "generator-limit-disabled")
     }
 
+    func testDamagedHistoryLeavesReadableRecordsAndKeepsDraft() {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--preview-vault", "--preview-damaged-vault", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        let warning = app.descendants(matching: .any).matching(identifier: "vaultIntegrityWarning").firstMatch
+        XCTAssertTrue(warning.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["addItemButton"].isEnabled)
+        let drafts = app.buttons["resumeDrafts"]
+        XCTAssertTrue(drafts.exists)
+        let apple = app.buttons["record-Apple"]
+        XCTAssertTrue(apple.exists)
+        capture("vault-integrity-warning")
+        apple.tap()
+        let edit = app.buttons["editItemButton"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        XCTAssertFalse(edit.isEnabled)
+        let back = app.buttons["BackButton"]
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
+        app.buttons["锁定保险库"].tap()
+        unlockIfNeeded()
+        XCTAssertTrue(warning.waitForExistence(timeout: 10))
+        XCTAssertTrue(drafts.exists)
+        XCTAssertTrue(apple.exists)
+    }
+
     func testDraftSurvivesCloseLockUnlockAndSave() {
         launchVault()
         app.buttons["record-Apple"].tap()

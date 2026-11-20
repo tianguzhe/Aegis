@@ -21,8 +21,19 @@ public enum BackupMigration {
             try await source.unlock(deviceKey: payload.vaultKey, header: payload.header)
             try await destination.unlock(deviceKey: key, header: header)
             let lineage = try await VaultRotation.lineage(in: existing, using: destination)
-            guard !lineage.retired.contains(payload.header.vaultID) else { throw VaultError.retiredVaultHistory }
-            let known = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+            let sourceID = payload.header.vaultID
+            guard !lineage.retired.contains(sourceID) else { throw VaultError.retiredVaultHistory }
+            // IDs already in the destination passed through every intermediate namespace.
+            let ancestors = lineage.predecessorChain.drop(while: { $0 != sourceID })
+            let path = (ancestors.isEmpty ? [sourceID] : Array(ancestors)) + [header.vaultID]
+            let hops = zip(path, path.dropFirst())
+            func mapID(_ id: UUID, kind: String) -> UUID {
+                hops.reduce(id) { mappedID($0, kind: kind, source: $1.0, destination: $1.1) }
+            }
+            var known: [UUID: EncryptedRevision] = [:]
+            for revision in existing {
+                guard known.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
+            }
             var migrated: [EncryptedRevision] = []
             for revision in payload.revisions where !VaultRotation.isLineageRecord(revision) {
                 try Task.checkCancellation()
@@ -30,11 +41,9 @@ public enum BackupMigration {
                     continue
                 }
                 var item = try await source.decrypt(revision)
-                item.id = mappedID(item.id, kind: "item", source: payload.header.vaultID, destination: header.vaultID)
-                let id = mappedID(revision.id, kind: "revision", source: payload.header.vaultID, destination: header.vaultID)
-                let parents = (retainedIDs == nil ? revision.parents : []).map {
-                    mappedID($0, kind: "revision", source: payload.header.vaultID, destination: header.vaultID)
-                }
+                item.id = mapID(item.id, kind: "item")
+                let id = mapID(revision.id, kind: "revision")
+                let parents = (retainedIDs == nil ? revision.parents : []).map { mapID($0, kind: "revision") }
                 if let stored = known[id] {
                     // Reuse the authenticated ciphertext: a new random nonce would make an
                     // otherwise identical immutable revision conflict on repeated imports.

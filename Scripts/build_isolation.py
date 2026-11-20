@@ -20,7 +20,6 @@ LSREGISTER = Path(
     "/System/Library/Frameworks/CoreServices.framework/Frameworks/"
     "LaunchServices.framework/Support/lsregister"
 )
-LOCAL_BUILD_FOLDERS = (".build", "build", "DerivedData", "TestResults")
 XCODE_PATH_OPTIONS = ("-derivedDataPath", "-archivePath", "-resultBundlePath", "-clonedSourcePackagesDirPath", "-packageCachePath")
 XCODE_PATH_SETTINGS = {
     "SYMROOT", "OBJROOT", "DSTROOT", "CONFIGURATION_BUILD_DIR", "CONFIGURATION_TEMP_DIR",
@@ -60,43 +59,14 @@ def registered_paths(dump):
 
 
 class BuildArea:
-    def __init__(self, root, extra_build_dirs=(), derived_data_home=None):
+    def __init__(self, root):
         self.root = Path(root).resolve(strict=True)
         if not self.root.is_dir() or protected(self.root):
             raise ValueError("Choose a project directory, not a system/application/home directory")
         self.build = self.root / ".build"
+        if self.build.is_symlink():
+            raise ValueError(f"Build directory must not be a symlink: {self.build}")
         self.work = self.build / "artifacts.noindex"
-        self.roots = []
-        for name in LOCAL_BUILD_FOLDERS:
-            candidate = self.root / name
-            if candidate.is_symlink():
-                raise ValueError(f"Build directory must not be a symlink: {candidate}")
-            self.roots.append(candidate)
-        for value in extra_build_dirs:
-            candidate = Path(value).resolve(strict=True)
-            if not candidate.is_dir() or protected(candidate) or is_inside(self.root, candidate):
-                raise ValueError(f"Not a safe extra build directory: {candidate}")
-            self.roots.append(candidate)
-        derived_data_home = derived_data_home or Path.home() / "Library/Developer/Xcode/DerivedData"
-        self.roots.extend(self._owned_derived_data(derived_data_home))
-
-    def _owned_derived_data(self, derived_data_home):
-        """Discover old Xcode caches by workspace metadata, never by folder name."""
-        for info in Path(derived_data_home).glob("*/info.plist"):
-            try:
-                metadata = plistlib.loads(info.read_bytes())
-                if not isinstance(metadata, dict) or not isinstance(metadata.get("WorkspacePath"), str):
-                    continue
-                workspace = Path(metadata["WorkspacePath"])
-                if not workspace.is_absolute():
-                    continue
-                workspace = workspace.resolve()
-                if workspace.suffix in (".xcodeproj", ".xcworkspace") and is_inside(workspace, self.root):
-                    candidate = info.parent.resolve()
-                    if not protected(candidate):
-                        yield candidate
-            except (OSError, ValueError, plistlib.InvalidFileException):
-                continue
 
     def owns(self, path):
         # Require both lexical and resolved containment; never follow a build symlink to /Applications.
@@ -106,21 +76,7 @@ class BuildArea:
         resolved = path.resolve()
         if any(is_inside(resolved, place) for place in (Path("/Applications"), Path.home() / "Applications")):
             return False
-        # Accept only the known product if a manually exported development copy
-        # exists beside an installer; do not treat the whole release folder as a cache.
-        if path == self.root / "release/Aegis.app" and resolved == path:
-            return self._is_legacy_app(path)
-        return any(is_inside(path, root) and is_inside(resolved, root) for root in self.roots)
-
-    @staticmethod
-    def _is_legacy_app(path):
-        if not path.exists():
-            return True  # A stale registration for the former build product.
-        try:
-            info = plistlib.loads((path / "Contents/Info.plist").read_bytes())
-            return isinstance(info, dict) and info.get("CFBundleIdentifier") == "app.aegis.mac"
-        except (OSError, ValueError, plistlib.InvalidFileException):
-            return False
+        return is_inside(path, self.work) and is_inside(resolved, self.work)
 
     def prepare(self):
         for directory in (self.build, self.work, self.work / "logs", self.work / "cache"):
@@ -160,30 +116,6 @@ class BuildArea:
     def registered(self):
         result = subprocess.run([str(LSREGISTER), "-dump"], capture_output=True, text=True, timeout=45, check=True)
         return sorted(path for path in registered_paths(result.stdout) if self.owns(path))
-
-    def archive_legacy(self):
-        """Move the old indexed build tree intact; unregister alone does not remove Spotlight results."""
-        source = self.root / "build"
-        if source.is_symlink():
-            raise ValueError(f"Legacy build directory must not be a symlink: {source}")
-        if not source.exists():
-            print("[build-isolation] No legacy build directory to archive.", flush=True)
-            return None
-        if not source.is_dir():
-            raise ValueError(f"Legacy build path must be a directory: {source}")
-        processes = subprocess.run(["/bin/ps", "-axo", "comm="], capture_output=True, text=True, timeout=15, check=True)
-        active = [line.strip() for line in processes.stdout.splitlines()
-                  if line.strip().startswith(str(source) + "/")]
-        if active:
-            raise RuntimeError("Quit the legacy development apps before archiving:\n" + "\n".join(active))
-        self.prepare()
-        self.cleanup()
-        # A unique destination preserves every bundle and log, and never overwrites an earlier archive.
-        directory = Path(tempfile.mkdtemp(prefix="legacy-build-", dir=self.work))
-        destination = directory / "build"
-        source.rename(destination)
-        print(f"[build-isolation] Archived legacy builds without deleting files: {destination}", flush=True)
-        return destination
 
     def cleanup(self, dry_run=False):
         paths = self.registered()
@@ -335,10 +267,9 @@ def execute(area, arguments, lane):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="operation", required=True)
-    for name in ("prepare", "status", "cleanup", "archive-legacy", "exec"):
+    for name in ("prepare", "status", "cleanup", "exec"):
         command = commands.add_parser(name)
         command.add_argument("--root", type=Path, default=Path.cwd(), help="Project directory (default: current directory)")
-        command.add_argument("--extra-build-dir", action="append", default=[], help="Additional explicit legacy build cache")
         if name == "cleanup":
             command.add_argument("--dry-run", action="store_true")
         if name == "exec":
@@ -348,7 +279,7 @@ def main(argv=None):
     if sys.platform != "darwin":
         parser.error("This tool manages macOS build artifacts and requires macOS")
     try:
-        area = BuildArea(args.root, args.extra_build_dir)
+        area = BuildArea(args.root)
         if args.operation == "prepare":
             area.prepare()
             print(area.work)
@@ -357,8 +288,6 @@ def main(argv=None):
             area.cleanup(dry_run=True)
         elif args.operation == "cleanup":
             area.cleanup(dry_run=args.dry_run)
-        elif args.operation == "archive-legacy":
-            area.archive_legacy()
         else:
             arguments = args.command[1:] if args.command[:1] == ["--"] else args.command
             return execute(area, arguments, args.lane)

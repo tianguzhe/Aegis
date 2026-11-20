@@ -35,9 +35,11 @@ public struct VaultRotation: Sendable {
         do {
             try await origin.unlock(deviceKey: vaultKey, header: header)
             var lineage = try await lineage(in: revisions, using: origin)
-            lineage.predecessors.insert(header.vaultID)
+            lineage.predecessorChain.append(header.vaultID)
             if compactHistory {
-                lineage.retired.formUnion(lineage.predecessors)
+                // A compacted graph cannot accept history from any earlier namespace.
+                lineage.retired.formUnion(lineage.predecessorChain)
+                lineage.predecessorChain.removeAll()
             }
             let retained = compactHistory ? try await compactedRevisionIDs(source, entries: expected, crypto: origin) : nil
             await origin.lock()
@@ -64,7 +66,8 @@ public struct VaultRotation: Sendable {
     }
 
     struct Lineage: Codable, Equatable, Sendable {
-        var predecessors: Set<UUID> = []
+        // The required ordered field rejects development snapshots that only stored an unordered set.
+        var predecessorChain: [UUID] = []
         var retired: Set<UUID> = []
     }
 
@@ -76,8 +79,12 @@ public struct VaultRotation: Sendable {
     static func lineage(in revisions: [EncryptedRevision], using crypto: VaultCrypto) async throws -> Lineage {
         guard let revision = revisions.first(where: isLineageRecord) else { return Lineage() }
         let record = try await crypto.decrypt(revision)
-        guard revision.parents.isEmpty, record.permanentlyDeletedAt != nil, let lineage = record.rotationLineage,
-              lineage.retired.isSubset(of: lineage.predecessors), !lineage.predecessors.contains(revision.vaultID)
+        guard revision.parents.isEmpty, record.permanentlyDeletedAt != nil, let lineage = record.rotationLineage else {
+            throw VaultError.damagedData
+        }
+        let ancestors = Set(lineage.predecessorChain)
+        guard ancestors.count == lineage.predecessorChain.count, ancestors.isDisjoint(with: lineage.retired),
+              !ancestors.contains(revision.vaultID), !lineage.retired.contains(revision.vaultID)
         else { throw VaultError.damagedData }
         return lineage
     }

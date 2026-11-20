@@ -13,7 +13,7 @@ enum DeviceKeyStore {
         else {
             throw error?.takeRetainedValue() as Error? ?? VaultError.damagedData
         }
-        delete(vaultID: vaultID)
+        try delete(vaultID: vaultID)
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: service,
                                     kSecAttrAccount as String: vaultID.uuidString,
@@ -40,9 +40,17 @@ enum DeviceKeyStore {
         return data
     }
 
-    static func delete(vaultID: UUID) {
-        SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: service,
-                       kSecAttrAccount: vaultID.uuidString, kSecUseDataProtectionKeychain: true] as CFDictionary)
+    static func delete(vaultID: UUID) throws {
+        let query = [kSecClass: kSecClassGenericPassword, kSecAttrService: service,
+                     kSecAttrAccount: vaultID.uuidString, kSecUseDataProtectionKeychain: true] as CFDictionary
+        let status: OSStatus
+        #if DEBUG
+            status = PreviewFixtures.keychainDeleteFails ? errSecInteractionNotAllowed : SecItemDelete(query)
+        #else
+            status = SecItemDelete(query)
+        #endif
+        // An absent item already satisfies the caller's request to revoke biometric access.
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw keychainError(status) }
     }
 
     private static func keychainError(_ status: OSStatus) -> NSError {

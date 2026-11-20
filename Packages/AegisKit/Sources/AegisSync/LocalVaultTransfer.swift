@@ -6,7 +6,7 @@ import Observation
 /// Explicit, foreground-only transfer of one encrypted snapshot. Never opens a database or a keychain.
 @MainActor @Observable
 public final class LocalVaultTransfer {
-    public enum State: Equatable { case idle, starting, searching, offering, transferring, received, sent, failed }
+    public enum State: Equatable { case idle, starting, searching, offering, connecting, comparing, awaitingPeer, transferring, received, sent, failed }
     public struct Peer: Identifiable {
         public let id: String
         public let name: String
@@ -16,8 +16,7 @@ public final class LocalVaultTransfer {
     public private(set) var state: State = .idle
     public private(set) var peers: [Peer] = []
     public private(set) var offerName = ""
-    public private(set) var pairingCode = ""
-    public private(set) var receivedData: Data?
+    @ObservationIgnored private var receivedSnapshot: (data: Data, credential: String)?
     public private(set) var error: String?
     @ObservationIgnored private var listener: NWListener?
     @ObservationIgnored private var browser: NWBrowser?
@@ -25,22 +24,27 @@ public final class LocalVaultTransfer {
     @ObservationIgnored private var transferTask: Task<Void, Never>?
     @ObservationIgnored private var expiryTask: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
-    @ObservationIgnored private var offeredData: Data?
+    @ObservationIgnored private var interruption: LocalTransferError?
     @ObservationIgnored private var failedAttempts = 0
+    public private(set) var comparisonCode = ""
+    public private(set) var comparisonID: UUID?
+    @ObservationIgnored private var approval: CheckedContinuation<Void, Error>?
+    @ObservationIgnored private var pairingExport: (@MainActor (String) async throws -> Data)?
 
     public init() {}
 
-    private static func parameters() -> NWParameters {
+    static func parameters() -> NWParameters {
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = false
         parameters.prohibitedInterfaceTypes = [.cellular]
         return parameters
     }
 
+    /// Starts discovery for new-device invitations, discarding any prior round.
     public func search() {
         stop()
         let token = generation
-        let browser = NWBrowser(for: .bonjour(type: LocalTransferProtocol.serviceType, domain: "local."), using: Self.parameters())
+        let browser = NWBrowser(for: .bonjour(type: LANPairingHandshake.serviceType, domain: "local."), using: Self.parameters())
         self.browser = browser
         state = .searching
         browser.stateUpdateHandler = { [weak self] state in
@@ -70,22 +74,30 @@ public final class LocalVaultTransfer {
         browser.start(queue: .global(qos: .userInitiated))
     }
 
-    public func offer(_ data: Data, code: String) throws {
+    /// Starts a v2 invitation. `export` runs with the ABB credential after both peers approve.
+    /// Listener setup errors propagate and end the invitation.
+    public func offerPairing(export: @escaping @MainActor (String) async throws -> Data) throws {
         stop()
-        pairingCode = try LocalTransferProtocol.normalizeCode(code)
-        _ = try LocalTransferProtocol.lengthBytes(data.count)
+        pairingExport = export
+        do { try listen() }
+        catch { stop(); throw error }
+    }
+
+    private func listen() throws {
         let listener = try NWListener(using: Self.parameters())
         self.listener = listener
-        offeredData = data
         offerName = "Aegis-" + UUID().uuidString.prefix(8)
-        listener.service = NWListener.Service(name: offerName, type: LocalTransferProtocol.serviceType)
+        listener.service = NWListener.Service(name: offerName, type: LANPairingHandshake.serviceType)
         let token = generation
         state = .starting
         listener.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
                 switch state {
-                case .ready: self.state = .offering
+                case .ready:
+                    if self.state == .starting {
+                        self.state = .offering
+                    }
                 case let .failed(error), let .waiting(error): self.fail(error)
                 default: break
                 }
@@ -94,99 +106,140 @@ public final class LocalVaultTransfer {
         listener.newConnectionHandler = { [weak self] connection in
             Task { @MainActor in
                 guard let self, self.generation == token, self.active == nil else { connection.cancel(); return }
-                self.serve(connection, token: token)
+                self.runPairing(connection, role: .sender)
             }
         }
         listener.start(queue: .global(qos: .userInitiated))
         expiryTask = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(LocalTransferProtocol.offerLifetime)) } catch { return }
+            do { try await Task.sleep(for: .seconds(300)) } catch { return }
             guard let self, generation == token else { return }
             fail(LocalTransferError.expired)
         }
     }
 
-    private func serve(_ connection: NWConnection, token: UUID) {
-        guard let data = offeredData else { connection.cancel(); return }
-        let code = pairingCode
-        let socket = LocalTransferConnection(connection)
+    /// Connects to a v2 discovery result. The caller must compare the displayed number on both devices.
+    public func receivePairing(from peer: Peer) {
+        stop()
+        runPairing(NWConnection(to: peer.endpoint, using: Self.parameters()), role: .receiver)
+    }
+
+    /// Accepts only the comparison currently displayed for this connection.
+    public func approvePairing(_ id: UUID?) {
+        guard let id, id == comparisonID, let pending = approval else { return }
+        approval = nil
+        state = .awaitingPeer
+        pending.resume()
+    }
+
+    /// Rejects the displayed comparison and closes the connection without exporting.
+    public func rejectPairing(_ id: UUID?) {
+        guard let id, id == comparisonID else { return }
+        interruptPairing(.comparisonRejected)
+    }
+
+    private func interruptPairing(_ reason: LocalTransferError) {
+        // Record the local reason before cancellation wakes the concurrent read or approval wait.
+        interruption = reason
+        active?.cancel()
+        transferTask?.cancel()
+        let pending = approval
+        approval = nil
+        pending?.resume(throwing: reason)
+    }
+
+    private func runPairing(_ connection: NWConnection, role: LANPairingHandshake.Role) {
+        let socket = LocalTransferConnection(connection, maxRead: LANPairingRound.maxFrameLength)
+        let token = generation
+        let id = UUID()
         active = socket
-        state = .transferring
+        interruption = nil
+        error = nil
+        state = .connecting
         transferTask = Task { [weak self] in
-            let deadline = Self.deadline(socket, seconds: 60)
+            guard let self else { socket.cancel(); return }
+            let deadline = Task { [weak self] in
+                do { try await Task.sleep(for: .seconds(120)) } catch { return }
+                guard let self, active === socket else { return }
+                interruptPairing(.expired)
+            }
             defer { deadline.cancel(); socket.cancel() }
             do {
                 try await socket.start()
-                let challenge = try SecureRandom.bytes(count: LocalTransferProtocol.challengeLength)
-                try await socket.send(LocalTransferProtocol.magic + challenge)
-                let proof = try await socket.read(LocalTransferProtocol.proofLength)
-                guard try LocalTransferProtocol.verify(proof, code: code, challenge: challenge) else {
-                    throw LocalTransferError.authenticationFailed
+                var round = try await LANPairingRound.handshake(on: socket, role: role)
+                try Task.checkCancellation()
+                guard generation == token else { return }
+                let code = round.comparisonCode
+                try await round.exchangeApproval { [weak self] in
+                    guard let self, generation == token else { throw CancellationError() }
+                    try await withTaskCancellationHandler {
+                        try Task.checkCancellation()
+                        try await withCheckedThrowingContinuation { (pending: CheckedContinuation<Void, Error>) in
+                            approval = pending
+                            comparisonID = id
+                            comparisonCode = code
+                            state = .comparing
+                        }
+                    } onCancel: { [weak self] in
+                        Task { @MainActor [weak self] in
+                            guard let self, comparisonID == id, let pending = approval else { return }
+                            approval = nil
+                            pending.resume(throwing: CancellationError())
+                        }
+                    }
                 }
                 try Task.checkCancellation()
-                try await socket.send(LocalTransferProtocol.magic + LocalTransferProtocol.lengthBytes(data.count))
-                try await socket.send(data)
-                let receipt = try await socket.read(LocalTransferProtocol.proofLength)
-                guard try LocalTransferProtocol.verify(receipt, code: code, challenge: challenge, receivedFile: data) else {
-                    throw LocalTransferError.authenticationFailed
+                guard generation == token else { return }
+                comparisonCode = ""; comparisonID = nil
+                state = .transferring
+                if role == .sender, let export = pairingExport {
+                    try await round.export(using: export)
+                    guard generation == token else { return }
+                    stop(); state = .sent
+                } else if role == .receiver {
+                    let (file, credential) = try await round.importSnapshot()
+                    guard generation == token else { return }
+                    stop()
+                    receivedSnapshot = (file, credential)
+                    state = .received
                 }
-                guard let self, generation == token else { return }
-                stop(); state = .sent
             } catch {
-                guard let self, generation == token else { return }
+                guard generation == token else { return }
                 active = nil; transferTask = nil
+                comparisonCode = ""; comparisonID = nil
                 failedAttempts += 1
-                if failedAttempts >= 3 {
+                let pairingError = interruption ?? (error as? LocalTransferError) ?? .connectionLost
+                if role == .sender, failedAttempts < 3 {
+                    self.error = error is CancellationError && interruption == nil ? nil : pairingError.localizedDescription
+                    state = .offering
+                } else if role == .sender {
                     fail(LocalTransferError.authenticationFailed)
                 } else {
-                    state = .offering
+                    fail(pairingError)
                 }
             }
         }
     }
 
-    public func receive(from peer: Peer, code input: String) throws {
-        let code = try LocalTransferProtocol.normalizeCode(input)
-        stop()
-        pairingCode = code
-        let token = generation
-        let socket = LocalTransferConnection(NWConnection(to: peer.endpoint, using: Self.parameters()))
-        active = socket
-        state = .transferring
-        transferTask = Task { [weak self] in
-            let deadline = Self.deadline(socket, seconds: 60)
-            defer { deadline.cancel(); socket.cancel() }
-            do {
-                try await socket.start()
-                guard try await socket.read(8) == LocalTransferProtocol.magic else { throw LocalTransferError.invalidMessage }
-                let challenge = try await socket.read(LocalTransferProtocol.challengeLength)
-                try await socket.send(LocalTransferProtocol.proof(code: code, challenge: challenge))
-                guard try await socket.read(8) == LocalTransferProtocol.magic else { throw LocalTransferError.connectionLost }
-                let count = try await LocalTransferProtocol.fileLength(socket.read(4))
-                let data = try await socket.read(count)
-                _ = try BackupContainer.parse(data)
-                try await socket.send(LocalTransferProtocol.proof(code: code, challenge: challenge, receivedFile: data))
-                guard let self, generation == token else { return }
-                active = nil; transferTask = nil
-                receivedData = data; state = .received
-            } catch {
-                guard let self, generation == token else { return }
-                fail(LocalTransferError.connectionLost)
-            }
-        }
-    }
-
-    public func discardReceivedBytes() {
-        receivedData = nil; pairingCode = ""
+    /// Hands validated container bytes and their session credential to the caller once for decryption and preview.
+    /// Returns nil before receipt, after consumption, or after the transfer stops.
+    public func takeReceivedSnapshot() -> (data: Data, credential: String)? {
+        defer { receivedSnapshot = nil }
+        return receivedSnapshot
     }
 
     public func stop() {
         generation = UUID()
+        let pending = approval
+        approval = nil
+        pending?.resume(throwing: CancellationError())
+        comparisonCode = ""; comparisonID = nil
+        pairingExport = nil
         listener?.cancel(); listener = nil
         browser?.cancel(); browser = nil
         active?.cancel(); active = nil
         transferTask?.cancel(); transferTask = nil
         expiryTask?.cancel(); expiryTask = nil
-        offeredData = nil; receivedData = nil; pairingCode = ""; offerName = ""
+        interruption = nil; receivedSnapshot = nil; offerName = ""
         peers = []; failedAttempts = 0; error = nil; state = .idle
     }
 
@@ -195,23 +248,18 @@ public final class LocalVaultTransfer {
         self.error = error.localizedDescription
         state = .failed
     }
-
-    private static func deadline(_ socket: LocalTransferConnection, seconds: Int) -> Task<Void, Never> {
-        Task {
-            do { try await Task.sleep(for: .seconds(seconds)) } catch { return }
-            socket.cancel()
-        }
-    }
 }
 
 /// One ordered read and write at a time, with bounded chunks and cancellation of pending I/O.
 @MainActor
-private final class LocalTransferConnection {
+final class LocalTransferConnection: LANSyncSocket {
     private let connection: NWConnection
+    private let maxRead: Int
     private var ready: CheckedContinuation<Void, Error>?
 
-    init(_ connection: NWConnection) {
+    init(_ connection: NWConnection, maxRead: Int = BackupLimits.maxFileLength) {
         self.connection = connection
+        self.maxRead = maxRead
     }
 
     func cancel() {
@@ -257,7 +305,7 @@ private final class LocalTransferConnection {
     }
 
     func read(_ count: Int) async throws -> Data {
-        guard count > 0, count <= BackupLimits.maxFileLength else { throw LocalTransferError.invalidMessage }
+        guard count > 0, count <= maxRead else { throw LocalTransferError.invalidMessage }
         let connection = connection
         return try await withTaskCancellationHandler {
             var data = Data()

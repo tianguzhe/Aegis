@@ -3,24 +3,20 @@ import Foundation
 import Testing
 
 struct PaymentCardTests {
-    @Test func legacyCenturionSelectionBecomesAmericanExpress() throws {
-        let brand = try JSONDecoder().decode(CardBrand.self, from: Data("\"centurion\"".utf8))
-        #expect(brand == .americanExpress)
-        #expect(try String(decoding: JSONEncoder().encode(brand), as: UTF8.self) == "\"americanExpress\"")
+    @Test func cardBrandUsesOnlyCurrentIdentifiers() throws {
+        let encoded = try JSONEncoder().encode(CardBrand.americanExpress)
+        #expect(encoded == Data("\"americanExpress\"".utf8))
+        #expect(try JSONDecoder().decode(CardBrand.self, from: encoded) == .americanExpress)
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(CardBrand.self, from: Data("\"centurion\"".utf8))
+        }
     }
 
-    @Test func oldEncryptedItemPayloadNeedsNoNewFields() throws {
-        var original = VaultItem(kind: .card, title: "Legacy card", notes: "Preserve my note")
+    @Test func neutralCardAppearanceSurvivesEncoding() throws {
+        var original = VaultItem(kind: .card, title: "Neutral card", notes: "Preserve my note")
         original.cardNumber = "1234 5678 9012 3456"
-        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as? [String: Any])
-        object.removeValue(forKey: "cardBrand")
-        object.removeValue(forKey: "cardType")
-        let restored = try JSONDecoder().decode(VaultItem.self, from: JSONSerialization.data(withJSONObject: object))
-        #expect(restored.id == original.id)
-        #expect(restored.cardNumber == original.cardNumber)
-        #expect(restored.notes == original.notes)
-        #expect(restored.cardBrand == nil)
-        #expect(restored.cardType == nil)
+        original.cardBrand = nil; original.cardType = nil
+        #expect(try JSONDecoder().decode(VaultItem.self, from: JSONEncoder().encode(original)) == original)
     }
 
     @Test func allEightAppearancesSurviveEncryptedStorage() async throws {

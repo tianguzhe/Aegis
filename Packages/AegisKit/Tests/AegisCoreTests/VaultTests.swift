@@ -78,7 +78,7 @@ struct VaultTests {
         let schema = Schema([StoredObject.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(for: schema, configurations: config)
-        container.mainContext.insert(StoredObject(name: UUID().uuidString, kind: "revision", payload: Data(), pending: false))
+        container.mainContext.insert(StoredObject(name: UUID().uuidString, kind: "revision", payload: Data()))
         try container.mainContext.save()
         let crypto = VaultCrypto(), store = VaultStore(modelContainer: container)
         let created = try await crypto.create(password: password)
@@ -232,11 +232,9 @@ struct VaultTests {
         #expect(remaining.first?.item.title == "Keep")
     }
 
-    @Test func legacyItemsDecodeWithoutTerminalDeletionField() throws {
-        let item = VaultItem(title: "Legacy")
-        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(item)) as? [String: Any])
-        json.removeValue(forKey: "permanentlyDeletedAt")
-        let decoded = try JSONDecoder().decode(VaultItem.self, from: JSONSerialization.data(withJSONObject: json))
+    @Test func activeItemRoundTripsWithoutTerminalDeletion() throws {
+        let item = VaultItem(title: "Active item")
+        let decoded = try JSONDecoder().decode(VaultItem.self, from: JSONEncoder().encode(item))
         #expect(decoded.permanentlyDeletedAt == nil)
         #expect(decoded == item)
     }
@@ -258,7 +256,7 @@ struct VaultTests {
         let created = try await crypto.create(password: password)
         try await source.saveHeader(created.header)
         try await source.saveRevision(crypto.encrypt(VaultItem(title: "Imported"), parents: []))
-        let backup = try await JSONDecoder().decode(VaultBackup.self, from: source.backup())
+        let backup = try await source.snapshot()
 
         struct InjectedCommitFailure: Error {}
         let target = try VaultStore.make(inMemory: true)

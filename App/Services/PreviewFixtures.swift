@@ -4,6 +4,11 @@
 
     /// Synthetic in-memory data for visual QA; never used by a release build or synchronized.
     enum PreviewFixtures {
+        static var keychainDeleteFails: Bool {
+            let arguments = ProcessInfo.processInfo.arguments
+            return arguments.contains("--preview-vault") && arguments.contains("--preview-keychain-delete-failure")
+        }
+
         static func passwordCSV() -> String? {
             let arguments = ProcessInfo.processInfo.arguments
             guard arguments.contains("--preview-vault") else { return nil }

@@ -200,7 +200,8 @@ struct SettingsView: View {
                     SettingsRowText(symbol: "touchid", title: "biometric.title", detail: "biometric.description")
                     Toggle(L10n.text("biometric.title"), isOn: Binding(get: { session.biometricEnabled }, set: { enabled in Task { await session.setBiometrics(enabled) } }))
                         .labelsHidden().toggleStyle(.switch).tint(AegisTheme.accentFill)
-                        .disabled(session.isUpdatingBiometrics)
+                        .disabled(session.isUpdatingBiometrics || session.isBusy)
+                        .accessibilityIdentifier("biometricsToggle")
                     if session.isUpdatingBiometrics {
                         ProgressView().controlSize(.small)
                     }
@@ -228,6 +229,23 @@ struct SettingsView: View {
             AegisSection(title: L10n.text("lan.settings.title"), subtitle: L10n.text("lan.settings.description")) {
                 settingsAction("lan.send.title", symbol: "wifi") { showLocalTransfer = true }
                     .accessibilityIdentifier("sendLocalVaultButton")
+                settingDivider
+                HStack(spacing: 14) {
+                    SettingsRowText(symbol: "arrow.triangle.2.circlepath", title: "lan.sync.title", detail: "lan.sync.description")
+                    Toggle(L10n.text("lan.sync.title"), isOn: Binding(get: { session.lanSyncEnabled }, set: session.setLANSyncEnabled))
+                        .labelsHidden().toggleStyle(.switch).tint(AegisTheme.accentFill)
+                        .disabled(session.unreadableRevisionCount > 0 && !session.lanSyncEnabled)
+                        .accessibilityIdentifier("lanSyncToggle")
+                }.padding(18)
+                if session.lanSyncEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(lanSyncStatus).accessibilityIdentifier("lanSyncStatus")
+                        if let last = session.lanSync.lastSuccess {
+                            Text(L10n.format("lan.sync.lastSuccess", last.formatted(date: .abbreviated, time: .shortened)))
+                        }
+                    }.aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding([.horizontal, .bottom], 18)
+                }
             }
             AegisSection(title: L10n.text("settings.backup"), subtitle: L10n.text("settings.backupDescription")) {
                 settingsAction("settings.export", symbol: "square.and.arrow.up") { showExport = true }
@@ -240,6 +258,18 @@ struct SettingsView: View {
             }
             Label(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays)), systemImage: "trash")
                 .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+        }
+    }
+
+    private var lanSyncStatus: String {
+        if session.lanSyncBlockedByDamage {
+            return L10n.text("lan.sync.damaged")
+        }
+        switch session.lanSync.state {
+        case .idle, .waiting: return L10n.text("lan.sync.waiting")
+        case .syncing: return L10n.text("lan.sync.syncing")
+        case .permissionDenied: return L10n.text("lan.sync.permissionDenied")
+        case .failed: return L10n.text("lan.sync.failed")
         }
     }
 
@@ -562,6 +592,10 @@ struct ImportBackupView: View {
     @State private var credential = ""
     @State private var preview: VaultSession.BackupImportPreview?
     @State private var selectedItemIDs: Set<UUID> = []
+    @State private var fileRequest = UUID()
+    #if DEBUG
+        @State private var cancelledPreviewPicker = false
+    #endif
 
     private var credentialTitle: String {
         guard let container = selection else { return L10n.text("backup.credential.any") }
@@ -588,7 +622,7 @@ struct ImportBackupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     Text(L10n.text("backup.description")).aegisFont(size: 13).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
-                    Button { showPicker = true } label: {
+                    Button(action: chooseFile) {
                         VStack(spacing: 13) {
                             Image(systemName: selection == nil ? "doc.badge.plus" : "checkmark.circle.fill").font(.system(size: 30, weight: .light))
                             Text(L10n.text(selection == nil ? "backup.choose" : "backup.selected")).aegisFont(size: 14, weight: .medium)
@@ -596,6 +630,7 @@ struct ImportBackupView: View {
                             .background(AegisTheme.selected.opacity(0.6), in: RoundedRectangle(cornerRadius: AegisMetrics.panelRadius))
                             .overlay(RoundedRectangle(cornerRadius: AegisMetrics.panelRadius).strokeBorder(AegisTheme.teal.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
                     }.buttonStyle(.plain).disabled(session.isBusy || loadingFile)
+                        .accessibilityIdentifier("chooseBackupFile")
                     if loadingFile {
                         ProgressView(L10n.text("backup.readingFile")).frame(maxWidth: .infinity)
                     } else if let preview {
@@ -609,27 +644,62 @@ struct ImportBackupView: View {
             .interactiveDismissDisabled(session.isBusy || loadingFile).privacySensitive()
             .task {
                 #if DEBUG
-                    if let fixture = await PreviewFixtures.importSelectionPreview(in: session) {
+                    let request = fileRequest
+                    let generation = session.backupImportGeneration
+                    if let fixture = await PreviewFixtures.importSelectionPreview(in: session),
+                       request == fileRequest, generation == session.backupImportGeneration
+                    {
                         preview = fixture; selectedItemIDs = fixture.selection.itemIDs
                     }
                 #endif
             }
-            .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisVaultBackup]) { result in
-                Task {
-                    do {
-                        let url = try result.get()
-                        loadingFile = true
-                        defer { loadingFile = false }
-                        let loaded = try await Task.detached(priority: .userInitiated) { try Self.load(url) }.value
-                        if session.backupImportBlockedByLock {
-                            throw VaultSession.BackupFlowError.unlockFirst
-                        }
-                        selection = loaded; preview = nil; selectedItemIDs = []; credential = ""
-                    } catch let error as CocoaError where error.code == .userCancelled {
-                        return
-                    } catch { session.error = error.localizedDescription }
+            .fileImporter(isPresented: $showPicker, allowedContentTypes: [.aegisVaultBackup], onCompletion: selectFile)
+    }
+
+    private func chooseFile() {
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--preview-onboarding"),
+               ProcessInfo.processInfo.arguments.contains("--preview-failed-backup-replacement")
+            {
+                if cancelledPreviewPicker {
+                    let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                    selectFile(.success(missing))
+                } else {
+                    cancelledPreviewPicker = true
+                    selectFile(.failure(CocoaError(.userCancelled)))
+                }
+                return
+            }
+        #endif
+        showPicker = true
+    }
+
+    private func selectFile(_ result: Result<URL, Error>) {
+        if case let .failure(error as CocoaError) = result, error.code == .userCancelled {
+            return
+        }
+        // Selecting another file revokes the previous preview before any asynchronous work.
+        let request = UUID(), generation = session.backupImportGeneration
+        fileRequest = request
+        selection = nil; preview = nil; selectedItemIDs = []; credential = ""
+        loadingFile = true
+        Task {
+            defer {
+                if request == fileRequest {
+                    loadingFile = false
                 }
             }
+            do {
+                let url = try result.get()
+                let loaded = try await Task.detached(priority: .userInitiated) { try Self.load(url) }.value
+                guard request == fileRequest, generation == session.backupImportGeneration else { return }
+                guard !session.backupImportBlockedByLock else { throw VaultSession.BackupFlowError.unlockFirst }
+                selection = loaded
+            } catch {
+                guard request == fileRequest, generation == session.backupImportGeneration else { return }
+                session.error = error.localizedDescription
+            }
+        }
     }
 
     @ViewBuilder private var credentialStep: some View {
@@ -647,7 +717,7 @@ struct ImportBackupView: View {
                 }
                 Text(L10n.text(session.isBusy ? "backup.verifying" : "backup.verifyAction"))
             }
-        }.buttonStyle(PrimaryButtonStyle()).disabled(selection == nil || credential.isEmpty || session.isBusy)
+        }.buttonStyle(PrimaryButtonStyle()).disabled(selection == nil || credential.isEmpty || session.isBusy || loadingFile || session.backupImportBlockedByLock)
             .accessibilityIdentifier("verifyBackupButton")
     }
 
@@ -678,7 +748,9 @@ struct ImportBackupView: View {
                     .aegisFont(size: 12).lineSpacing(4).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Button {
+                let request = fileRequest
                 Task {
+                    guard request == fileRequest, !loadingFile, let preview = self.preview else { return }
                     if await session.commitBackup(preview, selectedItemIDs: selectedItemIDs) {
                         dismiss()
                     }
@@ -704,11 +776,16 @@ struct ImportBackupView: View {
     }
 
     private func verify() {
-        guard let container = selection, !credential.isEmpty, !session.isBusy else { return }
+        guard let container = selection, !credential.isEmpty, !session.isBusy, !loadingFile,
+              !session.backupImportBlockedByLock else { return }
+        let request = fileRequest, generation = session.backupImportGeneration
         let submitted = credential; credential = ""
         Task {
-            preview = await session.previewBackup(container, credential: submitted)
-            selectedItemIDs = preview?.selection.itemIDs ?? []
+            guard request == fileRequest, generation == session.backupImportGeneration else { return }
+            let verified = await session.previewBackup(container, credential: submitted)
+            guard request == fileRequest, generation == session.backupImportGeneration else { return }
+            preview = verified
+            selectedItemIDs = verified?.selection.itemIDs ?? []
         }
     }
 
@@ -724,7 +801,6 @@ struct ImportBackupView: View {
         guard size <= BackupLimits.maxFileLength else { throw BackupError.limitExceeded }
         let data = try Data(contentsOf: url)
         guard data.count <= BackupLimits.maxFileLength else { throw BackupError.limitExceeded }
-        guard data.starts(with: BackupHeader.magic) else { throw BackupError.notABackup }
         return try BackupContainer.parse(data)
     }
 }

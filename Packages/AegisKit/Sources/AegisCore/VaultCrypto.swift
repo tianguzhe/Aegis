@@ -123,6 +123,13 @@ public actor VaultCrypto {
         return key.withUnsafeBytes { Data($0) }
     }
 
+    /// Derives the foreground-only LAN key without exporting the vault key.
+    /// Throws when the expected vault is no longer unlocked.
+    public func lanSyncKey(vaultID expected: UUID) throws -> SymmetricKey {
+        guard let key, vaultID == expected else { throw VaultError.locked }
+        return HKDF<SHA256>.deriveKey(inputKeyMaterial: key, info: Data("aegis.lan.sync.v1".utf8), outputByteCount: 32)
+    }
+
     public func lock() {
         decryptedRevisions.removeAll()
         key = nil; vaultID = nil
@@ -183,6 +190,50 @@ public actor VaultCrypto {
     /// For the live store. A matching ID alone cannot authenticate a changed ciphertext or graph link.
     public func cachedEntries(from revisions: [EncryptedRevision]) throws -> [VaultEntry] {
         try entries(from: revisions, usingCache: true)
+    }
+
+    /// Authenticates the advertised snapshot and rejects invalid graph links before any exchange.
+    public func validateLANSyncSnapshot(_ revisions: [EncryptedRevision]) throws {
+        try VaultRevisionValidation.validateSyncSnapshot(revisions)
+        _ = try cachedEntries(from: revisions)
+    }
+
+    /// Authenticates all versions in the graph that would result from the incoming batch.
+    /// The caller must commit against the same local snapshot or retry with a fresh one.
+    public func validateLANSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision],
+                                     remoteIDs: Set<UUID>, remoteIncomplete: Bool) throws
+    {
+        let union = try VaultRevisionValidation.validateSyncUnion(local: local, incoming: incoming, remoteIDs: remoteIDs,
+                                                                  remoteIncomplete: remoteIncomplete)
+        _ = try cachedEntries(from: union)
+    }
+
+    /// Returns the new revisions from a confirmed ABB selection after authenticating the merged graph.
+    /// - Parameters:
+    ///   - local: Revisions from the destination snapshot used for the eventual commit.
+    ///   - selected: Chosen revisions in destination identities, including any hidden rotation record.
+    ///   - sourceIDs: All source revision IDs in destination identities, before applying the selection.
+    ///   - incompleteHistory: Whether the authenticated backup declared missing parents.
+    /// - Throws: `VaultError.damagedData` on inconsistent revisions or graph links, or `VaultError.locked` without a key.
+    /// Commit the returned additions against the same snapshot to preserve the validated union.
+    public func validateBackupMerge(local: [EncryptedRevision], selected: [EncryptedRevision],
+                                    sourceIDs: Set<UUID>, incompleteHistory: Bool) throws -> [EncryptedRevision]
+    {
+        var known: [UUID: EncryptedRevision] = [:]
+        for revision in local {
+            guard known.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
+        }
+        var additions: [EncryptedRevision] = []
+        for revision in selected {
+            if let stored = known[revision.id] {
+                // Immutable versions may be repeated only when every authenticated byte matches.
+                guard stored == revision else { throw VaultError.damagedData }
+            } else {
+                additions.append(revision)
+            }
+        }
+        try validateLANSyncUnion(local: local, incoming: additions, remoteIDs: sourceIDs, remoteIncomplete: incompleteHistory)
+        return additions
     }
 
     /// Reads local history for display, reporting rejected revisions without editing the store.

@@ -156,6 +156,9 @@ final class InterfaceTests: XCTestCase {
         let receive = app.buttons["receiveLocalVaultButton"]
         XCTAssertTrue(receive.waitForExistence(timeout: 10))
         XCTAssertFalse(receive.isEnabled)
+        XCTAssertFalse(app.buttons["localPairingModeButton"].exists)
+        XCTAssertFalse(app.textFields["localPairingCodeInput"].exists)
+        XCTAssertFalse(app.staticTexts["localPairingComparison"].exists)
         capture("onboarding-local-import")
         app.buttons["关闭"].firstMatch.tap()
         XCTAssertTrue(localImport.waitForExistence(timeout: 5))
@@ -209,6 +212,32 @@ final class InterfaceTests: XCTestCase {
         XCTAssertFalse(app.buttons["record-CSV Alpha"].exists)
     }
 
+    func testLANSyncRequiresOptInAndRemainsEnabledAfterUnlock() {
+        launchVault()
+        let settings = app.buttons["设置"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        app.segmentedControls["settingsTabs"].buttons["同步与备份"].tap()
+        let toggle = app.switches["lanSyncToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertEqual(toggle.value as? String, "0")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        XCTAssertTrue(app.staticTexts["lanSyncStatus"].waitForExistence(timeout: 5))
+        XCUIApplication(bundleIdentifier: "com.apple.Preferences").activate()
+        app.activate()
+        XCTAssertTrue(app.secureTextFields["masterPassword"].waitForExistence(timeout: 15))
+        unlockIfNeeded()
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        app.segmentedControls["settingsTabs"].buttons["同步与备份"].tap()
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertEqual(toggle.value as? String, "1")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0")
+        XCTAssertFalse(app.staticTexts["lanSyncStatus"].exists)
+    }
+
     private func openPasswordCSV() {
         let settings = app.buttons["设置"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
@@ -221,6 +250,25 @@ final class InterfaceTests: XCTestCase {
 
     func testFileImportOnlyWritesSelectedItems() throws {
         try exerciseImportSelection(localNetwork: false)
+    }
+
+    func testReplacingBackupClearsTheOldPreviewAfterReadFailure() {
+        app = XCUIApplication()
+        app.launchArguments = ["--preview-onboarding", "--preview-import-selection", "--preview-failed-backup-replacement",
+                               "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        let open = app.buttons["onboardingBackupImportButton"]
+        XCTAssertTrue(open.waitForExistence(timeout: 15)); open.tap()
+        let confirm = app.buttons["confirmRestoreButton"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 20))
+        let choose = app.buttons["chooseBackupFile"]
+        reveal(choose); choose.tap()
+        XCTAssertTrue(confirm.exists, "Cancelling the picker preserves the current preview")
+        choose.tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 10))
+        app.alerts.firstMatch.buttons.firstMatch.tap()
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["verifyBackupButton"].isEnabled)
     }
 
     func testLocalImportOnlyWritesSelectedItems() throws {
@@ -397,24 +445,50 @@ final class InterfaceTests: XCTestCase {
         appearance.buttons["跟随系统"].tap()
     }
 
+    func testKeychainDeleteFailureKeepsBiometricsEnabledAndWarnsAfterRotation() {
+        launchVault(extraArguments: ["--preview-keychain-delete-failure"])
+        app.buttons["设置"].tap()
+        let biometrics = app.switches["biometricsToggle"]
+        reveal(biometrics)
+        XCTAssertEqual(biometrics.value as? String, "1")
+        biometrics.tap()
+        let error = app.alerts.firstMatch
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        error.buttons.firstMatch.tap()
+        XCTAssertEqual(biometrics.value as? String, "1")
+        exerciseMasterPasswordRotation(expectKeychainWarning: true)
+    }
+
     func testChangeMasterPasswordRotatesCredentials() {
         launchVault()
-        let settings = app.buttons["设置"]
-        XCTAssertTrue(settings.waitForExistence(timeout: 5))
-        settings.tap()
+        app.buttons["设置"].tap()
+        exerciseMasterPasswordRotation(expectKeychainWarning: false)
+    }
+
+    private func exerciseMasterPasswordRotation(expectKeychainWarning: Bool) {
         let open = app.buttons["changeMasterPasswordButton"]
         reveal(open)
         open.tap()
         let current = app.secureTextFields["currentMasterPassword"]
         XCTAssertTrue(current.waitForExistence(timeout: 5))
         let submit = app.buttons["changeMasterPasswordSubmit"]
-        replaceText(in: current, with: "Aegis preview fixture only")
-        replaceText(in: app.secureTextFields["newMasterPassword"], with: "rotated preview passphrase")
-        replaceText(in: app.secureTextFields["confirmNewMasterPassword"], with: "rotated preview passphrase!")
+        let newPassword = "rotated preview passphrase"
+        current.tap(); current.typeText("Aegis preview fixture only")
+        let password = app.secureTextFields["newMasterPassword"]
+        password.tap(); password.typeText(newPassword)
+        let confirmation = app.secureTextFields["confirmNewMasterPassword"]
+        confirmation.tap(); confirmation.typeText(newPassword + "x")
         XCTAssertFalse(submit.isEnabled, "mismatched confirmation must block the change")
-        replaceText(in: app.secureTextFields["confirmNewMasterPassword"], with: "rotated preview passphrase")
+        // Keep focus so the secure field cannot automatically clear the whole confirmation.
+        confirmation.typeText(XCUIKeyboardKey.delete.rawValue)
         XCTAssertTrue(submit.isEnabled)
         submit.tap()
+        if expectKeychainWarning {
+            let warning = app.alerts.firstMatch
+            XCTAssertTrue(warning.waitForExistence(timeout: 30))
+            XCTAssertTrue(warning.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "未能从本机钥匙串删除旧的生物识别凭据")).firstMatch.exists)
+            warning.buttons.firstMatch.tap()
+        }
 
         // The new recovery key is shown in the same sheet and must be confirmed before it closes.
         let acknowledgement = app.switches["recoveryAcknowledgement"]

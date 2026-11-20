@@ -30,12 +30,13 @@
 	<string>public.app-category.productivity</string>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_aegis-join._tcp</string>
+		<string>_aegis-pair._tcp</string>
+		<string>_aegis-sync._tcp</string>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>biometric.permission</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。</string>
+	<string>发现同一网络中的 Aegis 设备，用于连接新设备和同步加密保险库。</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

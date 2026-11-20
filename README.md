@@ -10,7 +10,7 @@ SwiftUI 密码管理器，支持 **iOS 17+ / macOS 14+**。名字来自希腊神
 
 - Swift 6 严格并发、Observation、SwiftData。
 - 本地包 `Packages/AegisKit`：加密、存储、局域网传输与 Markdown 渲染。
-- 不使用 iCloud；数据只保存在本机，设备间通过局域网首次加入或加密备份迁移。
+- 不使用 iCloud。数据保存在本机，设备可通过加密备份迁移，或在同一局域网交换加密版本。
 - 启用自动填充前，完成 [Apple 服务配置](Docs/APPLE_SETUP.md)。
 - 初始界面只有简体中文，所有产品文案见 [本地化说明](Docs/LOCALIZATION.md)。
 - 界面采用浅灰工作区、白色内容面板与墨绿强调色，支持跟随系统、浅色和深色外观。Mac 使用紧凑三栏，iOS 根据窗口宽度切换导航；组件规范见 [UI 设计说明](Docs/UI_DESIGN.md)。
@@ -25,7 +25,8 @@ xcodegen generate
 
 - 主密码创建 / 解锁、恢复密钥解锁、设备生物识别解锁。
 - 修改主密码时更换保险库密钥和恢复密钥，并重新加密保留的记录。可同时压缩历史版本，保留当前版本、冲突分支、回收站和永久删除标记。详见 [密钥轮换设计](Docs/KEY_ROTATION_DESIGN.md)。
-- 首次进入可从局域网加入已有保险库，或从加密备份文件恢复，无需先新建。旧设备在“设置 → 数据 → 通过局域网连接新设备”开启，临时配对后确认导入，继承原保险库 ID、主密码和恢复密钥；详见 [局域网导入协议](Docs/LOCAL_TRANSFER.md)。此入口用于首次加入，持续双向局域网同步尚未实现。
+- 首次进入可从局域网加入已有保险库，或从加密备份文件恢复，无需先新建。发送设备在「设置 → 同步与备份」开启连接。两端核对六位数字并各自确认后，接收端可预览并导入，继承原保险库 ID、主密码和恢复密钥。详见 [局域网导入协议](Docs/LOCAL_TRANSFER.md)。
+- 在两端的「设置 → 同步与备份」各自开启局域网同步。同一网络中的设备在前台且已解锁时会双向同步全库与历史。详见 [局域网持续同步](Docs/LAN_SYNC_DESIGN.md)。
 - 登录凭据、银行卡、安全笔记、收藏、搜索、密码生成。
 - 在「设置 → 同步与备份 → 导入密码 CSV」选择带表头的 1Password 或 Chrome 导出文件，预览并勾选登录条目。归档记录会跳过，验证码设置与标签需另行迁移。CSV 含明文密码，导入后请妥善处理原件。
 - 密码默认 16 位，生成器配置保存在本机；编辑器与独立生成器共用长度及字符类型配置。
@@ -39,7 +40,7 @@ xcodegen generate
 - 应用锁定时清除可见条目和密钥引用；5 分钟无交互后锁定；复制内容 30 秒后清理。
 - iOS 进入后台锁定，但保留本机剪贴板的 30 秒粘贴窗口；手动锁定立即清理。Mac 在系统睡眠、显示器休眠或切换系统用户时锁定，切换普通窗口不会立即锁定。
 
-这是可构建的首版实现。生物识别与系统自动填充的签名设备验证仍需完成，详见配置文档。设备间持续同步、共享保险库、Passkey、Chrome 扩展不在当前实现中。
+这是可构建的首版实现。生物识别与系统自动填充的签名设备验证仍需完成，详见配置文档。共享保险库、Passkey、Chrome 扩展不在当前实现中。
 
 ## 验证
 
@@ -85,7 +86,7 @@ python3 Scripts/build_isolation.py cleanup --dry-run
 python3 Scripts/build_isolation.py cleanup
 ```
 
-`AEGIS_BUILD_DIR` 可指定 `.build/artifacts.noindex/` 内的 DerivedData 子目录。首次解析依赖需要访问 GitHub；后续构建复用缓存。仅注销 LaunchServices 无法阻止 Spotlight 重新索引旧 `build/` 中的应用；退出从该目录运行的开发应用后，可执行 `python3 Scripts/build_isolation.py archive-legacy`，将旧目录完整迁入 `.build/artifacts.noindex/legacy-build-*/build/`。迁移保留全部应用和日志，不覆盖已有归档；运行中的旧应用会阻止迁移。`/Applications`、`~/Applications` 中的安装副本和其他工程的 DerivedData 不会被处理。
+`AEGIS_BUILD_DIR` 可指定 `.build/artifacts.noindex/` 内的 DerivedData 子目录。首次解析依赖需要访问 GitHub，后续构建复用缓存。清理命令仅注销当前隔离目录中的开发应用。
 
 流程参考 [ProcScope 最新提交 2e46736](https://github.com/tianguzhe/ProcScope/commit/2e4673654533756748e30a985d6e9e7cd0291f73)，增加了 Aegis 的 iOS、嵌入扩展和 Swift Package 验证。完整路径、CI 和边界说明见 [构建隔离](Docs/BUILD_ISOLATION.md)。push / PR 的 GitHub Actions 会运行核心测试和两端构建，完整诊断日志保留 7 天。
 

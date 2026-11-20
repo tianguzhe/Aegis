@@ -51,8 +51,8 @@ targetTemplates:
         CFBundleLocalizations: [zh-Hans]
         LSApplicationCategoryType: public.app-category.productivity
         NSFaceIDUsageDescription: biometric.permission
-        NSLocalNetworkUsageDescription: 发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。
-        NSBonjourServices: [_aegis-join._tcp]
+        NSLocalNetworkUsageDescription: 发现同一网络中的 Aegis 设备，用于连接新设备和同步加密保险库。
+        NSBonjourServices: [_aegis-pair._tcp, _aegis-sync._tcp]
         AegisAppGroup: $(AEGIS_APP_GROUP)
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: app.aegis.backup

@@ -7,6 +7,7 @@ import SwiftUI
 @main
 struct AegisApp: App {
     @State private var session = VaultSession()
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("aegis.appearance") private var appearance: AegisAppearance = .system
     init() {
         #if DEBUG && os(macOS)
@@ -22,6 +23,9 @@ struct AegisApp: App {
             #if os(macOS)
                 .frame(minWidth: 940, minHeight: 640)
             #endif
+        }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            session.setLANSyncForeground(phase == .active)
         }
         #if os(macOS)
         .defaultSize(width: 1240, height: 820)

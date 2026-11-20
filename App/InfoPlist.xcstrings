@@ -18,7 +18,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发现同一网络中的 Aegis 设备，并在配对后传输加密保险库。"
+            "value": "发现同一网络中的 Aegis 设备，用于连接新设备和同步加密保险库。"
           }
         }
       }

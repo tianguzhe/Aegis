@@ -81,6 +81,47 @@ import Testing
         #expect(try await Set(target.revisions().map(\.id)) == Set((source.revisions + [newer]).map(\.id)))
     }
 
+    @Test func selectedMergeAuthenticatesTheUnionAndCommitsAgainstTheCheckedSnapshot() async throws {
+        let source = try await Self.makeSource()
+        let target = try VaultStore.make(inMemory: true)
+        let (parent, child, unrelated) = (source.revisions[0], source.revisions[1], source.revisions[2])
+        try await target.restoreNewVault(header: source.header, revisions: [child])
+        let before = try await target.snapshot()
+        #expect(before.hasIncompleteHistory)
+        let additions = try await source.crypto.validateBackupMerge(local: before.revisions, selected: [child, parent],
+                                                                    sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false)
+        #expect(additions == [parent])
+        try await target.saveRevision(unrelated)
+        await #expect(throws: VaultError.vaultChanged) {
+            try await target.appendSyncedRevisions(additions, expected: before)
+        }
+        let fresh = try await target.snapshot()
+        #expect(Set(fresh.revisions.map(\.id)) == [child.id, unrelated.id])
+        let retry = try await source.crypto.validateBackupMerge(local: fresh.revisions, selected: [child, parent],
+                                                                sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false)
+        #expect(try await target.appendSyncedRevisions(retry, expected: fresh).insertedRevisions == 1)
+        let complete = try await target.snapshot()
+        #expect(!complete.hasIncompleteHistory)
+        #expect(try await source.crypto.validateBackupMerge(local: complete.revisions, selected: source.revisions,
+                                                            sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false).isEmpty)
+    }
+
+    @Test func selectedMergeDoesNotTreatAnOmittedSourceParentAsMissingHistory() async throws {
+        let source = try await Self.makeSource()
+        let parent = source.revisions[0], child = source.revisions[1]
+        await #expect(throws: VaultError.damagedData) {
+            try await source.crypto.validateBackupMerge(local: [], selected: [child], sourceIDs: [parent.id, child.id], incompleteHistory: true)
+        }
+        let partial = try await source.crypto.validateBackupMerge(local: [], selected: [child], sourceIDs: [child.id], incompleteHistory: true)
+        #expect(partial == [child])
+        let sameItem = try await source.crypto.decrypt(parent)
+        let differentCiphertext = try await source.crypto.encrypt(sameItem, parents: [], revisionID: parent.id)
+        await #expect(throws: VaultError.damagedData) {
+            try await source.crypto.validateBackupMerge(local: [parent], selected: [differentCiphertext, child],
+                                                        sourceIDs: [parent.id, child.id], incompleteHistory: false)
+        }
+    }
+
     @Test func restoreRejectsAnotherVaultWithoutWriting() async throws {
         let source = try await Self.makeSource()
         let other = try await VaultCrypto().create(password: Self.master)

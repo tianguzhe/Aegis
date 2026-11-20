@@ -21,17 +21,50 @@ public enum BackupValidator {
     /// Parents present in the file must belong to the same item and form no cycle. Parents absent
     /// from the file are allowed only when the exporter flagged the history as incomplete.
     static func checkGraph(_ payload: BackupPayload) throws {
-        let byID = Dictionary(uniqueKeysWithValues: payload.revisions.map { ($0.id, $0) })
+        do {
+            try VaultRevisionValidation.checkGraph(payload.revisions) { _, _ in payload.incompleteHistory }
+        } catch { throw BackupError.invalidContent }
+    }
+}
+
+public enum VaultRevisionValidation {
+    /// Checks a manifest before it can be advertised, retaining intentional gaps in old backups.
+    public static func validateSyncSnapshot(_ revisions: [EncryptedRevision]) throws {
+        try checkGraph(revisions) { _, _ in true }
+    }
+
+    /// Validates graph shape across the local and remote snapshots. Callers must authenticate the
+    /// records separately and commit against the same local snapshot. Throws on collisions or bad links.
+    public static func validateSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision],
+                                         remoteIDs: Set<UUID>, remoteIncomplete: Bool) throws -> [EncryptedRevision]
+    {
+        let localIDs = Set(local.map(\.id))
+        guard incoming.allSatisfy({ remoteIDs.contains($0.id) && !localIDs.contains($0.id) }) else {
+            throw VaultError.damagedData
+        }
+        let combined = local + incoming
+        try checkGraph(combined) { child, parent in
+            // A remote gap cannot stand in for a revision declared by the remote manifest.
+            localIDs.contains(child.id) || (remoteIncomplete && !remoteIDs.contains(parent))
+        }
+        return combined
+    }
+
+    static func checkGraph(_ revisions: [EncryptedRevision], allowsMissing: (EncryptedRevision, UUID) -> Bool) throws {
+        var byID: [UUID: EncryptedRevision] = [:]
+        for revision in revisions {
+            guard byID.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
+        }
         var children: [UUID: [UUID]] = [:]
         var pendingParents: [UUID: Int] = [:]
-        for revision in payload.revisions {
+        for revision in revisions {
             var inFile = 0
             for parentID in revision.parents {
                 guard let parent = byID[parentID] else {
-                    guard payload.incompleteHistory else { throw BackupError.invalidContent }
+                    guard allowsMissing(revision, parentID) else { throw VaultError.damagedData }
                     continue
                 }
-                guard parent.itemID == revision.itemID else { throw BackupError.invalidContent }
+                guard parent.itemID == revision.itemID else { throw VaultError.damagedData }
                 children[parentID, default: []].append(revision.id)
                 inFile += 1
             }
@@ -39,7 +72,7 @@ public enum BackupValidator {
         }
         // Kahn's algorithm: every revision becomes ready once all its in-file parents are; any
         // revision never reached sits on a cycle.
-        var ready = payload.revisions.filter { pendingParents[$0.id] == 0 }.map(\.id)
+        var ready = revisions.filter { pendingParents[$0.id] == 0 }.map(\.id)
         var visited = 0
         while let id = ready.popLast() {
             visited += 1
@@ -50,6 +83,6 @@ public enum BackupValidator {
                 }
             }
         }
-        guard visited == payload.revisions.count else { throw BackupError.invalidContent }
+        guard visited == revisions.count else { throw VaultError.damagedData }
     }
 }

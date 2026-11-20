@@ -19,11 +19,10 @@ class BuildIsolationTests(unittest.TestCase):
         self.base = Path(self.temporary.name).resolve()
         self.root = self.base / "Project with spaces"
         self.root.mkdir()
-        self.derived = self.base / "DerivedData"
         self.area = self.make_area()
 
     def make_area(self):
-        return isolation.BuildArea(self.root, derived_data_home=self.derived)
+        return isolation.BuildArea(self.root)
 
     def write_plist(self, path, value):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -32,36 +31,15 @@ class BuildIsolationTests(unittest.TestCase):
     def test_ownership_excludes_installed_apps_and_escaped_symlinks(self):
         self.area.prepare()
         self.assertTrue(self.area.owns(self.area.work / "xcode/Test.app"))
-        self.assertTrue(self.area.owns(self.root / "build/test/Legacy.app"))
         for path in (Path("/Applications/Aegis.app"), Path.home() / "Applications/Aegis.app",
-                     self.root / "Example.app", self.root / "build-other/Foo.app"):
+                     self.root / "Example.app", self.root / "build/Test.app",
+                     self.root / "DerivedData/Test.app", self.root / "TestResults/Test.app",
+                     self.root / "release/Aegis.app", self.area.build / "Other.app"):
             self.assertFalse(self.area.owns(path), path)
         (self.area.work / "Installed.app").symlink_to("/Applications/Aegis.app")
         self.assertFalse(self.area.owns(self.area.work / "Installed.app"))
         (self.area.work / "escape").symlink_to(self.base)
         self.assertFalse(self.area.owns(self.area.work / "escape/Other.app"))
-
-    def test_legacy_release_only_accepts_aegis_bundle(self):
-        app = self.root / "release/Aegis.app"
-        self.assertTrue(self.area.owns(app))  # Stale registrations can outlive a bundle.
-        self.write_plist(app / "Contents/Info.plist", {"CFBundleIdentifier": "another.app"})
-        self.assertFalse(self.area.owns(app))
-        self.write_plist(app / "Contents/Info.plist", {"CFBundleIdentifier": "app.aegis.mac"})
-        self.assertTrue(self.area.owns(app))
-        self.assertFalse(self.area.owns(self.root / "release/Other.app"))
-
-    def test_legacy_release_symlink_is_not_owned(self):
-        (self.root / "release").symlink_to("/Applications")
-        self.assertFalse(self.area.owns(self.root / "release/Aegis.app"))
-
-    def test_global_derived_data_requires_matching_workspace_metadata(self):
-        self.write_plist(self.derived / "Owned/info.plist", {"WorkspacePath": str(self.root / "Aegis.xcodeproj")})
-        self.write_plist(self.derived / "Aegis-Unrelated/info.plist", {"WorkspacePath": str(self.base / "Other/Aegis.xcodeproj")})
-        self.write_plist(self.derived / "Relative/info.plist", {"WorkspacePath": "Aegis.xcodeproj"})
-        area = self.make_area()
-        self.assertTrue(area.owns(self.derived / "Owned/Build/Products/Debug/Aegis.app"))
-        for folder in ("Aegis-Unrelated", "Relative", "NoMetadata"):
-            self.assertFalse(area.owns(self.derived / folder / "Build/Products/Debug/Aegis.app"))
 
     def test_prepare_preserves_xcode_preferences_and_is_idempotent(self):
         username = isolation.pwd.getpwuid(isolation.os.getuid()).pw_name
@@ -77,10 +55,10 @@ class BuildIsolationTests(unittest.TestCase):
         self.assertTrue((self.area.work / "logs").is_dir())
 
     def test_prepare_rejects_build_or_settings_symlinks(self):
-        (self.root / "build").symlink_to(self.base)
+        (self.root / ".build").symlink_to(self.base)
         with self.assertRaises(ValueError):
             self.make_area()
-        (self.root / "build").unlink()
+        (self.root / ".build").unlink()
         (self.root / ".build").mkdir()
         (self.root / ".build/artifacts.noindex").symlink_to(self.base)
         with self.assertRaises(ValueError):
@@ -152,41 +130,6 @@ class BuildIsolationTests(unittest.TestCase):
              patch.object(isolation.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", "denied")):
             with self.assertRaisesRegex(RuntimeError, "denied"):
                 self.area.cleanup()
-
-    def test_archive_legacy_preserves_files_outside_the_index_and_is_idempotent(self):
-        legacy = self.root / "build/preview/AegisPreview.app/Contents/keep.txt"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_bytes(b"preview artifact")
-        installed = self.root / "Installed.app/keep.txt"
-        installed.parent.mkdir()
-        installed.write_bytes(b"leave alone")
-        with patch.object(self.area, "cleanup") as cleanup, patch.object(
-            isolation.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/Applications/Other.app/Contents/MacOS/Other\n", "")
-        ):
-            destination = self.area.archive_legacy()
-            self.assertTrue(isolation.is_inside(destination, self.area.work))
-            self.assertEqual((destination / "preview/AegisPreview.app/Contents/keep.txt").read_bytes(), b"preview artifact")
-            self.assertFalse((self.root / "build").exists())
-            self.assertEqual(installed.read_bytes(), b"leave alone")
-            self.assertIsNone(self.area.archive_legacy())
-            cleanup.assert_called_once()
-
-    def test_archive_legacy_refuses_a_running_bundle_or_changed_symlink(self):
-        legacy = self.root / "build"
-        legacy.mkdir()
-        with patch.object(self.area, "cleanup") as cleanup, patch.object(
-            isolation.subprocess, "run", return_value=subprocess.CompletedProcess(
-                [], 0, str(legacy / "mac/Aegis.app/Contents/MacOS/Aegis") + "\n", ""
-            )
-        ):
-            with self.assertRaisesRegex(RuntimeError, "Quit the legacy"):
-                self.area.archive_legacy()
-            cleanup.assert_not_called()
-            self.assertTrue(legacy.is_dir())
-        legacy.rmdir()
-        legacy.symlink_to(self.base)
-        with self.assertRaises(ValueError):
-            self.area.archive_legacy()
 
     def test_cleanup_is_idempotent_for_unavailable_registration(self):
         with patch.object(self.area, "registered", return_value=[self.area.work / "Old.app"]), \

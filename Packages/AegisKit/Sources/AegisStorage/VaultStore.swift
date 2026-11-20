@@ -7,11 +7,8 @@ final class StoredObject {
     @Attribute(.unique) var name: String
     var kind: String
     var payload: Data
-    // No longer read since iCloud sync was removed. Kept so existing stores open without a
-    // SwiftData schema migration; older stores may also hold unused "metadata" rows.
-    var pending: Bool
-    init(name: String, kind: String, payload: Data, pending: Bool) {
-        self.name = name; self.kind = kind; self.payload = payload; self.pending = pending
+    init(name: String, kind: String, payload: Data) {
+        self.name = name; self.kind = kind; self.payload = payload
     }
 }
 
@@ -60,7 +57,7 @@ public actor VaultStore {
             guard existing == header else { throw VaultError.differentVault }
             return
         }
-        try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header), pending: true))
+        try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header)))
         try saveChanges()
         cachedHeader = header
     }
@@ -95,7 +92,7 @@ public actor VaultStore {
         guard let header = try header(), revision.vaultID == header.vaultID else { throw VaultError.differentVault }
         let name = revision.id.uuidString
         guard try object(name) == nil else { return }
-        try modelContext.insert(StoredObject(name: name, kind: "revision", payload: encode(revision), pending: true))
+        try modelContext.insert(StoredObject(name: name, kind: "revision", payload: encode(revision)))
         try saveChanges()
     }
 
@@ -106,11 +103,6 @@ public actor VaultStore {
             modelContext.rollback()
             throw error
         }
-    }
-
-    public func backup() throws -> Data {
-        guard let header = try header() else { throw VaultError.locked }
-        return try encode(VaultBackup(header: header, revisions: revisions()))
     }
 
     /// The header and every stored revision, read in one actor turn so they are mutually consistent.
@@ -141,13 +133,27 @@ public actor VaultStore {
         }
     }
 
+    /// Appends authenticated, graph-validated versions (including local deletion markers) to an
+    /// existing vault. `expected` is the exact snapshot used to validate those versions.
+    /// Throws on a changed vault, cancellation, or save failure without persisting a partial batch.
+    public func appendSyncedRevisions(_ incoming: [EncryptedRevision], expected: VaultSnapshot) throws -> RestoreResult {
+        try appendSyncedRevisions(incoming, expected: expected) { try Task.checkCancellation() }
+    }
+
+    func appendSyncedRevisions(_ incoming: [EncryptedRevision], expected: VaultSnapshot,
+                               beforeSave: @Sendable () throws -> Void) throws -> RestoreResult
+    {
+        try restore(header: expected.header, revisions: incoming, expected: expected, beforeSave: beforeSave)
+    }
+
     /// Joins an existing vault only while this store is still empty. The check and write share one
-    /// actor turn, so a concurrent setup or cloud fetch cannot turn onboarding into a merge.
+    /// actor turn, so another setup cannot turn onboarding into a merge.
     @discardableResult
     public func restoreNewVault(header: VaultHeader, revisions: [EncryptedRevision]) throws -> RestoreResult {
         guard try self.header() == nil else { throw VaultError.differentVault }
         guard try self.revisions().isEmpty else { throw VaultError.damagedData }
-        return try restore(header: header, revisions: revisions)
+        // The invitation or import sheet can close while the store is waiting to commit.
+        return try restore(header: header, revisions: revisions) { try Task.checkCancellation() }
     }
 
     /// `beforeSave` lets tests fail the commit after rows are changed; production passes a no-op.
@@ -168,14 +174,12 @@ public actor VaultStore {
             // The header row is updated in place: deleting and re-inserting the unique name
             // "header" in one save would rely on SwiftData's upsert behaviour.
             current.payload = try encode(header)
-            current.pending = true
-            // Leftover "metadata" rows from the removed iCloud sync are dropped along with revisions.
             for object in all where object.kind != "header" {
                 modelContext.delete(object)
             }
             for revision in incoming {
                 try modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
-                                                     payload: encode(revision), pending: true))
+                                                     payload: encode(revision)))
             }
             try beforeSave()
             try modelContext.save()
@@ -216,11 +220,11 @@ public actor VaultStore {
         // Everything is validated before the store is mutated.
         do {
             if localHeader == nil {
-                try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header), pending: true))
+                try modelContext.insert(StoredObject(name: "header", kind: "header", payload: encode(header)))
             }
             for revision in additions.values {
                 try modelContext.insert(StoredObject(name: revision.id.uuidString, kind: "revision",
-                                                     payload: encode(revision), pending: true))
+                                                     payload: encode(revision)))
             }
             try beforeSave()
             try modelContext.save()
@@ -253,6 +257,12 @@ public extension VaultStore {
 public struct VaultSnapshot: Sendable {
     public let header: VaultHeader
     public let revisions: [EncryptedRevision]
+
+    /// Uses revisions captured with this header. A conditional writer still checks the store cut.
+    public init(header: VaultHeader, revisions: [EncryptedRevision]) {
+        self.header = header
+        self.revisions = revisions
+    }
 
     /// True when a revision names a parent this device never received, so the history is not closed.
     public var hasIncompleteHistory: Bool {

@@ -1,5 +1,6 @@
 import AegisCore
 import AegisStorage
+import AegisSync
 import Foundation
 import LocalAuthentication
 import Observation
@@ -16,6 +17,18 @@ final class VaultSession {
     private(set) var notice: String?
     private(set) var unreadableRevisionCount = 0
     private(set) var isUpdatingBiometrics = false
+    private(set) var lanSyncEnabled = false
+    private var lanSyncSnapshotDamaged = false
+    var lanSyncBlockedByDamage: Bool {
+        unreadableRevisionCount > 0 || lanSyncSnapshotDamaged
+    }
+
+    let lanSync = LANSyncService()
+    @ObservationIgnored private var lanSyncForeground = false
+    @ObservationIgnored private var lanSyncToken: UUID?
+    @ObservationIgnored private var lanSyncStart: Task<Void, Never>?
+    @ObservationIgnored private var lanSyncCommit: Task<RestoreResult, Error>?
+    @ObservationIgnored private var lanSyncSuspended = false
     var recoveryKey: String?
     var recoveryAcknowledged = false
     /// Set while the change-password sheet shows the new recovery key itself, so the root view does
@@ -88,6 +101,9 @@ final class VaultSession {
                         try localState.write(state)
                         recoverableDrafts = state.drafts
                     }
+                    if PreviewFixtures.keychainDeleteFails {
+                        UserDefaults.standard.set(true, forKey: "biometry.\(result.header.vaultID)")
+                    }
                     phase = .unlocked
                     try await refresh(); touch()
                     return
@@ -116,9 +132,14 @@ final class VaultSession {
         refreshID = requestID
         let loadedHeader = try await store.header()
         guard token == generation, requestID == refreshID else { return }
+        if header != loadedHeader {
+            stopLANSync()
+            lanSyncSnapshotDamaged = false
+        }
         header = loadedHeader
         if let header {
             biometricEnabled = UserDefaults.standard.bool(forKey: "biometry.\(header.vaultID)")
+            lanSyncEnabled = UserDefaults.standard.bool(forKey: "lanSync.\(header.vaultID)")
         }
         if phase == .unlocked {
             var stored = try await store.localRevisions()
@@ -126,13 +147,22 @@ final class VaultSession {
             guard token == generation, requestID == refreshID, phase == .unlocked else { return }
             if stored.unreadableRowCount == 0, loaded.unreadableRevisionCount == 0 {
                 let expired = TrashPolicy.expiredGroups(in: loaded.entries)
-                for group in expired {
-                    guard let first = group.first else { continue }
-                    let marker = try await crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id))
-                    guard token == generation, requestID == refreshID, phase == .unlocked else { return }
-                    try await store.saveRevision(marker)
-                }
-                if !expired.isEmpty {
+                if !expired.isEmpty, let loadedHeader {
+                    let expected = VaultSnapshot(header: loadedHeader, revisions: stored.revisions)
+                    var markers: [EncryptedRevision] = []
+                    for group in expired {
+                        guard let first = group.first else { continue }
+                        try await markers.append(crypto.encrypt(TrashPolicy.deletionMarker(for: first.item), parents: group.map(\.id)))
+                        guard token == generation, requestID == refreshID, phase == .unlocked else { return }
+                    }
+                    // An already-merged active branch invalidates expiry based on old heads.
+                    do {
+                        _ = try await store.appendSyncedRevisions(markers, expected: expected)
+                        lanSync.localDataChanged()
+                    } catch VaultError.vaultChanged {
+                        // The fresh projection below reschedules expiry using the new heads.
+                    }
+
                     stored = try await store.localRevisions()
                     loaded = try await crypto.localEntries(from: stored.revisions)
                     guard token == generation, requestID == refreshID, phase == .unlocked else { return }
@@ -141,6 +171,7 @@ final class VaultSession {
             entries = loaded.entries
             unreadableRevisionCount = stored.unreadableRowCount + loaded.unreadableRevisionCount
             if unreadableRevisionCount > 0 {
+                stopLANSync()
                 // A partial view cannot establish trash expiry, deletion, or the latest login revision.
                 trashCleanupTask?.cancel()
                 trashCleanupTask = nil
@@ -160,6 +191,7 @@ final class VaultSession {
             }
             scheduleTrashCleanup()
             scheduleAutoFillSnapshot()
+            reconcileLANSync()
         }
     }
 
@@ -227,24 +259,140 @@ final class VaultSession {
     }
 
     func setBiometrics(_ enabled: Bool) async {
-        guard let header, phase == .unlocked, !isUpdatingBiometrics else { return }
+        guard let header, phase == .unlocked, !isUpdatingBiometrics, !isBusy, enabled != biometricEnabled else { return }
         isUpdatingBiometrics = true; defer { isUpdatingBiometrics = false }
+        let token = generation
         do {
             if enabled {
                 var key = try await crypto.deviceKey()
                 defer { key.resetBytes(in: 0 ..< key.count) }
+                // A lock can occur while fetching the key. Do not register it for a stale session.
+                guard token == generation, phase == .unlocked, self.header == header else { return }
                 try DeviceKeyStore.save(key, vaultID: header.vaultID)
             } else {
-                DeviceKeyStore.delete(vaultID: header.vaultID)
+                try DeviceKeyStore.delete(vaultID: header.vaultID)
             }
             biometricEnabled = enabled
             UserDefaults.standard.set(enabled, forKey: "biometry.\(header.vaultID)")
         } catch { self.error = error.localizedDescription }
     }
 
+    // MARK: - Foreground LAN synchronization
+
+    func setLANSyncEnabled(_ enabled: Bool) {
+        guard phase == .unlocked, let header else { return }
+        UserDefaults.standard.set(enabled, forKey: "lanSync.\(header.vaultID)")
+        lanSyncEnabled = enabled
+        reconcileLANSync()
+        touch()
+    }
+
+    func setLANSyncForeground(_ foreground: Bool) {
+        lanSyncForeground = foreground
+        reconcileLANSync()
+    }
+
+    private func stopLANSync() {
+        lanSyncToken = nil
+        lanSyncStart?.cancel(); lanSyncStart = nil
+        lanSyncCommit?.cancel()
+        lanSync.stop()
+    }
+
+    private func reconcileLANSync() {
+        guard lanSyncEnabled, lanSyncForeground, !lanSyncSuspended, phase == .unlocked,
+              !lanSyncBlockedByDamage, let header, let store
+        else {
+            if lanSyncToken != nil {
+                stopLANSync()
+            }
+            return
+        }
+        guard lanSyncToken == nil else { return }
+        let token = UUID()
+        lanSyncToken = token
+        lanSyncStart = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let key = try await crypto.lanSyncKey(vaultID: header.vaultID)
+                try checkLANSync(token, header: header)
+                try lanSync.start(key: key, snapshot: { [weak self] in
+                    guard let self else { throw CancellationError() }
+                    return try await lanSnapshot(store: store, header: header, token: token)
+                }, apply: { [weak self] snapshot, incoming, remoteIDs, remoteIncomplete in
+                    guard let self else { throw CancellationError() }
+                    try await applyLANSync(store: store, snapshot: snapshot, incoming: incoming,
+                                           remoteIDs: remoteIDs, remoteIncomplete: remoteIncomplete, token: token)
+                })
+            } catch is CancellationError {
+                return
+            } catch {
+                guard lanSyncToken == token else { return }
+                stopLANSync()
+                self.error = L10n.text("lan.sync.failed")
+            }
+        }
+    }
+
+    private func checkLANSync(_ token: UUID, header: VaultHeader) throws {
+        try Task.checkCancellation()
+        guard lanSyncToken == token, phase == .unlocked, self.header == header, unreadableRevisionCount == 0 else {
+            throw CancellationError()
+        }
+    }
+
+    private func lanSnapshot(store: VaultStore, header: VaultHeader, token: UUID) async throws -> VaultSnapshot {
+        try checkLANSync(token, header: header)
+        do {
+            let snapshot = try await store.snapshot()
+            guard snapshot.header == header else { throw VaultError.vaultChanged }
+            try await crypto.validateLANSyncSnapshot(snapshot.revisions)
+            try checkLANSync(token, header: header)
+            return snapshot
+        } catch is DecodingError, VaultError.damagedData, VaultError.differentVault, VaultError.unsupportedFormat, VaultError.oversizedRecord {
+            try checkLANSync(token, header: header)
+            // Revoke discovery when the advertised history cannot be authenticated.
+            lanSyncSnapshotDamaged = true
+            stopLANSync()
+            throw VaultError.damagedData
+        }
+    }
+
+    private func applyLANSync(store: VaultStore, snapshot: VaultSnapshot, incoming: [EncryptedRevision],
+                              remoteIDs: Set<UUID>, remoteIncomplete: Bool, token: UUID) async throws
+    {
+        try checkLANSync(token, header: snapshot.header)
+        guard !incoming.isEmpty else { return }
+        guard !isBusy, pendingItemIDs.isEmpty else { throw VaultError.vaultChanged }
+        try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming, remoteIDs: remoteIDs,
+                                              remoteIncomplete: remoteIncomplete)
+        try checkLANSync(token, header: snapshot.header)
+        guard !isBusy, pendingItemIDs.isEmpty, lanSyncCommit == nil else { throw VaultError.vaultChanged }
+        let commit = Task { try await store.appendSyncedRevisions(incoming, expected: snapshot) }
+        lanSyncCommit = commit
+        let result: RestoreResult
+        do {
+            result = try await withTaskCancellationHandler { try await commit.value } onCancel: { commit.cancel() }
+        } catch {
+            lanSyncCommit = nil
+            throw error
+        }
+        lanSyncCommit = nil
+        guard lanSyncToken == token, result.insertedRevisions > 0 else { return }
+        // The transaction already committed. A projection error must not report a failed import.
+        do { try await refresh() }
+        catch {
+            if lanSyncToken == token {
+                self.error = L10n.text("lan.sync.refreshFailed")
+            }
+        }
+    }
+
     enum LockReason { case manual, background, idle, system }
 
     func lock(reason: LockReason = .manual) {
+        let syncCommit = lanSyncCommit
+        stopLANSync()
         // Capture the latest bindings even if SwiftUI has not delivered onChange yet.
         for snapshot in draftSnapshots.values {
             retainDraft(snapshot())
@@ -252,12 +400,13 @@ final class VaultSession {
         draftSnapshots.removeAll()
         let previousLock = lockingTask
         let pendingWrite = phase == .unlocked && unreadableRevisionCount == 0 && !replacingVault &&
-            (autoFillTask != nil || !pendingItemIDs.isEmpty || isBusy)
+            (autoFillTask != nil || !pendingItemIDs.isEmpty || isBusy || syncCommit != nil)
         autoFillTask?.cancel()
         autoFillTask = nil
         generation = UUID(); entries = []; recoveryKey = nil; recoverableDrafts = []; idleTask?.cancel(); trashCleanupTask?.cancel()
         permanentlyDeletedItemIDs = []
         unreadableRevisionCount = 0
+        lanSyncSnapshotDamaged = false
         noticeTask?.cancel(); notice = nil
         localState?.lock()
         // iOS already enforces the local-only clipboard expiration while suspended.
@@ -270,6 +419,10 @@ final class VaultSession {
         let crypto = crypto
         lockingTask = Task { [weak self] in
             await previousLock?.value
+            if let syncCommit {
+                // Wait only for the database boundary, never for the network round.
+                _ = await syncCommit.result
+            }
             if pendingWrite {
                 await self?.flushAutoFillSnapshot()
             }
@@ -313,6 +466,7 @@ final class VaultSession {
             let revision = try await crypto.encrypt(updated, parents: parents)
             guard token == generation, phase == .unlocked, unreadableRevisionCount == 0 else { return false }
             try await store.saveRevision(revision)
+            lanSync.localDataChanged()
             try await refresh(); touch()
             guard token == generation, phase == .unlocked else { return false }
             showNotice(L10n.text("notice.saved"))
@@ -401,14 +555,19 @@ final class VaultSession {
     /// - Returns: true once the rotated vault is stored, even if re-enabling biometrics failed.
     @discardableResult
     func changeMasterPassword(current: String, new: String, compactHistory: Bool) async -> Bool {
-        guard phase == .unlocked, let store, let localState, let header, !isBusy, pendingItemIDs.isEmpty else { return false }
+        guard phase == .unlocked, let store, let localState, let header, !isBusy, !isUpdatingBiometrics,
+              pendingItemIDs.isEmpty else { return false }
         guard draftSnapshots.isEmpty, recoverableDrafts.isEmpty else {
             error = L10n.text("rotation.error.unsavedDrafts"); return false
         }
         isBusy = true
+        lanSyncSuspended = true
+        stopLANSync()
         defer {
             replacingVault = false
             isBusy = false
+            lanSyncSuspended = false
+            reconcileLANSync()
         }
         let token = generation
         var stateMovedToNewVault = false
@@ -455,11 +614,22 @@ final class VaultSession {
 
         // The store now only holds the rotated vault; the old identity must not be used again.
         self.header = rotation.header
+        UserDefaults.standard.removeObject(forKey: "lanSync.\(header.vaultID)")
+        lanSyncEnabled = false
+        lanSyncSnapshotDamaged = false
         let wasBiometric = biometricEnabled
-        DeviceKeyStore.delete(vaultID: header.vaultID)
+        // Cleanup is after the database commit. Keep all warnings even if the app locks here.
+        var warnings: [String] = []
+        defer {
+            if !warnings.isEmpty {
+                self.error = warnings.joined(separator: "\n")
+            }
+        }
+        do { try DeviceKeyStore.delete(vaultID: header.vaultID) }
+        catch { warnings.append(L10n.format("rotation.biometricCleanupFailed", error.localizedDescription)) }
         UserDefaults.standard.removeObject(forKey: "biometry.\(header.vaultID)")
         biometricEnabled = false
-        do { try localState.discard(vaultID: header.vaultID) } catch { self.error = error.localizedDescription }
+        do { try localState.discard(vaultID: header.vaultID) } catch { warnings.append(error.localizedDescription) }
         // Locked while committing: the next unlock uses the new password and shows the recovery key.
         guard token == generation, phase == .unlocked else { return true }
         do {
@@ -472,14 +642,14 @@ final class VaultSession {
                     try DeviceKeyStore.save(rotation.vaultKey, vaultID: rotation.header.vaultID)
                     biometricEnabled = true
                     UserDefaults.standard.set(true, forKey: "biometry.\(rotation.header.vaultID)")
-                } catch { self.error = L10n.format("rotation.biometricFailed", error.localizedDescription) }
+                } catch { warnings.append(L10n.format("rotation.biometricFailed", error.localizedDescription)) }
             }
             try await refresh(); touch()
             showNotice(L10n.text("notice.passwordChanged"))
         } catch {
             // Never stay unlocked with a key that may not match the stored vault.
             lock()
-            self.error = L10n.format("rotation.finishedWithIssue", error.localizedDescription)
+            warnings.append(L10n.format("rotation.finishedWithIssue", error.localizedDescription))
         }
         return true
     }
@@ -541,7 +711,7 @@ final class VaultSession {
             self.error = error.localizedDescription
             return .cancelled
         }
-        guard token == generation else { return .cancelled }
+        guard token == generation, !Task.isCancelled else { return .cancelled }
         exportAuthorization = token
         return .authorized
     }
@@ -553,7 +723,7 @@ final class VaultSession {
         do {
             try await verifier.unlock(password: masterPassword, header: header)
             await verifier.lock()
-            guard token == generation else { return false }
+            guard token == generation, !Task.isCancelled else { return false }
             exportAuthorization = token
             return true
         } catch {
@@ -595,6 +765,10 @@ final class VaultSession {
         header != nil && phase != .unlocked
     }
 
+    var backupImportGeneration: UUID {
+        generation
+    }
+
     struct PasswordCSVPreview {
         let content: PasswordCSVImport.Preview
         fileprivate let snapshot: VaultSnapshot
@@ -628,6 +802,7 @@ final class VaultSession {
         isBusy = true; defer { isBusy = false }
         try Task.checkCancellation()
         let result = try await store.appendImportedRevisions(selected, expected: preview.snapshot)
+        lanSync.localDataChanged()
         // A completed transaction counts even when locking prevents the UI from refreshing.
         guard generation == preview.generation, phase == .unlocked else { return }
         do {
@@ -707,7 +882,31 @@ final class VaultSession {
                 guard phase == .setup, header == nil else { throw BackupFlowError.sessionChanged }
                 try await store.restoreNewVault(header: preview.destinationHeader, revisions: revisions)
             } else {
-                try await store.restore(header: preview.destinationHeader, revisions: revisions)
+                let snapshot = try await store.snapshot()
+                guard snapshot.header == preview.destinationHeader else { throw BackupFlowError.sessionChanged }
+                let sourceRevisions: [EncryptedRevision]
+                let selected: [EncryptedRevision]
+                if preview.payload.header.vaultID == snapshot.header.vaultID {
+                    sourceRevisions = preview.revisions
+                    selected = revisions
+                } else {
+                    var key = try await crypto.deviceKey()
+                    defer { key.resetBytes(in: 0 ..< key.count) }
+                    // Reuse ciphertext that may have been committed by sync after the preview.
+                    sourceRevisions = try await BackupMigration.revisions(from: preview.payload, to: snapshot.header,
+                                                                          key: key, existing: snapshot.revisions)
+                    selected = sourceRevisions.filter { selectedItemIDs.contains($0.itemID) }
+                    guard Set(selected.map(\.id)) == Set(revisions.map(\.id)) else { throw BackupFlowError.sessionChanged }
+                }
+                let additions = try await crypto.validateBackupMerge(local: snapshot.revisions, selected: selected,
+                                                                     sourceIDs: Set(sourceRevisions.map(\.id)),
+                                                                     incompleteHistory: preview.payload.incompleteHistory)
+                guard token == generation, phase == .unlocked else { throw BackupFlowError.sessionChanged }
+                try Task.checkCancellation()
+                let result = try await store.appendSyncedRevisions(additions, expected: snapshot)
+                if result.insertedRevisions > 0 {
+                    lanSync.localDataChanged()
+                }
             }
         } catch {
             self.error = error.localizedDescription

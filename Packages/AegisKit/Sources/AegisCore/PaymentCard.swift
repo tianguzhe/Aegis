@@ -15,18 +15,6 @@ public enum CardBrand: String, Codable, CaseIterable, Identifiable, Sendable {
         case .americanExpress: L10n.text("card.brand.americanExpress")
         }
     }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let value = try container.decode(String.self)
-        if value == "centurion" {
-            self = .americanExpress
-        } else if let brand = Self(rawValue: value) {
-            self = brand
-        } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported card network")
-        }
-    }
 }
 
 public enum PaymentCardType: String, Codable, CaseIterable, Identifiable, Sendable {

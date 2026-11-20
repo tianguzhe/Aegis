@@ -144,6 +144,49 @@ import Testing
         #expect(try await crypto.entries(from: compacted.revisions + [lateBranch]).allSatisfy { $0.item.id != marker.id })
     }
 
+    @Test func ancestorBackupsFollowAllRotationsAndRespectCompaction() async throws {
+        let source = try await Self.makeSource()
+        let first = try await Self.rotate(source)
+        let second = try await VaultRotation.prepare(header: first.header, revisions: first.revisions, incompleteHistory: false,
+                                                     vaultKey: first.vaultKey, newPassword: Self.newPassword)
+        let target = try VaultStore.make(inMemory: true)
+        try await target.restoreNewVault(header: second.header, revisions: second.revisions)
+        let crypto = VaultCrypto()
+        try await crypto.unlock(deviceKey: second.vaultKey, header: second.header)
+        let current = try #require(try await crypto.entries(from: second.revisions).first { $0.item.title == "Bank" })
+        var edited = current.item; edited.password = "after two rotations"
+        try await target.saveRevision(crypto.encrypt(edited, parents: [current.id]))
+        let before = try await target.snapshot()
+        let oldest = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.vaultKey,
+                                       header: source.header, revisions: source.revisions.filter { $0.id != source.revisions[4].id })
+        let middle = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: first.vaultKey,
+                                       header: first.header, revisions: first.revisions)
+        for backup in [oldest, middle] {
+            let migrated = try await BackupMigration.revisions(from: backup, to: second.header, key: second.vaultKey,
+                                                               existing: before.revisions)
+            #expect(try await target.restore(header: second.header, revisions: migrated).insertedRevisions == 0)
+        }
+        let after = try await crypto.entries(from: target.revisions())
+        #expect(after.first { $0.item.title == "Bank" }?.item.password == "after two rotations")
+        #expect(after.filter { $0.item.title == "Bank" }.count == 1)
+        #expect(!after.contains { $0.item.title == "Deleted" })
+
+        let compacted = try await VaultRotation.prepare(header: second.header, revisions: before.revisions, incompleteHistory: false,
+                                                        vaultKey: second.vaultKey, newPassword: Self.newPassword, compactHistory: true)
+        let latest = try await VaultRotation.prepare(header: compacted.header, revisions: compacted.revisions, incompleteHistory: false,
+                                                     vaultKey: compacted.vaultKey, newPassword: Self.newPassword)
+        for backup in [oldest, middle] {
+            await #expect(throws: VaultError.retiredVaultHistory) {
+                try await BackupMigration.revisions(from: backup, to: latest.header, key: latest.vaultKey, existing: latest.revisions)
+            }
+        }
+        let postCompaction = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: compacted.vaultKey,
+                                               header: compacted.header, revisions: compacted.revisions)
+        let migrated = try await BackupMigration.revisions(from: postCompaction, to: latest.header, key: latest.vaultKey,
+                                                           existing: latest.revisions)
+        #expect(Set(migrated.map(\.id)).isSubset(of: Set(latest.revisions.map(\.id))))
+    }
+
     @Test func weakNewPasswordIsRejected() async throws {
         let source = try await Self.makeSource()
         await #expect(throws: VaultError.weakMasterPassword) { try await Self.rotate(source, to: "short") }

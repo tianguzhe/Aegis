@@ -147,6 +147,11 @@ struct BackupFormatTests {
 
     // MARK: Container rejection
 
+    @Test func retiredJSONContainerIsRejected() {
+        let data = Data(#"{"format":"aegis-encrypted-backup","version":1}"#.utf8)
+        #expect(throws: BackupError.notABackup) { try BackupContainer.parse(data) }
+    }
+
     @Test func truncatedOrExtendedFilesAreRejected() throws {
         let file = try Self.specContainer().encoded()
         for length in 0 ..< 8 {

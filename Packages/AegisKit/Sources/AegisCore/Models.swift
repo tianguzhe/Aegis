@@ -84,14 +84,14 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var cardNumber: String
     public var expiry: String
     public var securityCode: String
-    // Optional fields keep previously encrypted records and drafts decodable.
+    // Cards can omit the network and type to use the neutral appearance.
     public var cardBrand: CardBrand?
     public var cardType: PaymentCardType?
     public var isFavorite: Bool
     public var deletedAt: Date?
     public var permanentlyDeletedAt: Date?
     public var modifiedAt: Date
-    // Optional so encrypted records written by older versions remain decodable.
+    // Only the reserved internal record carries rotation lineage.
     var rotationLineage: VaultRotation.Lineage?
 
     public init(id: UUID = UUID(), kind: ItemKind = .login, title: String = "", username: String = "",
@@ -171,23 +171,5 @@ public enum RevisionGraph {
         // Only authenticated revisions should reach this function.
         let superseded = Set(revisions.flatMap(\.parents))
         return revisions.filter { !superseded.contains($0.id) }
-    }
-}
-
-public struct VaultBackup: Codable, Sendable {
-    public let format: String
-    public let version: Int
-    public let header: VaultHeader
-    public let revisions: [EncryptedRevision]
-    public init(header: VaultHeader, revisions: [EncryptedRevision]) {
-        format = "aegis-encrypted-backup"; version = 1; self.header = header; self.revisions = revisions
-    }
-
-    public func validate() throws {
-        guard format == "aegis-encrypted-backup", version == 1 else { throw VaultError.unsupportedFormat }
-        try header.validate()
-        guard revisions.count <= 100_000,
-              revisions.allSatisfy({ $0.vaultID == header.vaultID && $0.formatVersion == 1 && $0.ciphertext.count <= 300_000 })
-        else { throw VaultError.damagedData }
     }
 }

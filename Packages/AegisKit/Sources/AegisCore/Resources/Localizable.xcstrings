@@ -4051,6 +4051,105 @@
         }
       }
     },
+    "lan.sync.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网同步"
+          }
+        }
+      }
+    },
+    "lan.sync.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两端开启同步且前台解锁时，同步整个保险库及历史，包括首次导入时未勾选的条目。"
+          }
+        }
+      }
+    },
+    "lan.sync.waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待同一网络中的已解锁设备"
+          }
+        }
+      }
+    },
+    "lan.sync.syncing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "lan.sync.lastSuccess": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次同步：%@"
+          }
+        }
+      }
+    },
+    "lan.sync.permissionDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地网络权限受阻。请在系统设置中允许 Aegis 访问本地网络。"
+          }
+        }
+      }
+    },
+    "lan.sync.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步失败。请检查本地网络和两端保险库状态。"
+          }
+        }
+      }
+    },
+    "lan.sync.damaged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库有无法读取的记录，同步已暂停。"
+          }
+        }
+      }
+    },
+    "lan.sync.refreshFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步已写入保险库，但列表刷新失败。请重新解锁查看。"
+          }
+        }
+      }
+    },
     "lan.settings.title": {
       "extractionState": "manual",
       "localizations": {
@@ -4095,57 +4194,112 @@
         }
       }
     },
-    "lan.send.description": {
+    "lan.pair.sendDescription": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先确认本机身份，再在新设备的首次进入页选择“从局域网导入”。传输期间两台设备都需保持 Aegis 打开。"
+            "value": "在新设备的首次进入页选择「从局域网导入」，找到此设备。连接后，请在两台设备上核对六位数字。"
           }
         }
       }
     },
-    "lan.receive.description": {
+    "lan.pair.receiveDescription": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在已有设备打开“设置 → 数据 → 通过局域网连接新设备”，选择设备并输入配对码。验证后可选择要导入的数据，无需先创建保险库。"
+            "value": "请在发送设备的「设置 → 同步与备份」开启连接。选择设备后，两端会显示六位数字。"
           }
         }
       }
     },
-    "lan.code.title": {
+    "lan.pair.connecting": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "临时配对码"
+            "value": "正在连接设备…"
           }
         }
       }
     },
-    "lan.code.placeholder": {
+    "lan.pair.compare": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "输入旧设备显示的完整配对码"
+            "value": "请核对两台设备上的六位数字。全部一致时，才在两端确认。"
           }
         }
       }
     },
-    "lan.send.codeHint": {
+    "lan.pair.approve": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在新设备输入完整配对码，可忽略连字符和空格。配对码 5 分钟内有效，发送成功后失效。请仅交给自己的新设备。"
+            "value": "数字一致"
+          }
+        }
+      }
+    },
+    "lan.pair.reject": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数字不同"
+          }
+        }
+      }
+    },
+    "lan.pair.waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已确认，正在等待另一台设备确认…"
+          }
+        }
+      }
+    },
+    "lan.pair.rejectError": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次配对已拒绝，请核对设备后重试。"
+          }
+        }
+      }
+    },
+    "lan.pair.authorize": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证并发送"
+          }
+        }
+      }
+    },
+    "lan.pair.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对已中断或超时，请在两台设备上重试。"
           }
         }
       }
@@ -4168,17 +4322,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "验证身份并开始连接"
-          }
-        }
-      }
-    },
-    "lan.preparing": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在准备加密保险库…"
           }
         }
       }
@@ -4326,17 +4469,6 @@
         }
       }
     },
-    "lan.error.invalidCode": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请输入旧设备显示的完整配对码（32 位十六进制字符）。"
-          }
-        }
-      }
-    },
     "lan.error.invalidMessage": {
       "extractionState": "manual",
       "localizations": {
@@ -4354,7 +4486,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接中断、超时或配对码不正确。请检查配对码和网络后重试。"
+            "value": "连接已中断。请确认两台设备仍保持 Aegis 打开，检查网络后重试。"
           }
         }
       }
@@ -4365,7 +4497,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "配对验证多次失败，连接已停止。请重新生成配对码后再试。"
+            "value": "配对多次失败，连接已停止。请在发送设备上重新开启连接。"
           }
         }
       }
@@ -4376,7 +4508,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "配对码已过期，请重新开始连接。"
+            "value": "配对已超时，请重新连接。"
           }
         }
       }
@@ -4619,6 +4751,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "主密码已修改，但未能重新启用生物识别解锁：%@"
+          }
+        }
+      }
+    },
+    "rotation.biometricCleanupFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主密码已修改，但未能从本机钥匙串删除旧的生物识别凭据：%@"
           }
         }
       }

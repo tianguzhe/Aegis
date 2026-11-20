@@ -10,10 +10,9 @@ struct LocalVaultTransferView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var transfer = LocalVaultTransfer()
+    @State private var passwordRequest: (id: UUID, continuation: CheckedContinuation<String, Error>)?
     @State private var selectedPeer: String?
-    @State private var code = ""
     @State private var masterPassword = ""
-    @State private var needsMasterPassword = false
     @State private var preparing = false
     @State private var preview: VaultSession.BackupImportPreview?
     @State private var selectedItemIDs: Set<UUID> = []
@@ -28,19 +27,21 @@ struct LocalVaultTransferView: View {
         transfer.peers.first { $0.id == selectedPeer }
     }
 
-    private var validCode: Bool {
-        (try? LocalTransferProtocol.normalizeCode(code)) != nil
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             AegisSheetHeader(title: L10n.text(mode == .send ? "lan.send.title" : "lan.receive.title"),
                              symbol: "wifi", close: { dismiss() }, closeDisabled: session.isBusy && preview != nil)
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text(L10n.text(mode == .send ? "lan.send.description" : "lan.receive.description"))
+                    Text(L10n.text(descriptionKey))
                         .aegisFont(size: 13).lineSpacing(5).foregroundStyle(AegisTheme.secondary)
-                    if mode == .send {
+                    if let comparison = transfer.comparisonID {
+                        comparisonView(comparison)
+                    } else if passwordRequest != nil {
+                        pairingPassword
+                    } else if transfer.state == .connecting || transfer.state == .transferring {
+                        ProgressView(L10n.text(transfer.state == .connecting ? "lan.pair.connecting" : "lan.transferring"))
+                    } else if mode == .send {
                         sending
                     } else {
                         receiving
@@ -51,7 +52,7 @@ struct LocalVaultTransferView: View {
                     }
                     if transfer.state == .failed {
                         Button(L10n.text("lan.retry")) {
-                            code = ""; selectedPeer = nil
+                            selectedPeer = nil
                             if mode == .receive {
                                 transfer.search()
                             } else {
@@ -96,18 +97,13 @@ struct LocalVaultTransferView: View {
 
     @ViewBuilder private var sending: some View {
         switch transfer.state {
-        case .starting, .offering, .transferring:
+        case .starting, .offering:
             VStack(alignment: .leading, spacing: 16) {
                 Label(transfer.offerName, systemImage: "laptopcomputer.and.iphone")
                     .aegisFont(size: 15, weight: .semibold).foregroundStyle(AegisTheme.text)
-                Text(L10n.text("lan.code.title")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
-                Text(LocalTransferProtocol.displayCode(transfer.pairingCode))
-                    .aegisFont(size: 19, weight: .semibold, design: .monospaced).lineSpacing(5)
-                    .foregroundStyle(AegisTheme.teal).textSelection(.enabled).accessibilityIdentifier("localPairingCode")
-                Text(L10n.text("lan.send.codeHint")).aegisFont(size: 12).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
-                    Text(L10n.text(transfer.state == .transferring ? "lan.transferring" : "lan.send.waiting")).aegisFont(size: 12)
+                    Text(L10n.text("lan.send.waiting")).aegisFont(size: 12)
                 }.foregroundStyle(AegisTheme.secondary)
             }.aegisCard()
             Button(L10n.text("lan.stop")) { cancel() }.buttonStyle(AegisButtonStyle(fullWidth: true))
@@ -117,21 +113,8 @@ struct LocalVaultTransferView: View {
             Button(L10n.text("action.done")) { dismiss() }.buttonStyle(PrimaryButtonStyle())
         case .failed: EmptyView()
         default:
-            if needsMasterPassword {
-                Text(L10n.text("backup.masterFallback")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
-                AegisInput(title: L10n.text("welcome.master"), icon: "lock") {
-                    SecureField(L10n.text("welcome.master"), text: $masterPassword).textContentType(.password)
-                        .accessibilityIdentifier("localExportMasterPassword")
-                }.disabled(busy)
-            }
-            Button(action: beginOffering) {
-                HStack {
-                    if preparing {
-                        ProgressView().controlSize(.small)
-                    }
-                    Text(L10n.text(preparing ? "lan.preparing" : "lan.send.start"))
-                }
-            }.buttonStyle(PrimaryButtonStyle()).disabled(busy || (needsMasterPassword && masterPassword.isEmpty))
+            Button(action: beginOffering) { Text(L10n.text("lan.send.start")) }
+                .buttonStyle(PrimaryButtonStyle()).disabled(busy)
                 .accessibilityIdentifier("startLocalTransferButton")
         }
     }
@@ -167,8 +150,8 @@ struct LocalVaultTransferView: View {
                 }
             }.buttonStyle(PrimaryButtonStyle()).disabled(busy || !preview.selection.canImport(selectedItemIDs))
                 .accessibilityIdentifier("confirmLocalImportButton")
-        } else if preparing || transfer.state == .transferring {
-            ProgressView(L10n.text(preparing ? "backup.verifying" : "lan.transferring"))
+        } else if preparing {
+            ProgressView(L10n.text("backup.verifying"))
                 .frame(maxWidth: .infinity).padding(.vertical, 24)
         } else if transfer.state != .failed {
             VStack(alignment: .leading, spacing: 14) {
@@ -187,62 +170,97 @@ struct LocalVaultTransferView: View {
                     }.buttonStyle(.plain)
                 }
             }.aegisCard().accessibilityIdentifier("localDevices")
-            AegisInput(title: L10n.text("lan.code.title"), icon: "key") {
-                TextField(L10n.text("lan.code.placeholder"), text: $code)
-                    .autocorrectionDisabled().aegisFont(size: 14, design: .monospaced)
-                    .accessibilityIdentifier("localPairingCodeInput")
-                #if os(iOS)
-                    .textInputAutocapitalization(.characters)
-                #endif
-            }
             Button {
                 guard let peer else { return }
-                do { try transfer.receive(from: peer, code: code); code = ""; session.touch() }
-                catch { session.error = error.localizedDescription }
+                transfer.receivePairing(from: peer)
             } label: { Text(L10n.text("lan.receive.connect")) }
-                .buttonStyle(PrimaryButtonStyle()).disabled(peer == nil || !validCode || busy)
+                .buttonStyle(PrimaryButtonStyle()).disabled(peer == nil || busy)
                 .accessibilityIdentifier("receiveLocalVaultButton")
         }
     }
 
-    private func beginOffering() {
-        guard !busy, session.phase == .unlocked else { return }
-        preparing = true
-        let token = operationID
-        operation = Task {
-            defer {
-                if token == operationID {
-                    preparing = false
-                }
-            }
-            if needsMasterPassword {
-                let submitted = masterPassword; masterPassword = ""
-                guard await session.authorizeExport(masterPassword: submitted) else { return }
+    private var descriptionKey: String {
+        mode == .send ? "lan.pair.sendDescription" : "lan.pair.receiveDescription"
+    }
+
+    private func comparisonView(_ id: UUID) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(transfer.comparisonCode)
+                .aegisFont(size: 32, weight: .semibold, design: .monospaced)
+                .foregroundStyle(AegisTheme.teal)
+                .accessibilityIdentifier("localPairingComparison")
+            Text(L10n.text(transfer.state == .awaitingPeer ? "lan.pair.waiting" : "lan.pair.compare"))
+                .aegisFont(size: 13).foregroundStyle(AegisTheme.secondary)
+            if transfer.state == .comparing {
+                Button(L10n.text("lan.pair.approve")) { transfer.approvePairing(id) }
+                    .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("approveLocalPairing")
+                Button(L10n.text("lan.pair.reject")) { transfer.rejectPairing(id) }
+                    .buttonStyle(AegisButtonStyle(fullWidth: true))
             } else {
-                switch await session.authorizeExport() {
-                case .authorized: break
-                case .cancelled: return
-                case .needsMasterPassword: needsMasterPassword = true; return
-                }
+                Button(L10n.text("lan.stop")) { cancel(); dismiss() }
+                    .buttonStyle(AegisButtonStyle(fullWidth: true))
             }
-            do {
-                let code = try LocalTransferProtocol.makeCode()
-                let snapshot = try await session.exportBackup(backupPassword: code, includeVaultSlot: true)
-                try Task.checkCancellation()
-                guard token == operationID, session.phase == .unlocked else { return }
-                try transfer.offer(snapshot.data, code: code)
-            } catch {
-                if token == operationID {
-                    session.error = error.localizedDescription
-                }
+        }.aegisCard()
+    }
+
+    private var pairingPassword: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(L10n.text("backup.masterFallback")).aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+            AegisInput(title: L10n.text("welcome.master"), icon: "lock") {
+                SecureField(L10n.text("welcome.master"), text: $masterPassword).textContentType(.password)
+                    .accessibilityIdentifier("localExportMasterPassword")
             }
+            Button(L10n.text("lan.pair.authorize")) {
+                guard let request = passwordRequest else { return }
+                let submitted = masterPassword
+                masterPassword = ""; passwordRequest = nil
+                request.continuation.resume(returning: submitted)
+            }.buttonStyle(PrimaryButtonStyle()).disabled(masterPassword.isEmpty)
         }
     }
 
+    private func exportPairedSnapshot(credential: String, token: UUID) async throws -> Data {
+        try Task.checkCancellation()
+        guard token == operationID, session.phase == .unlocked else { throw CancellationError() }
+        switch await session.authorizeExport() {
+        case .authorized: break
+        case .cancelled: throw CancellationError()
+        case .needsMasterPassword:
+            let id = UUID()
+            let password = try await withTaskCancellationHandler {
+                try Task.checkCancellation()
+                return try await withCheckedThrowingContinuation { pending in
+                    passwordRequest = (id, pending)
+                }
+            } onCancel: {
+                Task { @MainActor in
+                    guard let request = passwordRequest, request.id == id else { return }
+                    passwordRequest = nil; masterPassword = ""
+                    request.continuation.resume(throwing: CancellationError())
+                }
+            }
+            try Task.checkCancellation()
+            guard await session.authorizeExport(masterPassword: password) else { throw CancellationError() }
+        }
+        try Task.checkCancellation()
+        guard token == operationID, session.phase == .unlocked else { throw CancellationError() }
+        return try await session.exportBackup(backupPassword: credential, includeVaultSlot: true).data
+    }
+
+    private func beginOffering() {
+        guard !busy, session.phase == .unlocked else { return }
+        let token = operationID
+        do {
+            try transfer.offerPairing { credential in
+                try await exportPairedSnapshot(credential: credential, token: token)
+            }
+            session.touch()
+        } catch { session.error = error.localizedDescription }
+    }
+
     private func validateReceived() {
-        guard let data = transfer.receivedData, !preparing else { return }
-        let credential = transfer.pairingCode, token = operationID
-        transfer.discardReceivedBytes()
+        guard !preparing, let (data, credential) = transfer.takeReceivedSnapshot() else { return }
+        let token = operationID
         preparing = true
         operation = Task {
             defer {
@@ -269,6 +287,10 @@ struct LocalVaultTransferView: View {
 
     private func cancel() {
         operationID = UUID(); operation?.cancel(); operation = nil
-        transfer.stop(); code = ""; masterPassword = ""; preview = nil; selectedItemIDs = []; preparing = false
+        if let request = passwordRequest {
+            passwordRequest = nil
+            request.continuation.resume(throwing: CancellationError())
+        }
+        transfer.stop(); selectedPeer = nil; masterPassword = ""; preview = nil; selectedItemIDs = []; preparing = false
     }
 }

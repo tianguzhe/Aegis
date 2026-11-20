@@ -158,6 +158,7 @@ struct SettingsView: View {
     @State private var tab: SettingsTab = .security
     @State private var showExport = false
     @State private var showImport = false
+    @State private var showPasswordCSV = false
     @State private var showLocalTransfer = false
     @State private var showChangePassword = false
     @AppStorage("aegis.appearance") private var appearance: AegisAppearance = .system
@@ -185,6 +186,7 @@ struct SettingsView: View {
             }
         }.background(AegisTheme.background).modifier(UtilitySize(embedded: embedded, height: 640)).vaultErrorPresenter()
             .sheet(isPresented: $showImport) { ImportBackupView().environment(session) }
+            .sheet(isPresented: $showPasswordCSV) { PasswordCSVImportView().environment(session) }
             .sheet(isPresented: $showExport) { ExportBackupView().environment(session) }
             .sheet(isPresented: $showLocalTransfer) { LocalVaultTransferView(mode: .send).environment(session) }
             .sheet(isPresented: $showChangePassword) { ChangeMasterPasswordView().environment(session) }
@@ -231,6 +233,10 @@ struct SettingsView: View {
                 settingsAction("settings.export", symbol: "square.and.arrow.up") { showExport = true }
                 settingDivider
                 settingsAction("settings.import", symbol: "square.and.arrow.down") { showImport = true }
+                settingDivider
+                settingsAction("csv.title", symbol: "tablecells") { showPasswordCSV = true }
+                    .disabled(session.unreadableRevisionCount > 0)
+                    .accessibilityIdentifier("importPasswordCSVButton")
             }
             Label(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays)), systemImage: "trash")
                 .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)

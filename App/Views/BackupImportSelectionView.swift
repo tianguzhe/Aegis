@@ -72,27 +72,9 @@ struct BackupImportSelectionView: View {
                 }.tint(AegisTheme.teal).accessibilityIdentifier("importItemType")
                 LazyVStack(spacing: 0) {
                     ForEach(filtered) { item in
-                        Button {
-                            if selectedItemIDs.contains(item.id) {
-                                selectedItemIDs.remove(item.id)
-                            } else {
-                                selectedItemIDs.insert(item.id)
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: item.isPermanentlyDeleted ? "trash.slash" : item.kind?.symbol ?? "doc")
-                                    .foregroundStyle(AegisTheme.teal).frame(width: 22)
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(title(item)).aegisFont(size: 13, weight: .medium).foregroundStyle(AegisTheme.text).lineLimit(2)
-                                    Text(detail(item)).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).lineLimit(2)
-                                }
-                                Spacer(minLength: 8)
-                                Image(systemName: selectedItemIDs.contains(item.id) ? "checkmark.square.fill" : "square")
-                                    .font(.system(size: 20)).foregroundStyle(AegisTheme.teal)
-                            }.padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                            .accessibilityValue(L10n.text(selectedItemIDs.contains(item.id) ? "backup.selection.selected" : "backup.selection.unselected"))
-                            .accessibilityAddTraits(selectedItemIDs.contains(item.id) ? [.isSelected] : [])
+                        ImportItemToggle(title: title(item), detail: detail(item),
+                                         symbol: item.isPermanentlyDeleted ? "trash.slash" : item.kind?.symbol ?? "doc",
+                                         itemID: item.id, selectedItemIDs: $selectedItemIDs)
                             .accessibilityIdentifier("importItem-\(item.id.uuidString)")
                         Divider().overlay(AegisTheme.border)
                     }
@@ -134,5 +116,42 @@ struct BackupImportSelectionView: View {
             parts.append(L10n.text("backup.selection.conflict"))
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+struct ImportItemToggle: View {
+    let title: String
+    let detail: String
+    let symbol: String
+    let itemID: UUID
+    @Binding var selectedItemIDs: Set<UUID>
+
+    private var isSelected: Bool {
+        selectedItemIDs.contains(itemID)
+    }
+
+    var body: some View {
+        Button {
+            if isSelected {
+                selectedItemIDs.remove(itemID)
+            } else {
+                selectedItemIDs.insert(itemID)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).foregroundStyle(AegisTheme.teal).frame(width: 22)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title).aegisFont(size: 13, weight: .medium).foregroundStyle(AegisTheme.text).lineLimit(2)
+                    if !detail.isEmpty {
+                        Text(detail).aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 20)).foregroundStyle(AegisTheme.teal)
+            }.padding(.vertical, 12).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .accessibilityValue(L10n.text(isSelected ? "backup.selection.selected" : "backup.selection.unselected"))
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

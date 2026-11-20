@@ -4,10 +4,10 @@ import XCTest
 final class InterfaceTests: XCTestCase {
     private var app: XCUIApplication!
 
-    private func launchVault() {
+    private func launchVault(extraArguments: [String] = []) {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["--preview-vault", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments = ["--preview-vault", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"] + extraArguments
         app.launch()
         app.activate()
         unlockIfNeeded()
@@ -161,6 +161,62 @@ final class InterfaceTests: XCTestCase {
         XCTAssertTrue(localImport.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["unlockButton"].isEnabled)
         XCTAssertTrue(app.secureTextFields["confirmPassword"].exists, "Cancelling import must leave the device uninitialized")
+    }
+
+    func testChromeCSVOnlyImportsCheckedRecords() {
+        launchVault(extraArguments: ["--preview-chrome-csv"])
+        openPasswordCSV()
+        XCTAssertTrue(app.staticTexts["Chrome"].waitForExistence(timeout: 10))
+        let confirm = app.buttons["confirmPasswordCSV"]
+        app.buttons["clearPasswordCSVItems"].tap()
+        XCTAssertFalse(confirm.isEnabled)
+        let alpha = app.buttons.containing(.staticText, identifier: "CSV Alpha").firstMatch
+        reveal(alpha)
+        alpha.tap()
+        XCTAssertTrue(confirm.isEnabled)
+        capture("chrome-csv-preview")
+        confirm.tap()
+        XCTAssertTrue(app.buttons["importPasswordCSVButton"].waitForExistence(timeout: 10))
+        app.buttons["保险库"].tap()
+        let search = app.textFields["vaultSearch"]
+        search.tap()
+        search.typeText("CSV")
+        XCTAssertTrue(app.buttons["record-CSV Alpha"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["record-CSV Beta"].exists)
+    }
+
+    func testOnePasswordCSVPreviewClearsOnBackgroundLock() throws {
+        launchVault(extraArguments: ["--preview-onepassword-csv"])
+        openPasswordCSV()
+        XCTAssertTrue(app.staticTexts["1Password"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["synthetic-alpha"].exists)
+        capture("onepassword-csv-preview")
+        // The simulator's Home event can leave Aegis foregrounded; switch to another app.
+        XCUIApplication(bundleIdentifier: "com.apple.Preferences").activate()
+        let vault = try XCTUnwrap(app)
+        let isBackgrounded = NSPredicate { _, _ in
+            let state = vault.state
+            return state == .runningBackground || state == .runningBackgroundSuspended
+        }
+        let background = XCTNSPredicateExpectation(predicate: isBackgrounded, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [background], timeout: 10), .completed, "Current app state: \(app.state)")
+        app.activate()
+        let password = app.secureTextFields["masterPassword"]
+        XCTAssertTrue(password.waitForExistence(timeout: 15))
+        unlockIfNeeded()
+        XCTAssertTrue(app.buttons["addItemButton"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["confirmPasswordCSV"].exists)
+        XCTAssertFalse(app.buttons["record-CSV Alpha"].exists)
+    }
+
+    private func openPasswordCSV() {
+        let settings = app.buttons["设置"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.tap()
+        app.segmentedControls["settingsTabs"].buttons["同步与备份"].tap()
+        let action = app.buttons["importPasswordCSVButton"]
+        reveal(action)
+        action.tap()
     }
 
     func testFileImportOnlyWritesSelectedItems() throws {

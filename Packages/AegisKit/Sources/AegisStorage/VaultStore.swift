@@ -132,6 +132,15 @@ public actor VaultStore {
         try restore(header: header, revisions: incoming, beforeSave: {})
     }
 
+    /// Appends new root revisions to the exact state reviewed in the import preview.
+    /// A stale preview throws `VaultError.vaultChanged` before any rows are written.
+    public func appendImportedRevisions(_ incoming: [EncryptedRevision], expected: VaultSnapshot) throws -> RestoreResult {
+        guard !incoming.isEmpty, incoming.allSatisfy(\.parents.isEmpty) else { throw VaultError.damagedData }
+        return try restore(header: expected.header, revisions: incoming, expected: expected) {
+            try Task.checkCancellation()
+        }
+    }
+
     /// Joins an existing vault only while this store is still empty. The check and write share one
     /// actor turn, so a concurrent setup or cloud fetch cannot turn onboarding into a merge.
     @discardableResult
@@ -178,7 +187,7 @@ public actor VaultStore {
     }
 
     /// `beforeSave` lets tests fail the commit after rows are inserted; production passes a no-op.
-    func restore(header: VaultHeader, revisions incoming: [EncryptedRevision],
+    func restore(header: VaultHeader, revisions incoming: [EncryptedRevision], expected: VaultSnapshot? = nil,
                  beforeSave: @Sendable () throws -> Void) throws -> RestoreResult
     {
         try header.validate()
@@ -187,7 +196,14 @@ public actor VaultStore {
         if let localHeader, localHeader != header {
             throw VaultError.differentVault
         }
-        let existing = try Dictionary(uniqueKeysWithValues: revisions().map { ($0.id, $0) })
+        var existing: [UUID: EncryptedRevision] = [:]
+        for revision in try revisions() {
+            guard existing.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
+        }
+        if let expected {
+            guard localHeader == expected.header, existing.count == expected.revisions.count,
+                  expected.revisions.allSatisfy({ existing[$0.id] == $0 }) else { throw VaultError.vaultChanged }
+        }
         var additions: [UUID: EncryptedRevision] = [:]
         for revision in incoming {
             if let previous = existing[revision.id] ?? additions[revision.id], previous != revision {

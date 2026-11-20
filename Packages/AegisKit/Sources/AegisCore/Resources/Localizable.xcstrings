@@ -496,6 +496,259 @@
         }
       }
     },
+    "csv.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 CSV 文件"
+          }
+        }
+      }
+    },
+    "csv.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入所选条目"
+          }
+        }
+      }
+    },
+    "csv.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这份文件没有新的可导入条目。"
+          }
+        }
+      }
+    },
+    "csv.error.changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库内容已变化。请重新选择文件并检查预览。"
+          }
+        }
+      }
+    },
+    "csv.error.encoding": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 CSV 编码。请重新导出 UTF-8 CSV。"
+          }
+        }
+      }
+    },
+    "csv.error.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法识别表头。请选择保留表头的 1Password 或 Chrome 导出文件。"
+          }
+        }
+      }
+    },
+    "csv.error.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 超出读取上限。请拆分为每份最多 10 MiB、10,000 条记录和 64 列的文件，并保留表头。"
+          }
+        }
+      }
+    },
+    "csv.error.malformed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 行开始的记录引号格式有误。请重新导出 CSV。"
+          }
+        }
+      }
+    },
+    "csv.error.read": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取所选 CSV 文件。请确认文件已下载到本机。"
+          }
+        }
+      }
+    },
+    "csv.error.refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 条记录，列表刷新失败。请锁定后重新解锁查看。"
+          }
+        }
+      }
+    },
+    "csv.imported": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 %lld 条登录记录"
+          }
+        }
+      }
+    },
+    "csv.issue": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 行 · %@"
+          }
+        }
+      }
+    },
+    "csv.plaintextHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择 1Password 或 Chrome 导出的 CSV。文件包含明文密码，导入后请妥善处理原件。"
+          }
+        }
+      }
+    },
+    "csv.skip.archived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1Password 中已归档"
+          }
+        }
+      }
+    },
+    "csv.skip.columns": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列数与表头不符"
+          }
+        }
+      }
+    },
+    "csv.skip.duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完全重复"
+          }
+        }
+      }
+    },
+    "csv.skip.oversized": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条目内容超过大小上限"
+          }
+        }
+      }
+    },
+    "csv.skip.password": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有密码"
+          }
+        }
+      }
+    },
+    "csv.skip.type": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条目类型不受支持"
+          }
+        }
+      }
+    },
+    "csv.skipped": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看跳过原因"
+          }
+        }
+      }
+    },
+    "csv.summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可导入 %lld 条，跳过 %lld 条"
+          }
+        }
+      }
+    },
+    "csv.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入密码 CSV"
+          }
+        }
+      }
+    },
+    "csv.unsupportedFields": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有条目包含验证码设置或标签，需要另行迁移。"
+          }
+        }
+      }
+    },
     "editor.edit": {
       "extractionState": "manual",
       "localizations": {

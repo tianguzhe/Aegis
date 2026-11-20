@@ -595,6 +595,52 @@ final class VaultSession {
         header != nil && phase != .unlocked
     }
 
+    struct PasswordCSVPreview {
+        let content: PasswordCSVImport.Preview
+        fileprivate let snapshot: VaultSnapshot
+        fileprivate let generation: UUID
+    }
+
+    func previewPasswordCSV(_ load: @escaping @Sendable () throws -> PasswordCSVImport.Parsed) async throws -> PasswordCSVPreview {
+        guard phase == .unlocked, let store, !isBusy, pendingItemIDs.isEmpty else { throw BackupFlowError.sessionChanged }
+        guard unreadableRevisionCount == 0 else { throw VaultError.damagedData }
+        let token = generation
+        isBusy = true; defer { isBusy = false }
+        let worker = Task.detached(priority: .userInitiated, operation: load)
+        let parsed = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+        try Task.checkCancellation()
+        guard generation == token, phase == .unlocked else { throw CancellationError() }
+        let snapshot = try await store.snapshot()
+        let entries = try await crypto.cachedEntries(from: snapshot.revisions)
+        let preview = try await PasswordCSVImport.prepare(parsed, existing: entries, crypto: crypto)
+        try Task.checkCancellation()
+        guard generation == token, phase == .unlocked, header == snapshot.header else { throw CancellationError() }
+        touch()
+        return PasswordCSVPreview(content: preview, snapshot: snapshot, generation: token)
+    }
+
+    func commitPasswordCSV(_ preview: PasswordCSVPreview, selectedItemIDs: Set<UUID>) async throws {
+        guard phase == .unlocked, let store, !isBusy, pendingItemIDs.isEmpty,
+              generation == preview.generation, header == preview.snapshot.header else { throw BackupFlowError.sessionChanged }
+        guard unreadableRevisionCount == 0 else { throw VaultError.damagedData }
+        let selected = preview.content.candidates.filter { selectedItemIDs.contains($0.id) }.map(\.revision)
+        guard !selected.isEmpty, selected.count == selectedItemIDs.count else { throw VaultError.damagedData }
+        isBusy = true; defer { isBusy = false }
+        try Task.checkCancellation()
+        let result = try await store.appendImportedRevisions(selected, expected: preview.snapshot)
+        // A completed transaction counts even when locking prevents the UI from refreshing.
+        guard generation == preview.generation, phase == .unlocked else { return }
+        do {
+            try await refresh()
+            guard generation == preview.generation, phase == .unlocked else { return }
+            touch()
+            showNotice(L10n.format("csv.imported", Int64(result.insertedRevisions)))
+        } catch {
+            guard generation == preview.generation, phase == .unlocked else { return }
+            self.error = L10n.format("csv.error.refresh", Int64(result.insertedRevisions))
+        }
+    }
+
     /// Opens and fully validates a backup with the single credential the user typed. Writes nothing.
     func previewBackup(_ container: BackupContainer, credential: String, requireNewVault: Bool = false) async -> BackupImportPreview? {
         guard let store, !isBusy else { return nil }

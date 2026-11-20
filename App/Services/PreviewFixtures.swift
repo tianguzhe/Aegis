@@ -4,6 +4,18 @@
 
     /// Synthetic in-memory data for visual QA; never used by a release build or synchronized.
     enum PreviewFixtures {
+        static func passwordCSV() -> String? {
+            let arguments = ProcessInfo.processInfo.arguments
+            guard arguments.contains("--preview-vault") else { return nil }
+            if arguments.contains("--preview-chrome-csv") {
+                return "name,url,username,password,note\nCSV Alpha,https://alpha.example,first,synthetic-alpha,Test note\nCSV Beta,https://beta.example,second,synthetic-beta,"
+            }
+            if arguments.contains("--preview-onepassword-csv") {
+                return "Title,Url,Username,Password,OTPAuth,Favorite,Archived,Tags,Notes\nCSV Alpha,,first,synthetic-alpha,,true,false,work,Test note\nCSV Beta,https://beta.example,second,synthetic-beta,,false,false,,"
+            }
+            return nil
+        }
+
         /// Exercises the actual decrypt/validate/select/commit flow using only an empty in-memory store.
         @MainActor static func importSelectionPreview(in session: VaultSession) async -> VaultSession.BackupImportPreview? {
             let arguments = ProcessInfo.processInfo.arguments

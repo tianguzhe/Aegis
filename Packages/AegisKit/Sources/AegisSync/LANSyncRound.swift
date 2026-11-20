@@ -10,7 +10,8 @@ protocol LANSyncSocket: Sendable {
 
 struct LANSyncRound {
     typealias Snapshot = @Sendable () async throws -> VaultSnapshot
-    typealias Apply = @Sendable (VaultSnapshot, [EncryptedRevision], Set<UUID>, Bool) async throws -> Void
+    /// Validates and commits a non-empty batch against the given snapshot.
+    typealias Apply = @Sendable (VaultSnapshot, [EncryptedRevision]) async throws -> Void
 
     private enum Message: UInt8 { case hello = 1, manifest, revision, end, done }
     private static let manifestChunk = 1024
@@ -61,7 +62,7 @@ struct LANSyncRound {
     mutating func run(snapshot: Snapshot, apply: Apply) async throws {
         let local = try await snapshot()
         let manifest = try LANSyncManifest(local)
-        let hello = manifest.headerDigest + manifest.digest + UInt32(manifest.revisions.count).lanBytes + Data([manifest.incomplete ? 1 : 0])
+        let hello = manifest.headerDigest + manifest.digest + UInt32(manifest.revisions.count).lanBytes
         if initiating {
             try await send(.hello, body: hello)
         }
@@ -69,15 +70,13 @@ struct LANSyncRound {
         guard try reader.bytes(32) == manifest.headerDigest else { throw LANSyncError.differentVault }
         let digest = try reader.bytes(32)
         let count = try Int(reader.integer(UInt32.self))
-        let flag = try reader.integer(UInt8.self)
-        guard count <= BackupLimits.maxRevisions, flag <= 1, reader.remaining == 0 else { throw LANSyncError.invalidMessage }
+        guard count <= BackupLimits.maxRevisions, reader.remaining == 0 else { throw LANSyncError.invalidMessage }
         if !initiating {
             try await send(.hello, body: hello)
         }
 
         if digest == manifest.digest {
-            guard count == manifest.revisions.count, (flag == 1) == manifest.incomplete else { throw LANSyncError.invalidMessage }
-            try await apply(local, [], Set(manifest.revisions.keys), flag == 1)
+            guard count == manifest.revisions.count else { throw LANSyncError.invalidMessage }
         } else {
             if initiating {
                 try await sendManifest(manifest.fingerprints)
@@ -102,8 +101,9 @@ struct LANSyncRound {
             if !initiating {
                 try await sendRevisions(outgoing)
             }
-            try await Self.commit(incoming, base: local, remoteIDs: Set(remote.keys), remoteIncomplete: flag == 1,
-                                  snapshot: snapshot, apply: apply)
+            if !incoming.isEmpty {
+                try await Self.commit(incoming, base: local, snapshot: snapshot, apply: apply)
+            }
         }
 
         if initiating {
@@ -120,15 +120,15 @@ struct LANSyncRound {
     /// A local save or a busy session between the snapshot and the commit is transient. Revalidate the
     /// authenticated batch against a fresh store cut instead of failing the round, which the dialer
     /// would count toward pausing the peer. Other errors and the last `vaultChanged` propagate.
-    private static func commit(_ incoming: [EncryptedRevision], base: VaultSnapshot, remoteIDs: Set<UUID>,
-                               remoteIncomplete: Bool, snapshot: Snapshot, apply: Apply) async throws
-    {
+    private static func commit(_ incoming: [EncryptedRevision], base: VaultSnapshot, snapshot: Snapshot, apply: Apply) async throws {
         var local = base, pending = incoming
         for attempt in 1 ... commitAttempts {
             // Keep the merged vault within the same limits needed for its next exchange.
             try LANSyncManifest.checkBudget(local.revisions + pending)
             do {
-                try await apply(local, pending, remoteIDs, remoteIncomplete)
+                if !pending.isEmpty {
+                    try await apply(local, pending)
+                }
                 return
             } catch VaultError.vaultChanged where attempt < commitAttempts {
                 try await Task.sleep(for: .milliseconds(200))

@@ -18,17 +18,15 @@ public struct VaultRotation: Sendable {
     /// Re-encrypts `revisions` of the vault described by `header` and `vaultKey` into a new vault
     /// protected by `newPassword`. Writes nothing; the caller commits the result atomically.
     ///
-    /// - Parameter incompleteHistory: true when some parents were never received on this device.
     /// - Throws: `VaultError.weakMasterPassword` for a new password shorter than 12 characters,
     ///   `BackupError.invalidContent` when any source record or the version graph fails
     ///   authentication, and `VaultError.damagedData` when the re-encrypted vault does not decrypt
     ///   to exactly the same items as the source.
-    public static func prepare(header: VaultHeader, revisions: [EncryptedRevision], incompleteHistory: Bool,
-                               vaultKey: Data, newPassword: String, compactHistory: Bool = false) async throws -> VaultRotation
+    public static func prepare(header: VaultHeader, revisions: [EncryptedRevision], vaultKey: Data,
+                               newPassword: String, compactHistory: Bool = false) async throws -> VaultRotation
     {
         // exportedAtMillis is unused by the migration; the payload only carries the source vault.
-        let source = try BackupPayload(exportedAtMillis: 0, incompleteHistory: incompleteHistory, vaultKey: vaultKey,
-                                       header: header, revisions: revisions)
+        let source = try BackupPayload(exportedAtMillis: 0, vaultKey: vaultKey, header: header, revisions: revisions)
         // Authenticates every source record and returns the items to compare against afterwards.
         let expected = try await BackupValidator.validate(source)
         let origin = VaultCrypto(), destination = VaultCrypto()
@@ -66,7 +64,7 @@ public struct VaultRotation: Sendable {
     }
 
     struct Lineage: Codable, Equatable, Sendable {
-        // The required ordered field rejects development snapshots that only stored an unordered set.
+        // Oldest first: an imported backup maps through every namespace after its own.
         var predecessorChain: [UUID] = []
         var retired: Set<UUID> = []
     }

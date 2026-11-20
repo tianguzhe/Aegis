@@ -18,39 +18,32 @@ public enum BackupValidator {
         }
     }
 
-    /// Parents present in the file must belong to the same item and form no cycle. Parents absent
-    /// from the file are allowed only when the exporter flagged the history as incomplete.
     static func checkGraph(_ payload: BackupPayload) throws {
-        do {
-            try VaultRevisionValidation.checkGraph(payload.revisions) { _, _ in payload.incompleteHistory }
-        } catch { throw BackupError.invalidContent }
+        do { try VaultRevisionValidation.checkGraph(payload.revisions) }
+        catch { throw BackupError.invalidContent }
     }
 }
 
 public enum VaultRevisionValidation {
-    /// Checks a manifest before it can be advertised, retaining intentional gaps in old backups.
+    /// Checks a snapshot before it can be advertised.
     public static func validateSyncSnapshot(_ revisions: [EncryptedRevision]) throws {
-        try checkGraph(revisions) { _, _ in true }
+        try checkGraph(revisions)
     }
 
-    /// Validates graph shape across the local and remote snapshots. Callers must authenticate the
-    /// records separately and commit against the same local snapshot. Throws on collisions or bad links.
-    public static func validateSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision],
-                                         remoteIDs: Set<UUID>, remoteIncomplete: Bool) throws -> [EncryptedRevision]
-    {
+    /// Validates graph shape after appending `incoming` to `local` and returns the union. Callers
+    /// must authenticate the records separately and commit against the same local snapshot.
+    /// Throws `VaultError.damagedData` on an ID already in `local` or an invalid graph.
+    public static func validateSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision]) throws -> [EncryptedRevision] {
         let localIDs = Set(local.map(\.id))
-        guard incoming.allSatisfy({ remoteIDs.contains($0.id) && !localIDs.contains($0.id) }) else {
-            throw VaultError.damagedData
-        }
+        guard incoming.allSatisfy({ !localIDs.contains($0.id) }) else { throw VaultError.damagedData }
         let combined = local + incoming
-        try checkGraph(combined) { child, parent in
-            // A remote gap cannot stand in for a revision declared by the remote manifest.
-            localIDs.contains(child.id) || (remoteIncomplete && !remoteIDs.contains(parent))
-        }
+        try checkGraph(combined)
         return combined
     }
 
-    static func checkGraph(_ revisions: [EncryptedRevision], allowsMissing: (EncryptedRevision, UUID) -> Bool) throws {
+    /// Every parent must be present and belong to the same item, and the graph must be acyclic.
+    /// History is always exchanged per whole item, so a missing parent means damaged data.
+    static func checkGraph(_ revisions: [EncryptedRevision]) throws {
         var byID: [UUID: EncryptedRevision] = [:]
         for revision in revisions {
             guard byID.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
@@ -60,11 +53,7 @@ public enum VaultRevisionValidation {
         for revision in revisions {
             var inFile = 0
             for parentID in revision.parents {
-                guard let parent = byID[parentID] else {
-                    guard allowsMissing(revision, parentID) else { throw VaultError.damagedData }
-                    continue
-                }
-                guard parent.itemID == revision.itemID else { throw VaultError.damagedData }
+                guard let parent = byID[parentID], parent.itemID == revision.itemID else { throw VaultError.damagedData }
                 children[parentID, default: []].append(revision.id)
                 inFile += 1
             }

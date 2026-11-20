@@ -319,10 +319,9 @@ final class VaultSession {
                 try lanSync.start(key: key, snapshot: { [weak self] in
                     guard let self else { throw CancellationError() }
                     return try await lanSnapshot(store: store, header: header, token: token)
-                }, apply: { [weak self] snapshot, incoming, remoteIDs, remoteIncomplete in
+                }, apply: { [weak self] snapshot, incoming in
                     guard let self else { throw CancellationError() }
-                    try await applyLANSync(store: store, snapshot: snapshot, incoming: incoming,
-                                           remoteIDs: remoteIDs, remoteIncomplete: remoteIncomplete, token: token)
+                    try await applyLANSync(store: store, snapshot: snapshot, incoming: incoming, token: token)
                 })
             } catch is CancellationError {
                 return
@@ -358,14 +357,10 @@ final class VaultSession {
         }
     }
 
-    private func applyLANSync(store: VaultStore, snapshot: VaultSnapshot, incoming: [EncryptedRevision],
-                              remoteIDs: Set<UUID>, remoteIncomplete: Bool, token: UUID) async throws
-    {
+    private func applyLANSync(store: VaultStore, snapshot: VaultSnapshot, incoming: [EncryptedRevision], token: UUID) async throws {
         try checkLANSync(token, header: snapshot.header)
-        guard !incoming.isEmpty else { return }
         guard !isBusy, pendingItemIDs.isEmpty else { throw VaultError.vaultChanged }
-        try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming, remoteIDs: remoteIDs,
-                                              remoteIncomplete: remoteIncomplete)
+        try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming)
         try checkLANSync(token, header: snapshot.header)
         guard !isBusy, pendingItemIDs.isEmpty, lanSyncCommit == nil else { throw VaultError.vaultChanged }
         let commit = Task { try await store.appendSyncedRevisions(incoming, expected: snapshot) }
@@ -581,7 +576,6 @@ final class VaultSession {
             defer { oldKey.resetBytes(in: 0 ..< oldKey.count) }
             guard token == generation, snapshot.header == header else { throw BackupFlowError.sessionChanged }
             rotation = try await VaultRotation.prepare(header: snapshot.header, revisions: snapshot.revisions,
-                                                       incompleteHistory: snapshot.hasIncompleteHistory,
                                                        vaultKey: oldKey, newPassword: new, compactHistory: compactHistory)
             guard token == generation, phase == .unlocked else { throw BackupFlowError.sessionChanged }
             // Persist the new recovery key before the commit, mirroring create().
@@ -668,11 +662,6 @@ final class VaultSession {
         }
     }
 
-    struct ExportedBackup {
-        let data: Data
-        let incompleteHistory: Bool
-    }
-
     /// Authenticated backup contents awaiting confirmation. Holds the vault key, so it is only valid
     /// in the session generation that produced it; a lock makes `commitBackup` reject it.
     struct BackupImportPreview {
@@ -735,7 +724,7 @@ final class VaultSession {
 
     /// Seals a consistent snapshot into an ABB v1 file. Consumes the export authorization.
     /// Throws `VaultError.locked` when unauthorized or when the vault locks before sealing finishes.
-    func exportBackup(backupPassword: String?, includeVaultSlot: Bool) async throws -> ExportedBackup {
+    func exportBackup(backupPassword: String?, includeVaultSlot: Bool) async throws -> Data {
         guard let store, phase == .unlocked, !isBusy, exportAuthorization == generation else { throw VaultError.locked }
         isBusy = true; defer { isBusy = false }
         exportAuthorization = nil
@@ -745,8 +734,7 @@ final class VaultSession {
         defer { key.resetBytes(in: 0 ..< key.count) }
         guard token == generation, snapshot.header == header else { throw VaultError.locked }
         let payload = try BackupPayload(exportedAtMillis: Int64((Date().timeIntervalSince1970 * 1000).rounded()),
-                                        incompleteHistory: snapshot.hasIncompleteHistory, vaultKey: key,
-                                        header: snapshot.header, revisions: snapshot.revisions)
+                                        vaultKey: key, header: snapshot.header, revisions: snapshot.revisions)
         // Do not hand out a structurally valid file containing a damaged record or graph.
         // The container self-check authenticates the envelope; this validates every revision.
         _ = try await BackupValidator.validate(payload)
@@ -756,7 +744,7 @@ final class VaultSession {
         // Locking while sealing cancels the export before any save dialog appears.
         guard token == generation else { throw VaultError.locked }
         touch()
-        return ExportedBackup(data: data, incompleteHistory: snapshot.hasIncompleteHistory)
+        return data
     }
 
     /// Importing an ABB backup into an existing vault requires it to be unlocked first (DEC-5), so a
@@ -884,23 +872,19 @@ final class VaultSession {
             } else {
                 let snapshot = try await store.snapshot()
                 guard snapshot.header == preview.destinationHeader else { throw BackupFlowError.sessionChanged }
-                let sourceRevisions: [EncryptedRevision]
                 let selected: [EncryptedRevision]
                 if preview.payload.header.vaultID == snapshot.header.vaultID {
-                    sourceRevisions = preview.revisions
                     selected = revisions
                 } else {
                     var key = try await crypto.deviceKey()
                     defer { key.resetBytes(in: 0 ..< key.count) }
                     // Reuse ciphertext that may have been committed by sync after the preview.
-                    sourceRevisions = try await BackupMigration.revisions(from: preview.payload, to: snapshot.header,
-                                                                          key: key, existing: snapshot.revisions)
-                    selected = sourceRevisions.filter { selectedItemIDs.contains($0.itemID) }
+                    let migrated = try await BackupMigration.revisions(from: preview.payload, to: snapshot.header,
+                                                                       key: key, existing: snapshot.revisions)
+                    selected = migrated.filter { selectedItemIDs.contains($0.itemID) }
                     guard Set(selected.map(\.id)) == Set(revisions.map(\.id)) else { throw BackupFlowError.sessionChanged }
                 }
-                let additions = try await crypto.validateBackupMerge(local: snapshot.revisions, selected: selected,
-                                                                     sourceIDs: Set(sourceRevisions.map(\.id)),
-                                                                     incompleteHistory: preview.payload.incompleteHistory)
+                let additions = try await crypto.validateBackupMerge(local: snapshot.revisions, selected: selected)
                 guard token == generation, phase == .unlocked else { throw BackupFlowError.sessionChanged }
                 try Task.checkCancellation()
                 let result = try await store.appendSyncedRevisions(additions, expected: snapshot)
@@ -1020,7 +1004,6 @@ final class VaultSession {
             try data.write(to: url, options: .atomic)
         #endif
         publishedAutoFill = version
-        try removeAutoFillFile(AutoFillSnapshot.legacyFilename, from: directory)
     }
 
     private func discardFailedAutoFillSnapshot(_ failure: Error, directory: URL) {
@@ -1038,7 +1021,6 @@ final class VaultSession {
         autoFillTask = nil
         publishedAutoFill = nil
         guard let directory = autoFillDirectory else { return }
-        try removeAutoFillFile(AutoFillSnapshot.legacyFilename, from: directory)
         try removeAutoFillFile(AutoFillSnapshot.filename, from: directory)
     }
 

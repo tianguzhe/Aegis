@@ -8,7 +8,6 @@ struct LANSyncManifest {
     let fingerprints: [UUID: Data]
     let digest: Data
     let headerDigest: Data
-    let incomplete: Bool
 
     init(_ snapshot: VaultSnapshot) throws {
         try snapshot.header.validate()
@@ -30,7 +29,6 @@ struct LANSyncManifest {
         self.revisions = revisions
         self.fingerprints = fingerprints
         digest = Self.digest(fingerprints)
-        incomplete = snapshot.hasIncompleteHistory
         let header = snapshot.header
         var bytesToHash = Data([1]) + header.vaultID.lanBytes + header.salt
         bytesToHash.append(header.kdf.memoryKiB.lanBytes)

@@ -9,7 +9,7 @@ struct LocalTransferTests {
         let master = "old device master password"
         let original = try await source.create(password: master)
         let revision = try await source.encrypt(VaultItem(title: "Shared vault", password: "secret"), parents: [])
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.deviceKey(),
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: source.deviceKey(),
                                               header: original.header, revisions: [revision])
         let sender = try LANPairingHandshake(role: .sender), receiver = try LANPairingHandshake(role: .receiver)
         let outgoing = try sender.complete(peerCommitment: receiver.commitment, peerOpening: receiver.opening)

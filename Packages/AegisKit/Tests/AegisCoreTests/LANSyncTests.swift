@@ -60,19 +60,21 @@ struct LANSyncTests {
         #expect(throws: LANSyncError.invalidMessage) { try LANSyncManifest.decode(body.dropLast(), vaultID: vault) }
     }
 
-    @Test func unionRejectsNewMissingEdgesAndCrossSnapshotCycles() throws {
+    @Test func unionRejectsMissingParentsDuplicatesAndCrossSnapshotCycles() throws {
         let vault = UUID(), item = UUID(), a = UUID(), b = UUID()
         let first = EncryptedRevision(vaultID: vault, itemID: item, id: a, parents: [b], ciphertext: Data())
         let cyclic = EncryptedRevision(vaultID: vault, itemID: item, id: b, parents: [a], ciphertext: Data())
         let parent = EncryptedRevision(vaultID: vault, itemID: item, id: b, parents: [], ciphertext: Data())
         #expect(throws: VaultError.damagedData) {
-            try VaultRevisionValidation.validateSyncUnion(local: [first], incoming: [cyclic], remoteIDs: [b], remoteIncomplete: false)
+            try VaultRevisionValidation.validateSyncUnion(local: [first], incoming: [cyclic])
         }
         #expect(throws: VaultError.damagedData) {
-            try VaultRevisionValidation.validateSyncUnion(local: [], incoming: [first], remoteIDs: [a], remoteIncomplete: false)
+            try VaultRevisionValidation.validateSyncUnion(local: [], incoming: [first])
         }
-        #expect(try VaultRevisionValidation.validateSyncUnion(local: [first], incoming: [parent], remoteIDs: [b], remoteIncomplete: false).count == 2)
-        #expect(try VaultRevisionValidation.validateSyncUnion(local: [], incoming: [first], remoteIDs: [a], remoteIncomplete: true).count == 1)
+        #expect(throws: VaultError.damagedData) {
+            try VaultRevisionValidation.validateSyncUnion(local: [parent], incoming: [parent])
+        }
+        #expect(try VaultRevisionValidation.validateSyncUnion(local: [first], incoming: [parent]).count == 2)
     }
 
     @Test func mergedHistoryMustFitInTheNextRound() throws {
@@ -124,10 +126,8 @@ struct LANSyncTests {
                 let snapshot = try await store.snapshot()
                 try await crypto.validateLANSyncSnapshot(snapshot.revisions)
                 return snapshot
-            }) { snapshot, revisions, ids, incomplete in
-                guard !revisions.isEmpty else { return }
-                try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: revisions,
-                                                      remoteIDs: ids, remoteIncomplete: incomplete)
+            }) { snapshot, revisions in
+                try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: revisions)
                 _ = try await store.appendSyncedRevisions(revisions, expected: snapshot)
             }
         }
@@ -275,13 +275,11 @@ struct LANSyncRecoveryTests {
             { try await store.snapshot() }
         }
         func apply(_ store: VaultStore, raceOnce: Bool) -> LANSyncRound.Apply {
-            { snapshot, incoming, remoteIDs, incomplete in
-                guard !incoming.isEmpty else { return }
+            { snapshot, incoming in
                 if raceOnce, await raced.first() {
                     try await store.saveRevision(racing)
                 }
-                try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming,
-                                                      remoteIDs: remoteIDs, remoteIncomplete: incomplete)
+                try await crypto.validateLANSyncUnion(local: snapshot.revisions, incoming: incoming)
                 _ = try await store.appendSyncedRevisions(incoming, expected: snapshot)
             }
         }

@@ -446,7 +446,6 @@ struct ExportBackupView: View {
     @State private var needsMasterPassword = false
     @State private var masterPassword = ""
     @State private var document: EncryptedBackupDocument?
-    @State private var showIncomplete = false
     @State private var showExporter = false
 
     /// Backup passwords are NFC-normalized before sealing, so confirmation compares the same form.
@@ -515,10 +514,6 @@ struct ExportBackupView: View {
             }
         }.background(AegisTheme.background).aegisSheetSize(width: 540, height: 660).vaultErrorPresenter()
             .interactiveDismissDisabled(busy).privacySensitive()
-            .alert(L10n.text("backup.incompleteTitle"), isPresented: $showIncomplete) {
-                Button(L10n.text("backup.saveAnyway")) { showExporter = true }
-                Button(L10n.text("action.cancel"), role: .cancel) { document = nil }
-            } message: { Text(L10n.text("backup.incompleteMessage")) }
             .fileExporter(isPresented: $showExporter, document: document, contentType: .aegisVaultBackup,
                           defaultFilename: "Aegis-\(Date.now.formatted(.iso8601.year().month().day()))")
             { result in
@@ -547,15 +542,11 @@ struct ExportBackupView: View {
                 }
             }
             do {
-                let result = try await session.exportBackup(backupPassword: usesBackupPassword ? password : nil,
-                                                            includeVaultSlot: !usesBackupPassword || !passwordOnly)
+                let data = try await session.exportBackup(backupPassword: usesBackupPassword ? password : nil,
+                                                          includeVaultSlot: !usesBackupPassword || !passwordOnly)
                 password = ""; confirmation = ""
-                document = EncryptedBackupDocument(data: result.data)
-                if result.incompleteHistory {
-                    showIncomplete = true
-                } else {
-                    showExporter = true
-                }
+                document = EncryptedBackupDocument(data: data)
+                showExporter = true
             } catch { session.error = error.localizedDescription }
         }
     }
@@ -735,10 +726,6 @@ struct ImportBackupView: View {
             BackupImportSelectionView(plan: preview.selection, selectedItemIDs: $selectedItemIDs, busy: session.isBusy)
             if preview.requiresEmptyVault || !preview.isCrossVault {
                 Text(L10n.text("backup.selection.syncHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
-            }
-            if preview.payload.incompleteHistory {
-                Label(L10n.text("backup.preview.incomplete"), systemImage: "exclamationmark.triangle")
-                    .aegisFont(size: 12).foregroundStyle(Color.orange).fixedSize(horizontal: false, vertical: true)
             }
             if preview.isCrossVault {
                 Label(L10n.text("backup.preview.crossVault"), systemImage: "info.circle")

@@ -34,10 +34,11 @@ public final class LANSyncService {
     public init() {}
 
     /// Advertises the vault and exchanges authenticated revisions. `snapshot` must read a strictly
-    /// authenticated store cut. `apply` must validate and transactionally commit against that cut.
+    /// authenticated store cut. `apply` receives only non-empty batches and must validate and
+    /// transactionally commit them against that cut.
     /// Synchronous listener creation errors propagate. Asynchronous failures appear in `state`.
     public func start(key: SymmetricKey, snapshot: @escaping @Sendable () async throws -> VaultSnapshot,
-                      apply: @escaping @Sendable (VaultSnapshot, [EncryptedRevision], Set<UUID>, Bool) async throws -> Void) throws
+                      apply: @escaping @Sendable (VaultSnapshot, [EncryptedRevision]) async throws -> Void) throws
     {
         stop()
         let listener = try NWListener(using: LocalVaultTransfer.parameters())

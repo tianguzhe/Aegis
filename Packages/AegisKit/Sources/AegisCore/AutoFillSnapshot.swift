@@ -23,7 +23,6 @@ public struct AutoFillCredential: Codable, Identifiable, Sendable {
 /// A derived cache for the extension. The header unwraps the same key as the main vault.
 public struct AutoFillSnapshot: Codable, Sendable {
     public static let filename = "autofill-logins-v1.aegis"
-    public static let legacyFilename = "autofill.aegis"
     public static let maxFileSize = 32 * 1024 * 1024
 
     let version: Int

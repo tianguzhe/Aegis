@@ -1,5 +1,5 @@
 import AegisCore
-import AegisStorage
+@testable import AegisStorage
 import Foundation
 import Testing
 
@@ -16,8 +16,7 @@ import Testing
         let conflict = try await crypto.encrypt(changed, parents: [first.id])
         let skipped = try await crypto.encrypt(VaultItem(kind: .note, title: "Not selected", notes: "private note"), parents: [])
         let revisions = [first, edited, conflict, skipped]
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
-                                              vaultKey: crypto.deviceKey(), header: created.header, revisions: revisions)
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: crypto.deviceKey(), header: created.header, revisions: revisions)
         let plan = try await BackupImportPlan(revisions: revisions, entries: BackupValidator.validate(payload),
                                               existingRevisionIDs: [first.id])
         #expect(plan.items.count == 2)
@@ -66,8 +65,7 @@ import Testing
         let header = try await destination.create(password: "destination selection password").header
         let a = try await source.encrypt(VaultItem(title: "Selected"), parents: [])
         let b = try await source.encrypt(VaultItem(title: "Skipped"), parents: [])
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
-                                              vaultKey: source.deviceKey(), header: original.header, revisions: [a, b])
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: source.deviceKey(), header: original.header, revisions: [a, b])
         let local = try await destination.encrypt(VaultItem(title: "Existing"), parents: [])
         let migrated = try await BackupMigration.revisions(from: payload, to: header, key: destination.deviceKey(), existing: [local])
         let plan = try await BackupImportPlan(revisions: migrated, entries: destination.entries(from: migrated))

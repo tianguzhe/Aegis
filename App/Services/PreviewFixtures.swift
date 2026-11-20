@@ -38,7 +38,7 @@
                 for item in items {
                     try await revisions.append(source.encrypt(item, parents: []))
                 }
-                let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
+                let payload = try await BackupPayload(exportedAtMillis: 0,
                                                       vaultKey: source.deviceKey(), header: created.header, revisions: revisions)
                 let data = try BackupCryptor.seal(payload, backupPassword: nil, includeVaultSlot: true)
                 await source.lock()

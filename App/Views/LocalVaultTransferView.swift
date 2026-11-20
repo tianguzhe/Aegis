@@ -127,10 +127,6 @@ struct LocalVaultTransferView: View {
                 Text(L10n.format("lan.receive.items", Int64(preview.itemCount), Int64(preview.trashedCount)))
                     .aegisFont(size: 13).foregroundStyle(AegisTheme.text)
                 Text(L10n.text("lan.receive.identityHint")).aegisFont(size: 12).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
-                if preview.payload.incompleteHistory {
-                    Label(L10n.text("backup.preview.incomplete"), systemImage: "exclamationmark.triangle")
-                        .aegisFont(size: 12).foregroundStyle(AegisTheme.gold)
-                }
             }.aegisCard()
             BackupImportSelectionView(plan: preview.selection, selectedItemIDs: $selectedItemIDs, busy: busy)
             Text(L10n.text("backup.selection.syncHint")).aegisFont(size: 11).lineSpacing(4).foregroundStyle(AegisTheme.secondary)
@@ -244,7 +240,7 @@ struct LocalVaultTransferView: View {
         }
         try Task.checkCancellation()
         guard token == operationID, session.phase == .unlocked else { throw CancellationError() }
-        return try await session.exportBackup(backupPassword: credential, includeVaultSlot: true).data
+        return try await session.exportBackup(backupPassword: credential, includeVaultSlot: true)
     }
 
     private func beginOffering() {

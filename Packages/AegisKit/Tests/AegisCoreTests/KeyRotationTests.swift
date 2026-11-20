@@ -44,8 +44,7 @@ import Testing
     }
 
     private static func rotate(_ source: Source, to password: String = newPassword) async throws -> VaultRotation {
-        try await VaultRotation.prepare(header: source.header, revisions: source.revisions, incompleteHistory: false,
-                                        vaultKey: source.vaultKey, newPassword: password)
+        try await VaultRotation.prepare(header: source.header, revisions: source.revisions, vaultKey: source.vaultKey, newPassword: password)
     }
 
     /// Item contents with IDs removed, since rotation maps every ID into the new vault's namespace.
@@ -110,12 +109,12 @@ import Testing
 
     @Test func compactionPreservesVisibleStateAndCarriesItsImportBoundaryInBackups() async throws {
         let source = try await Self.makeSource()
-        let oldBackup = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.vaultKey,
+        let oldBackup = try BackupPayload(exportedAtMillis: 0, vaultKey: source.vaultKey,
                                           header: source.header, revisions: source.revisions)
         let compacted = try await VaultRotation.prepare(header: source.header, revisions: source.revisions,
-                                                        incompleteHistory: false, vaultKey: source.vaultKey,
+                                                        vaultKey: source.vaultKey,
                                                         newPassword: Self.newPassword, compactHistory: true)
-        let backup = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: compacted.vaultKey,
+        let backup = try BackupPayload(exportedAtMillis: 0, vaultKey: compacted.vaultKey,
                                        header: compacted.header, revisions: compacted.revisions)
         let reopened = try BackupPayload.decode(backup.encoded())
         let visible = try await BackupValidator.validate(reopened)
@@ -147,8 +146,7 @@ import Testing
     @Test func ancestorBackupsFollowAllRotationsAndRespectCompaction() async throws {
         let source = try await Self.makeSource()
         let first = try await Self.rotate(source)
-        let second = try await VaultRotation.prepare(header: first.header, revisions: first.revisions, incompleteHistory: false,
-                                                     vaultKey: first.vaultKey, newPassword: Self.newPassword)
+        let second = try await VaultRotation.prepare(header: first.header, revisions: first.revisions, vaultKey: first.vaultKey, newPassword: Self.newPassword)
         let target = try VaultStore.make(inMemory: true)
         try await target.restoreNewVault(header: second.header, revisions: second.revisions)
         let crypto = VaultCrypto()
@@ -157,9 +155,9 @@ import Testing
         var edited = current.item; edited.password = "after two rotations"
         try await target.saveRevision(crypto.encrypt(edited, parents: [current.id]))
         let before = try await target.snapshot()
-        let oldest = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: source.vaultKey,
+        let oldest = try BackupPayload(exportedAtMillis: 0, vaultKey: source.vaultKey,
                                        header: source.header, revisions: source.revisions.filter { $0.id != source.revisions[4].id })
-        let middle = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: first.vaultKey,
+        let middle = try BackupPayload(exportedAtMillis: 0, vaultKey: first.vaultKey,
                                        header: first.header, revisions: first.revisions)
         for backup in [oldest, middle] {
             let migrated = try await BackupMigration.revisions(from: backup, to: second.header, key: second.vaultKey,
@@ -171,16 +169,14 @@ import Testing
         #expect(after.filter { $0.item.title == "Bank" }.count == 1)
         #expect(!after.contains { $0.item.title == "Deleted" })
 
-        let compacted = try await VaultRotation.prepare(header: second.header, revisions: before.revisions, incompleteHistory: false,
-                                                        vaultKey: second.vaultKey, newPassword: Self.newPassword, compactHistory: true)
-        let latest = try await VaultRotation.prepare(header: compacted.header, revisions: compacted.revisions, incompleteHistory: false,
-                                                     vaultKey: compacted.vaultKey, newPassword: Self.newPassword)
+        let compacted = try await VaultRotation.prepare(header: second.header, revisions: before.revisions, vaultKey: second.vaultKey, newPassword: Self.newPassword, compactHistory: true)
+        let latest = try await VaultRotation.prepare(header: compacted.header, revisions: compacted.revisions, vaultKey: compacted.vaultKey, newPassword: Self.newPassword)
         for backup in [oldest, middle] {
             await #expect(throws: VaultError.retiredVaultHistory) {
                 try await BackupMigration.revisions(from: backup, to: latest.header, key: latest.vaultKey, existing: latest.revisions)
             }
         }
-        let postCompaction = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: compacted.vaultKey,
+        let postCompaction = try BackupPayload(exportedAtMillis: 0, vaultKey: compacted.vaultKey,
                                                header: compacted.header, revisions: compacted.revisions)
         let migrated = try await BackupMigration.revisions(from: postCompaction, to: latest.header, key: latest.vaultKey,
                                                            existing: latest.revisions)
@@ -250,8 +246,7 @@ import Testing
         let rotation = try await Self.rotate(source)
         try await source.store.replaceVault(expected: snapshot, header: rotation.header, revisions: rotation.revisions)
 
-        let oldBackup = try BackupPayload(exportedAtMillis: 1_793_923_200_000, incompleteHistory: false,
-                                          vaultKey: source.vaultKey, header: source.header, revisions: source.revisions)
+        let oldBackup = try BackupPayload(exportedAtMillis: 1_793_923_200_000, vaultKey: source.vaultKey, header: source.header, revisions: source.revisions)
         let migrated = try await BackupMigration.revisions(from: oldBackup, to: rotation.header, key: rotation.vaultKey,
                                                            existing: source.store.revisions())
         let result = try await source.store.restore(header: rotation.header, revisions: migrated)

@@ -30,8 +30,7 @@ import Testing
 
     private static func exportFile(from source: Source) async throws -> Data {
         let snapshot = try await source.store.snapshot()
-        let payload = try await BackupPayload(exportedAtMillis: 1_793_923_200_000, incompleteHistory: snapshot.hasIncompleteHistory,
-                                              vaultKey: source.crypto.deviceKey(), header: snapshot.header,
+        let payload = try await BackupPayload(exportedAtMillis: 1_793_923_200_000, vaultKey: source.crypto.deviceKey(), header: snapshot.header,
                                               revisions: snapshot.revisions)
         return try BackupCryptor.seal(payload, backupPassword: nil, includeVaultSlot: true)
     }
@@ -85,40 +84,32 @@ import Testing
         let source = try await Self.makeSource()
         let target = try VaultStore.make(inMemory: true)
         let (parent, child, unrelated) = (source.revisions[0], source.revisions[1], source.revisions[2])
-        try await target.restoreNewVault(header: source.header, revisions: [child])
+        try await target.restoreNewVault(header: source.header, revisions: [parent])
         let before = try await target.snapshot()
-        #expect(before.hasIncompleteHistory)
-        let additions = try await source.crypto.validateBackupMerge(local: before.revisions, selected: [child, parent],
-                                                                    sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false)
-        #expect(additions == [parent])
+        let additions = try await source.crypto.validateBackupMerge(local: before.revisions, selected: [child, parent])
+        #expect(additions == [child])
         try await target.saveRevision(unrelated)
         await #expect(throws: VaultError.vaultChanged) {
             try await target.appendSyncedRevisions(additions, expected: before)
         }
         let fresh = try await target.snapshot()
-        #expect(Set(fresh.revisions.map(\.id)) == [child.id, unrelated.id])
-        let retry = try await source.crypto.validateBackupMerge(local: fresh.revisions, selected: [child, parent],
-                                                                sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false)
+        #expect(Set(fresh.revisions.map(\.id)) == [parent.id, unrelated.id])
+        let retry = try await source.crypto.validateBackupMerge(local: fresh.revisions, selected: [child, parent])
         #expect(try await target.appendSyncedRevisions(retry, expected: fresh).insertedRevisions == 1)
         let complete = try await target.snapshot()
-        #expect(!complete.hasIncompleteHistory)
-        #expect(try await source.crypto.validateBackupMerge(local: complete.revisions, selected: source.revisions,
-                                                            sourceIDs: [parent.id, child.id, unrelated.id], incompleteHistory: false).isEmpty)
+        #expect(try await source.crypto.validateBackupMerge(local: complete.revisions, selected: source.revisions).isEmpty)
     }
 
-    @Test func selectedMergeDoesNotTreatAnOmittedSourceParentAsMissingHistory() async throws {
+    @Test func selectedMergeRejectsMissingParentsAndChangedCiphertext() async throws {
         let source = try await Self.makeSource()
         let parent = source.revisions[0], child = source.revisions[1]
         await #expect(throws: VaultError.damagedData) {
-            try await source.crypto.validateBackupMerge(local: [], selected: [child], sourceIDs: [parent.id, child.id], incompleteHistory: true)
+            try await source.crypto.validateBackupMerge(local: [], selected: [child])
         }
-        let partial = try await source.crypto.validateBackupMerge(local: [], selected: [child], sourceIDs: [child.id], incompleteHistory: true)
-        #expect(partial == [child])
         let sameItem = try await source.crypto.decrypt(parent)
         let differentCiphertext = try await source.crypto.encrypt(sameItem, parents: [], revisionID: parent.id)
         await #expect(throws: VaultError.damagedData) {
-            try await source.crypto.validateBackupMerge(local: [parent], selected: [differentCiphertext, child],
-                                                        sourceIDs: [parent.id, child.id], incompleteHistory: false)
+            try await source.crypto.validateBackupMerge(local: [parent], selected: [differentCiphertext, child])
         }
     }
 
@@ -179,7 +170,7 @@ import Testing
         #expect(afterRepeat.first { $0.item.title == "Bank" }?.item.password == "edited on destination")
     }
 
-    @Test func migrationPreservesConflictsTrashDeletionMarkersAndMissingParents() async throws {
+    @Test func migrationPreservesConflictsTrashAndDeletionMarkers() async throws {
         let source = try await Self.makeSource()
         let original = try await source.crypto.decrypt(source.revisions[0])
         var branch = original; branch.password = "offline branch"
@@ -189,10 +180,8 @@ import Testing
         var deletedNote = try await source.crypto.decrypt(source.revisions[2])
         deletedNote.permanentlyDeletedAt = Date()
         let deletion = try await source.crypto.encrypt(deletedNote, parents: [source.revisions[2].id])
-        let orphan = try await source.crypto.encrypt(VaultItem(title: "Partial history"), parents: [UUID()])
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: true,
-                                              vaultKey: source.crypto.deviceKey(), header: source.header,
-                                              revisions: source.revisions + [conflict, trashed, deletion, orphan])
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: source.crypto.deviceKey(), header: source.header,
+                                              revisions: source.revisions + [conflict, trashed, deletion])
         let targetCrypto = VaultCrypto()
         let local = try await targetCrypto.create(password: Self.master)
         let migrated = try await BackupMigration.revisions(from: payload, to: local.header,
@@ -202,16 +191,14 @@ import Testing
         #expect(entries.filter { $0.item.title == "Bank" }.allSatisfy { $0.isConflict })
         #expect(entries.first { $0.item.title == "Trash" }?.item.deletedAt == trash.deletedAt)
         #expect(!entries.contains { $0.item.title == "Note" })
-        #expect(entries.contains { $0.item.title == "Partial history" })
-        let migratedPayload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: true,
-                                                      vaultKey: targetCrypto.deviceKey(), header: local.header, revisions: migrated)
-        #expect(try await BackupValidator.validate(migratedPayload).count == 4)
+        let migratedPayload = try await BackupPayload(exportedAtMillis: 0, vaultKey: targetCrypto.deviceKey(),
+                                                      header: local.header, revisions: migrated)
+        #expect(try await BackupValidator.validate(migratedPayload).count == 3)
     }
 
     @Test func migrationRejectsTamperedSourceAndConflictingDestination() async throws {
         let source = try await Self.makeSource()
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
-                                              vaultKey: source.crypto.deviceKey(), header: source.header, revisions: source.revisions)
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: source.crypto.deviceKey(), header: source.header, revisions: source.revisions)
         let crypto = VaultCrypto()
         let local = try await crypto.create(password: Self.master)
         let key = try await crypto.deviceKey()
@@ -227,7 +214,7 @@ import Testing
         var ciphertext = first.ciphertext; ciphertext[ciphertext.startIndex] ^= 1
         damaged.append(EncryptedRevision(vaultID: first.vaultID, itemID: first.itemID, id: first.id,
                                          parents: first.parents, ciphertext: ciphertext))
-        let invalid = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: payload.vaultKey,
+        let invalid = try BackupPayload(exportedAtMillis: 0, vaultKey: payload.vaultKey,
                                         header: source.header, revisions: damaged)
         await #expect(throws: BackupError.invalidContent) {
             try await BackupMigration.revisions(from: invalid, to: local.header, key: key, existing: [])
@@ -266,7 +253,7 @@ import Testing
             == RestoreResult(createdHeader: false, insertedRevisions: 3))
     }
 
-    @Test func snapshotReportsIncompleteHistory() async throws {
+    @Test func snapshotReadsTheHeaderWithEveryRevision() async throws {
         let empty = try VaultStore.make(inMemory: true)
         await #expect(throws: VaultError.locked) { try await empty.snapshot() }
 
@@ -274,10 +261,5 @@ import Testing
         let complete = try await source.store.snapshot()
         #expect(complete.header == source.header)
         #expect(complete.revisions.count == 3)
-        #expect(!complete.hasIncompleteHistory)
-        // A child synced before its parent leaves the local history open.
-        let orphan = try await source.crypto.encrypt(VaultItem(title: "Orphan"), parents: [UUID()])
-        try await source.store.saveRevision(orphan)
-        #expect(try await source.store.snapshot().hasIncompleteHistory)
     }
 }

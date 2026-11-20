@@ -72,8 +72,6 @@
 "backup.importAction" = "验证并导入";
 "backup.importTitle" = "恢复你的保险库";
 "backup.importing" = "正在验证并导入…";
-"backup.incompleteMessage" = "部分历史版本尚未同步到本设备，此备份不包含它们。";
-"backup.incompleteTitle" = "备份不完整";
 "backup.masterFallback" = "此设备未设置锁屏密码，请输入主密码以确认导出。";
 "backup.mode.password.detail" = "另设一个密码保护此文件。它能打开完整保险库，请像主密码一样妥善保管。";
 "backup.mode.password.title" = "设置备份密码";
@@ -87,7 +85,6 @@
 "backup.preview.conflicts" = "冲突";
 "backup.preview.crossVault" = "此备份来自另一个保险库。确认后会将条目和历史加密导入当前保险库，保留本地已有数据。导入后仍使用当前保险库的主密码或恢复密钥解锁；重复导入不会新增相同版本。";
 "backup.preview.exportedAt" = "导出时间";
-"backup.preview.incomplete" = "此备份的历史不完整，缺少导出设备当时未同步的版本。";
 "backup.preview.items" = "条目";
 "backup.preview.new" = "将新增的版本";
 "backup.preview.passwordNote" = "此密码仅用于打开备份。恢复后仍使用原保险库的主密码或恢复密钥进行日常解锁。";
@@ -96,7 +93,6 @@
 "backup.preview.trashed" = "回收站";
 "backup.readingFile" = "正在读取备份…";
 "backup.restoredWithIssue" = "已恢复到本机，但后续步骤未完成：%@";
-"backup.saveAnyway" = "仍然保存";
 "backup.selected" = "已选择备份文件";
 "backup.selection.allTypes" = "全部类型";
 "backup.selection.chooseHint" = "请至少选择一项数据后再导入。";

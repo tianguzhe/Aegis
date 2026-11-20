@@ -44,8 +44,7 @@ import Testing
         defer { sender.stop(); receiver.stop() }
         let crypto = VaultCrypto()
         let header = try await crypto.create(password: "synthetic pairing master password").header
-        let payload = try await BackupPayload(exportedAtMillis: 0, incompleteHistory: false,
-                                              vaultKey: crypto.deviceKey(), header: header, revisions: [])
+        let payload = try await BackupPayload(exportedAtMillis: 0, vaultKey: crypto.deviceKey(), header: header, revisions: [])
         var exports = 0
         try sender.offerPairing { credential in
             exports += 1

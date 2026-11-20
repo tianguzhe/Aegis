@@ -43,6 +43,8 @@ public actor VaultCrypto {
     private var key: SymmetricKey?
     private var vaultID: UUID?
     private var decryptedRevisions: [UUID: (revision: EncryptedRevision, item: VaultItem)] = [:]
+    /// Leaves room for the AES-GCM nonce and tag within `BackupLimits.sealedRevisionLength`.
+    static let maxItemLength = 262_144
     public init() {}
 
     public func create(password: String) throws -> (header: VaultHeader, recoveryKey: String) {
@@ -162,7 +164,7 @@ public actor VaultCrypto {
         let id = revisionID
         var plaintext = try JSONEncoder().encode(item)
         defer { plaintext.resetBytes(in: 0 ..< plaintext.count) }
-        guard plaintext.count <= 262_144 else { throw VaultError.oversizedRecord }
+        guard plaintext.count <= Self.maxItemLength else { throw VaultError.oversizedRecord }
         let aad = EncryptedRevision.aad(vaultID: vaultID, itemID: item.id, id: id, parents: parents)
         let sealed = try AES.GCM.seal(plaintext, using: key, authenticating: aad)
         return EncryptedRevision(vaultID: vaultID, itemID: item.id, id: id, parents: parents, ciphertext: sealed.combined!)
@@ -172,7 +174,7 @@ public actor VaultCrypto {
         guard let key, let vaultID else { throw VaultError.locked }
         guard revision.formatVersion == 1 else { throw VaultError.unsupportedFormat }
         guard revision.vaultID == vaultID else { throw VaultError.differentVault }
-        guard revision.ciphertext.count <= 300_000 else { throw VaultError.oversizedRecord }
+        guard revision.ciphertext.count <= BackupLimits.sealedRevisionLength.upperBound else { throw VaultError.oversizedRecord }
         do {
             var plaintext = try AES.GCM.open(AES.GCM.SealedBox(combined: revision.ciphertext), using: key,
                                              authenticating: revision.authenticatedData)
@@ -200,25 +202,17 @@ public actor VaultCrypto {
 
     /// Authenticates all versions in the graph that would result from the incoming batch.
     /// The caller must commit against the same local snapshot or retry with a fresh one.
-    public func validateLANSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision],
-                                     remoteIDs: Set<UUID>, remoteIncomplete: Bool) throws
-    {
-        let union = try VaultRevisionValidation.validateSyncUnion(local: local, incoming: incoming, remoteIDs: remoteIDs,
-                                                                  remoteIncomplete: remoteIncomplete)
-        _ = try cachedEntries(from: union)
+    public func validateLANSyncUnion(local: [EncryptedRevision], incoming: [EncryptedRevision]) throws {
+        _ = try cachedEntries(from: VaultRevisionValidation.validateSyncUnion(local: local, incoming: incoming))
     }
 
     /// Returns the new revisions from a confirmed ABB selection after authenticating the merged graph.
     /// - Parameters:
     ///   - local: Revisions from the destination snapshot used for the eventual commit.
     ///   - selected: Chosen revisions in destination identities, including any hidden rotation record.
-    ///   - sourceIDs: All source revision IDs in destination identities, before applying the selection.
-    ///   - incompleteHistory: Whether the authenticated backup declared missing parents.
     /// - Throws: `VaultError.damagedData` on inconsistent revisions or graph links, or `VaultError.locked` without a key.
     /// Commit the returned additions against the same snapshot to preserve the validated union.
-    public func validateBackupMerge(local: [EncryptedRevision], selected: [EncryptedRevision],
-                                    sourceIDs: Set<UUID>, incompleteHistory: Bool) throws -> [EncryptedRevision]
-    {
+    public func validateBackupMerge(local: [EncryptedRevision], selected: [EncryptedRevision]) throws -> [EncryptedRevision] {
         var known: [UUID: EncryptedRevision] = [:]
         for revision in local {
             guard known.updateValue(revision, forKey: revision.id) == nil else { throw VaultError.damagedData }
@@ -232,7 +226,7 @@ public actor VaultCrypto {
                 additions.append(revision)
             }
         }
-        try validateLANSyncUnion(local: local, incoming: additions, remoteIDs: sourceIDs, remoteIncomplete: incompleteHistory)
+        try validateLANSyncUnion(local: local, incoming: additions)
         return additions
     }
 

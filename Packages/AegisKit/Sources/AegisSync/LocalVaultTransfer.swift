@@ -74,7 +74,7 @@ public final class LocalVaultTransfer {
         browser.start(queue: .global(qos: .userInitiated))
     }
 
-    /// Starts a v2 invitation. `export` runs with the ABB credential after both peers approve.
+    /// Starts an invitation. `export` runs with the ABB credential after both peers approve.
     /// Listener setup errors propagate and end the invitation.
     public func offerPairing(export: @escaping @MainActor (String) async throws -> Data) throws {
         stop()
@@ -117,7 +117,7 @@ public final class LocalVaultTransfer {
         }
     }
 
-    /// Connects to a v2 discovery result. The caller must compare the displayed number on both devices.
+    /// Connects to a discovered invitation. The caller must compare the displayed number on both devices.
     public func receivePairing(from peer: Peer) {
         stop()
         runPairing(NWConnection(to: peer.endpoint, using: Self.parameters()), role: .receiver)

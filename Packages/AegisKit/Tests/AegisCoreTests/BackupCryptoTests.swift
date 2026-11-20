@@ -15,9 +15,8 @@ import Testing
         let vaultKey: Data
         let revisions: [EncryptedRevision]
 
-        func payload(vaultKey key: Data? = nil, incomplete: Bool = false) throws -> BackupPayload {
-            try BackupPayload(exportedAtMillis: 1000, incompleteHistory: incomplete, vaultKey: key ?? vaultKey,
-                              header: header, revisions: revisions)
+        func payload(vaultKey key: Data? = nil) throws -> BackupPayload {
+            try BackupPayload(exportedAtMillis: 1000, vaultKey: key ?? vaultKey, header: header, revisions: revisions)
         }
     }
 
@@ -185,7 +184,7 @@ import Testing
             let masterWrapNonce, recoveryWrapNonce: String
         }
 
-        struct Payload: Decodable { let exportedAtMillis: Int64; let incompleteHistory: Bool }
+        struct Payload: Decodable { let exportedAtMillis: Int64 }
         struct Revision: Decodable {
             let itemID, revisionID: UUID; let nonce, title, username, password: String; let modifiedAtReferenceSeconds: Double
         }
@@ -218,7 +217,7 @@ import Testing
         let sealedItem = try AES.GCM.seal(encoder.encode(item), using: SymmetricKey(data: vaultKey),
                                           nonce: AES.GCM.Nonce(data: hex(spec.revision.nonce)), authenticating: aad).combined!
         let revision = EncryptedRevision(vaultID: id, itemID: item.id, id: spec.revision.revisionID, parents: [], ciphertext: sealedItem)
-        let payload = try BackupPayload(exportedAtMillis: spec.payload.exportedAtMillis, incompleteHistory: spec.payload.incompleteHistory,
+        let payload = try BackupPayload(exportedAtMillis: spec.payload.exportedAtMillis,
                                         vaultKey: vaultKey, header: header, revisions: [revision])
         var stream = DeterministicRandom()
         let file = try BackupCryptor.seal(payload, backupPassword: spec.backupPassword, includeVaultSlot: true,
@@ -264,7 +263,7 @@ import Testing
                                            parents: [], ciphertext: revisions[2].ciphertext)
         for replacement in [tampered, relabelled] {
             revisions[2] = replacement
-            let payload = try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: vault.vaultKey,
+            let payload = try BackupPayload(exportedAtMillis: 0, vaultKey: vault.vaultKey,
                                             header: vault.header, revisions: revisions)
             await #expect(throws: BackupError.invalidContent) { try await BackupValidator.validate(payload) }
         }
@@ -278,9 +277,9 @@ import Testing
             let sealed = try #require(try AES.GCM.seal(JSONEncoder().encode(item), using: key, authenticating: aad).combined)
             return EncryptedRevision(vaultID: vaultID, itemID: item.id, id: id, parents: parents, ciphertext: sealed)
         }
-        func validate(_ revisions: [EncryptedRevision], incomplete: Bool = false) async throws -> [VaultEntry] {
-            try await BackupValidator.validate(BackupPayload(exportedAtMillis: 0, incompleteHistory: incomplete,
-                                                             vaultKey: vault.vaultKey, header: vault.header, revisions: revisions))
+        func validate(_ revisions: [EncryptedRevision]) async throws -> [VaultEntry] {
+            try await BackupValidator.validate(BackupPayload(exportedAtMillis: 0, vaultKey: vault.vaultKey,
+                                                             header: vault.header, revisions: revisions))
         }
         let item = VaultItem(title: "Looped"), a = UUID(), b = UUID(), c = UUID()
         // Two- and three-node cycles would otherwise hide the item entirely.
@@ -294,10 +293,9 @@ import Testing
         // A parent from another item.
         let other = try revision(VaultItem(title: "Other"), id: c, parents: [])
         await #expect(throws: BackupError.invalidContent) { try await validate([other, revision(item, id: a, parents: [c])]) }
-        // A parent missing from the file is allowed only when the history is flagged incomplete.
+        // Item histories are always exported whole, so a parent missing from the file is damage.
         let orphan = try revision(item, id: a, parents: [UUID()])
         await #expect(throws: BackupError.invalidContent) { try await validate([orphan]) }
-        #expect(try await validate([orphan], incomplete: true).map(\.item.title) == ["Looped"])
     }
 }
 

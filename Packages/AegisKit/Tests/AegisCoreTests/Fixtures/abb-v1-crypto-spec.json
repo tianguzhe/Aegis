@@ -15,8 +15,7 @@
     "recoveryWrapNonce": "222222222222222222222222"
   },
   "payload": {
-    "exportedAtMillis": 1793923200123,
-    "incompleteHistory": false
+    "exportedAtMillis": 1793923200123
   },
   "revision": {
     "itemID": "7C9E6679-7425-40DE-944B-E07FC1F90AE7",

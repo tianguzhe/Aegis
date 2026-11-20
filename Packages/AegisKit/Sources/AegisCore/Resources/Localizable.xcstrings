@@ -3307,39 +3307,6 @@
         }
       }
     },
-    "backup.incompleteTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "备份不完整"
-          }
-        }
-      }
-    },
-    "backup.incompleteMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "部分历史版本尚未同步到本设备，此备份不包含它们。"
-          }
-        }
-      }
-    },
-    "backup.saveAnyway": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "仍然保存"
-          }
-        }
-      }
-    },
     "backup.credential.vault": {
       "extractionState": "manual",
       "localizations": {
@@ -3479,17 +3446,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "将新增的版本"
-          }
-        }
-      }
-    },
-    "backup.preview.incomplete": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此备份的历史不完整，缺少导出设备当时未同步的版本。"
           }
         }
       }

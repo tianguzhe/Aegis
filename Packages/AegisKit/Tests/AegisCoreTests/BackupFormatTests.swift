@@ -23,7 +23,7 @@ struct BackupFormatTests {
 
         struct Revision: Decodable { let itemID, revisionID: UUID; let parents: [UUID]; let sealed: String }
         struct Payload: Decodable {
-            let exportedAtMillis: Int64; let incompleteHistory: Bool; let vaultKey: String; let revisions: [Revision]
+            let exportedAtMillis: Int64; let vaultKey: String; let revisions: [Revision]
         }
 
         let vault: Vault; let header: Header; let tag: String; let payload: Payload
@@ -61,7 +61,7 @@ struct BackupFormatTests {
         let revisions = spec.payload.revisions.map {
             EncryptedRevision(vaultID: header.vaultID, itemID: $0.itemID, id: $0.revisionID, parents: $0.parents, ciphertext: hex($0.sealed))
         }
-        return try BackupPayload(exportedAtMillis: spec.payload.exportedAtMillis, incompleteHistory: spec.payload.incompleteHistory,
+        return try BackupPayload(exportedAtMillis: spec.payload.exportedAtMillis,
                                  vaultKey: hex(spec.payload.vaultKey), header: header, revisions: revisions)
     }
 
@@ -94,6 +94,19 @@ struct BackupFormatTests {
             "0B000000-0000-4000-8000-000000000001", "A0000000-0000-4000-8000-000000000002", "F0000000-0000-4000-8000-000000000003",
         ])
         #expect(try decoded.encoded() == encoded)
+    }
+
+    @Test func payloadRejectsReservedFlags() throws {
+        var encoded = try Self.specPayload().encoded()
+        // The flags field follows the 8-byte export time; no bit is defined.
+        #expect(encoded[8 ..< 12] == Data(count: 4))
+        for bit in [0, 31] {
+            var flagged = encoded
+            flagged[8 + bit / 8] |= UInt8(1 << (bit % 8))
+            #expect(throws: BackupError.malformed) { try BackupPayload.decode(flagged) }
+        }
+        encoded[8] = 0
+        _ = try BackupPayload.decode(encoded)
     }
 
     // MARK: Header layout
@@ -208,7 +221,7 @@ struct BackupFormatTests {
         let data = try Self.specPayload().encoded()
         #expect(data.count == 65536)
         #expect(slice(data, 0, 8) == hex("7BB427AEA1010000"))
-        #expect(slice(data, 8, 4) == hex("01000000"))
+        #expect(slice(data, 8, 4) == hex("00000000"))
         #expect(slice(data, 12, 16) == hex("6F9619FF8B86D011B42D00C04FC964FF"))
         #expect(slice(data, 28, 32) == hex(String(repeating: "99", count: 32)))
         #expect(slice(data, 76, 12) == hex("00000200" + "04000000" + "02000000"))
@@ -219,7 +232,7 @@ struct BackupFormatTests {
         #expect(slice(data, 246, 4) == hex("1C000000"))
         // Third record (F0…): parents written in ascending byte order.
         #expect(slice(data, 404, 2) == hex("0200"))
-        #expect(slice(data, 406, 16) == hex("0A000000000040008000000000000009"))
+        #expect(slice(data, 406, 16) == hex("0B000000000040008000000000000001"))
         #expect(slice(data, 422, 16) == hex("A0000000000040008000000000000002"))
         #expect(slice(data, 438, 4) == hex("21000000"))
         #expect(data[475...].allSatisfy { $0 == 0 })
@@ -257,7 +270,7 @@ struct BackupFormatTests {
             EncryptedRevision(vaultID: vault ?? header.vaultID, itemID: UUID(), id: id, parents: parents, ciphertext: Data(count: size))
         }
         func make(_ revisions: [EncryptedRevision], key: Data = key) throws -> BackupPayload {
-            try BackupPayload(exportedAtMillis: 0, incompleteHistory: false, vaultKey: key, header: header, revisions: revisions)
+            try BackupPayload(exportedAtMillis: 0, vaultKey: key, header: header, revisions: revisions)
         }
         let shared = UUID()
         #expect(throws: BackupError.malformed) { try make([], key: Data(count: 31)) }
@@ -268,7 +281,7 @@ struct BackupFormatTests {
         #expect(throws: BackupError.limitExceeded) { try make([revision(size: 300_001)]) }
         #expect(throws: BackupError.limitExceeded) { try make([revision(parents: (0 ..< 1001).map { _ in UUID() })]) }
         #expect(throws: BackupError.malformed) {
-            try BackupPayload(exportedAtMillis: -1, incompleteHistory: false, vaultKey: key, header: header, revisions: [])
+            try BackupPayload(exportedAtMillis: -1, vaultKey: key, header: header, revisions: [])
         }
 
         let empty = try make([]).encoded()
@@ -285,7 +298,7 @@ struct BackupFormatTests {
         let first = try await crypto.encrypt(VaultItem(title: "First"), parents: [])
         var edited = VaultItem(title: "Edited"); edited.id = try await crypto.decrypt(first).id
         let second = try await crypto.encrypt(edited, parents: [first.id])
-        let payload = try await BackupPayload(exportedAtMillis: 1, incompleteHistory: false, vaultKey: crypto.deviceKey(),
+        let payload = try await BackupPayload(exportedAtMillis: 1, vaultKey: crypto.deviceKey(),
                                               header: created.header, revisions: [second, first])
         let decoded = try BackupPayload.decode(payload.encoded())
         #expect(decoded.header == created.header)

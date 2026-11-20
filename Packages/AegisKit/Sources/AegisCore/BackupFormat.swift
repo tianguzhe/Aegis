@@ -249,21 +249,16 @@ public struct BackupContainer: Sendable {
 public struct BackupPayload: Equatable, Sendable {
     /// Latest representable instant, 9999-12-31T23:59:59.999Z.
     public static let maxExportedAtMillis: Int64 = 253_402_300_799_999
-    static let incompleteHistoryFlag: UInt32 = 1
     /// Smallest record: two UUIDs, an empty parent list and the shortest sealed revision.
     static let minRecordLength = 16 + 16 + 2 + 4 + BackupLimits.sealedRevisionLength.lowerBound
 
     public let exportedAtMillis: Int64
-    /// The exporting device lacked some parent revisions, so the history is not closed.
-    public let incompleteHistory: Bool
     public let vaultKey: Data
     public let header: VaultHeader
     /// Revisions in canonical order: ascending revision ID bytes.
     public let revisions: [EncryptedRevision]
 
-    public init(exportedAtMillis: Int64, incompleteHistory: Bool, vaultKey: Data, header: VaultHeader,
-                revisions: [EncryptedRevision]) throws
-    {
+    public init(exportedAtMillis: Int64, vaultKey: Data, header: VaultHeader, revisions: [EncryptedRevision]) throws {
         guard (0 ... Self.maxExportedAtMillis).contains(exportedAtMillis), vaultKey.count == 32 else { throw BackupError.malformed }
         do { try header.kdf.validate() } catch { throw BackupError.unsupportedParameters }
         guard header.formatVersion == 1, header.salt.count == BackupHeader.saltLength, header.wrappedKey.count == 60,
@@ -279,7 +274,7 @@ public struct BackupPayload: Equatable, Sendable {
                   revision.ciphertext.count <= BackupLimits.sealedRevisionLength.upperBound else { throw BackupError.limitExceeded }
             guard revision.ciphertext.count >= BackupLimits.sealedRevisionLength.lowerBound else { throw BackupError.malformed }
         }
-        self.exportedAtMillis = exportedAtMillis; self.incompleteHistory = incompleteHistory
+        self.exportedAtMillis = exportedAtMillis
         self.vaultKey = vaultKey; self.header = header; self.revisions = sorted
     }
 
@@ -287,7 +282,7 @@ public struct BackupPayload: Equatable, Sendable {
     public func encoded() throws -> Data {
         var data = Data()
         data.appendLE(UInt64(bitPattern: exportedAtMillis))
-        data.appendLE(incompleteHistory ? Self.incompleteHistoryFlag : 0)
+        data.appendLE(UInt32(0)) // Reserved flags.
         data.append(header.vaultID); data.append(vaultKey); data.append(header.salt); data.appendKDF(header.kdf)
         data.append(header.wrappedKey); data.append(header.recoveryWrappedKey)
         data.appendLE(UInt32(revisions.count))
@@ -314,8 +309,8 @@ public struct BackupPayload: Equatable, Sendable {
         guard plaintext.count > 0, plaintext.count % BackupLimits.paddingBlock == 0 else { throw BackupError.malformed }
         var reader = ByteReader(plaintext)
         let exportedAt = try Int64(bitPattern: reader.uint64())
-        let flags = try reader.uint32()
-        guard flags & ~incompleteHistoryFlag == 0 else { throw BackupError.malformed }
+        // Reserved flags. Every version graph must be closed, so no bit is defined.
+        guard try reader.uint32() == 0 else { throw BackupError.malformed }
         let vaultID = try reader.uuid(), vaultKey = try reader.bytes(32), salt = try reader.bytes(BackupHeader.saltLength)
         let kdf = try reader.kdf(), wrappedKey = try reader.bytes(60), recoveryWrappedKey = try reader.bytes(60)
         let header = VaultHeader(vaultID: vaultID, salt: salt, kdf: kdf, wrappedKey: wrappedKey, recoveryWrappedKey: recoveryWrappedKey)
@@ -351,8 +346,7 @@ public struct BackupPayload: Equatable, Sendable {
         }
         let padding = reader.remaining
         try reader.zeros(padding)
-        return try BackupPayload(exportedAtMillis: exportedAt, incompleteHistory: flags & incompleteHistoryFlag != 0,
-                                 vaultKey: vaultKey, header: header, revisions: revisions)
+        return try BackupPayload(exportedAtMillis: exportedAt, vaultKey: vaultKey, header: header, revisions: revisions)
     }
 }
 

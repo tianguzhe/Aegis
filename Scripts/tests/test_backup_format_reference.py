@@ -46,7 +46,6 @@ class BackupFormatReferenceTests(unittest.TestCase):
         parsed, spec, vault = parse_payload(self.payload), self.spec["payload"], self.spec["vault"]
         self.assertEqual(len(self.payload), 65536)
         self.assertEqual(parsed["exportedAtMillis"], spec["exportedAtMillis"])
-        self.assertEqual(parsed["incompleteHistory"], spec["incompleteHistory"])
         self.assertEqual(parsed["vaultKey"], spec["vaultKey"])
         self.assertEqual((parsed["vaultID"], parsed["vaultSalt"], parsed["wrappedKey"], parsed["recoveryWrappedKey"]),
                          (vault["vaultID"], vault["salt"], vault["wrappedKey"], vault["recoveryWrappedKey"]))
@@ -70,6 +69,7 @@ class BackupFormatReferenceTests(unittest.TestCase):
     def test_payload_rejections(self):
         data = self.payload
         self.assert_kind("malformed", parse_payload, data[:-1] + b"\x01")
+        self.assert_kind("malformed", parse_payload, data[:8] + b"\x01" + data[9:])
         self.assert_kind("malformed", parse_payload, data[:228] + b"\xff" * 16 + data[244:])
         self.assert_kind("limit_exceeded", parse_payload, data[:246] + (300001).to_bytes(4, "little") + data[250:])
 

@@ -155,9 +155,9 @@ def parse_payload(data):
     if not 0 <= exported_at <= MAX_EXPORTED_AT:
         raise FormatError("malformed", f"exportedAtMillis {exported_at}")
     flags = reader.u32()
-    if flags & ~1:
-        raise FormatError("malformed", f"flags {flags:#x}")
-    payload = {"exportedAtMillis": exported_at, "incompleteHistory": bool(flags & 1),
+    if flags:
+        raise FormatError("malformed", f"reserved flags {flags:#x}")
+    payload = {"exportedAtMillis": exported_at,
                "vaultID": reader.uuid(), "vaultKey": reader.take(32).hex(), "vaultSalt": reader.take(16).hex()}
     kdf = reader.kdf()
     if not vault_kdf_supported(kdf):

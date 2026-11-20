@@ -120,7 +120,7 @@ public actor VaultStore {
     /// - Throws: `VaultError.differentVault` when another header is stored, `VaultError.damagedData`
     ///   for conflicting or foreign revisions, or the save error. On any error nothing is written.
     @discardableResult
-    public func restore(header: VaultHeader, revisions incoming: [EncryptedRevision]) throws -> RestoreResult {
+    func restore(header: VaultHeader, revisions incoming: [EncryptedRevision]) throws -> RestoreResult {
         try restore(header: header, revisions: incoming, beforeSave: {})
     }
 
@@ -253,7 +253,7 @@ public extension VaultStore {
     }
 }
 
-/// A consistent copy of the stored vault used for export.
+/// A consistent cut of the stored vault, used for export, sync and conditional writes.
 public struct VaultSnapshot: Sendable {
     public let header: VaultHeader
     public let revisions: [EncryptedRevision]
@@ -262,12 +262,6 @@ public struct VaultSnapshot: Sendable {
     public init(header: VaultHeader, revisions: [EncryptedRevision]) {
         self.header = header
         self.revisions = revisions
-    }
-
-    /// True when a revision names a parent this device never received, so the history is not closed.
-    public var hasIncompleteHistory: Bool {
-        let ids = Set(revisions.map(\.id))
-        return revisions.contains { $0.parents.contains { !ids.contains($0) } }
     }
 }
 

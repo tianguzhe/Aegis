@@ -889,6 +889,9 @@ final class VaultSession {
                 try Task.checkCancellation()
                 let result = try await store.appendSyncedRevisions(additions, expected: snapshot)
                 if result.insertedRevisions > 0 {
+                    // The import may have restored a lost parent. The refresh below restarts sync,
+                    // and the snapshot check sets the flag again if the history is still damaged.
+                    lanSyncSnapshotDamaged = false
                     lanSync.localDataChanged()
                 }
             }

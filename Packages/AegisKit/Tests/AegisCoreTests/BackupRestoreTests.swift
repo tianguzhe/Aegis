@@ -253,6 +253,30 @@ import Testing
             == RestoreResult(createdHeader: false, insertedRevisions: 3))
     }
 
+    /// Recovery for a device that lost a middle version: sync stays paused on the gap, and importing
+    /// a backup from a healthy device restores the parent through the same calls `commitBackup` makes.
+    @Test func backupFromAHealthyDeviceRepairsALostMiddleVersion() async throws {
+        let source = try await Self.makeSource()
+        let (parent, child, note) = (source.revisions[0], source.revisions[1], source.revisions[2])
+        let damaged = try VaultStore.make(inMemory: true)
+        try await damaged.restoreNewVault(header: source.header, revisions: [child, note])
+        let broken = try await damaged.snapshot()
+        await #expect(throws: VaultError.damagedData) { try await source.crypto.validateLANSyncSnapshot(broken.revisions) }
+
+        let opened = try await BackupCryptor.open(BackupContainer.parse(Self.exportFile(from: source)), credential: Self.master)
+        let heads = try await BackupValidator.validate(opened.payload)
+        let plan = BackupImportPlan(revisions: opened.payload.revisions, entries: heads,
+                                    existingRevisionIDs: Set(broken.revisions.map(\.id)))
+        let selected = try plan.selectedRevisions(for: plan.itemIDs)
+        let additions = try await source.crypto.validateBackupMerge(local: broken.revisions, selected: selected)
+        #expect(additions == [parent])
+        #expect(try await damaged.appendSyncedRevisions(additions, expected: broken).insertedRevisions == 1)
+
+        let repaired = try await damaged.snapshot()
+        try await source.crypto.validateLANSyncSnapshot(repaired.revisions)
+        #expect(Set(repaired.revisions.map(\.id)) == Set(source.revisions.map(\.id)))
+    }
+
     @Test func snapshotReadsTheHeaderWithEveryRevision() async throws {
         let empty = try VaultStore.make(inMemory: true)
         await #expect(throws: VaultError.locked) { try await empty.snapshot() }

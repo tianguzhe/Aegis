@@ -51,15 +51,13 @@ public enum VaultRevisionValidation {
         var children: [UUID: [UUID]] = [:]
         var pendingParents: [UUID: Int] = [:]
         for revision in revisions {
-            var inFile = 0
             for parentID in revision.parents {
                 guard let parent = byID[parentID], parent.itemID == revision.itemID else { throw VaultError.damagedData }
                 children[parentID, default: []].append(revision.id)
-                inFile += 1
             }
-            pendingParents[revision.id] = inFile
+            pendingParents[revision.id] = revision.parents.count
         }
-        // Kahn's algorithm: every revision becomes ready once all its in-file parents are; any
+        // Kahn's algorithm: every revision becomes ready once all its parents are; any
         // revision never reached sits on a cycle.
         var ready = revisions.filter { pendingParents[$0.id] == 0 }.map(\.id)
         var visited = 0

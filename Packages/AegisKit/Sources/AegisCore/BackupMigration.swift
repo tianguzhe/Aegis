@@ -63,7 +63,7 @@ public enum BackupMigration {
         }
     }
 
-    /// Separate namespaces preserve graph links (including missing parents) and isolate local IDs.
+    /// Separate namespaces preserve graph links and isolate local IDs.
     private static func mappedID(_ id: UUID, kind: String, source: UUID, destination: UUID) -> UUID {
         let context = "aegis|backup-migration|1|\(source.uuidString)|\(destination.uuidString)|\(kind)|\(id.uuidString)"
         var bytes = Array(SHA256.hash(data: Data(context.utf8)).prefix(16))

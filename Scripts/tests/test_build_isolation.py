@@ -161,6 +161,22 @@ class BuildIsolationTests(unittest.TestCase):
         self.assertEqual(len(logs), 2)
         self.assertTrue(all("command output" in log.read_text() for log in logs))
 
+    def test_ci_annotation_keeps_swift_crash_context_before_the_failure_summary(self):
+        scripts = Path(__file__).resolve().parents[1]
+        fixture_scripts = self.root / "Scripts"
+        fixture_scripts.mkdir()
+        for name in ("ci-annotate.sh", "build_isolation.py"):
+            shutil.copyfile(scripts / name, fixture_scripts / name)
+        command = (
+            "print('Stack dump:'); print('While evaluating request: TypeCheckSourceFileRequest'); "
+            "print('Command SwiftCompile failed with a nonzero exit code\\n' * 40); raise SystemExit(65)"
+        )
+        result = subprocess.run(["bash", str(fixture_scripts / "ci-annotate.sh"), "macOS", sys.executable, "-c", command],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 65)
+        annotation = next(line for line in result.stdout.splitlines() if line.startswith("::error"))
+        self.assertIn("Stack dump:%0AWhile evaluating request: TypeCheckSourceFileRequest", annotation)
+
 
 if __name__ == "__main__":
     unittest.main()

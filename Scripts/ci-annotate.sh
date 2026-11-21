@@ -11,8 +11,13 @@ log_path=$(mktemp "$project_root/.build/artifacts.noindex/logs/ci.log.XXXXXX") |
 "$@" 2>&1 | tee "$log_path"
 command_status=${PIPESTATUS[0]}
 if [ "$command_status" -ne 0 ]; then
+    # Swift Testing assertions may be preceded by system diagnostics unrelated to the failure.
+    lines=$(awk '/recorded an issue|Encountered a second issue/ {
+        print substr($0, 1, 600)
+        if (++count == 20) exit
+    }' "$log_path")
     # Keep the compiler's initial diagnostic or crash context ahead of the build summary.
-    lines=$(awk '/error:|Fatal error|Stack dump:|While evaluating request:|While (emitting|running).*SIL|PLEASE submit a bug report|Command .* failed|signal [0-9]+/ {
+    [ -n "$lines" ] || lines=$(awk '/error:|[Ff]atal error|Stack dump:|While evaluating request:|While (emitting|running).*SIL|PLEASE submit a bug report|Command .* failed|signal [0-9]+/ {
         print substr($0, 1, 600)
         if (++count == 20) exit
     }' "$log_path")

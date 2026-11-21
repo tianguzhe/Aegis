@@ -161,21 +161,27 @@ class BuildIsolationTests(unittest.TestCase):
         self.assertEqual(len(logs), 2)
         self.assertTrue(all("command output" in log.read_text() for log in logs))
 
-    def test_ci_annotation_keeps_swift_crash_context_before_the_failure_summary(self):
+    def test_ci_annotation_keeps_swift_diagnostics_before_the_failure_summary(self):
         scripts = Path(__file__).resolve().parents[1]
         fixture_scripts = self.root / "Scripts"
         fixture_scripts.mkdir()
         for name in ("ci-annotate.sh", "build_isolation.py"):
             shutil.copyfile(scripts / name, fixture_scripts / name)
-        command = (
-            "print('Stack dump:'); print('While evaluating request: TypeCheckSourceFileRequest'); "
-            "print('Command SwiftCompile failed with a nonzero exit code\\n' * 40); raise SystemExit(65)"
+        cases = (
+            (65, "Stack dump:\nWhile evaluating request: TypeCheckSourceFileRequest",
+             "Command SwiftCompile failed with a nonzero exit code", ""),
+            (1, "✘ Test sample() recorded an issue at ExampleTests.swift:42:9: Expectation failed",
+             "✔ Test anotherTest() passed", "CoreData: error: system diagnostic"),
         )
-        result = subprocess.run(["bash", str(fixture_scripts / "ci-annotate.sh"), "macOS", sys.executable, "-c", command],
-                                capture_output=True, text=True)
-        self.assertEqual(result.returncode, 65)
-        annotation = next(line for line in result.stdout.splitlines() if line.startswith("::error"))
-        self.assertIn("Stack dump:%0AWhile evaluating request: TypeCheckSourceFileRequest", annotation)
+        for code, diagnostic, summary, background_noise in cases:
+            with self.subTest(code=code):
+                output = "\n".join([background_noise] * 40 + [diagnostic] + [summary] * 40)
+                command = f"print({output!r}); raise SystemExit({code})"
+                result = subprocess.run(["bash", str(fixture_scripts / "ci-annotate.sh"), "Swift", sys.executable, "-c", command],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, code)
+                annotation = next(line for line in result.stdout.splitlines() if line.startswith("::error"))
+                self.assertIn(diagnostic.replace("\n", "%0A"), annotation)
 
 
 if __name__ == "__main__":

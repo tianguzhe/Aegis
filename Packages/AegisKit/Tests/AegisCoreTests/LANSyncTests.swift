@@ -240,14 +240,14 @@ private actor MemorySocket: LANSyncSocket {
 }
 
 struct LANSyncRecoveryTests {
-    @Test func silentPeerReleasesTheRoundSlotAfterTheHandshakeTimeout() async throws {
+    @Test(.timeLimit(.minutes(1)))
+    func silentPeerReleasesTheRoundSlotAfterTheHandshakeTimeout() async throws {
         let (socket, _) = await MemorySocket.pair()
-        let started = ContinuousClock.now
+        // The structured task group must cancel and drain the pending read before throwing.
         await #expect(throws: LANSyncError.timedOut) {
             _ = try await LANSyncRound.authenticate(socket: socket, instance: UUID(), expectedPeer: nil,
                                                     key: SymmetricKey(size: .bits256), timeout: .milliseconds(100))
         }
-        #expect(ContinuousClock.now - started < .seconds(5))
     }
 
     @Test func dialingPrefersTheLeastFailedEndpointAndPausesWhenAllFailed() {

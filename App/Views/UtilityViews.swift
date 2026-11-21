@@ -232,10 +232,13 @@ struct SettingsView: View {
                 settingDivider
                 HStack(spacing: 14) {
                     SettingsRowText(symbol: "arrow.triangle.2.circlepath", title: "lan.sync.title", detail: "lan.sync.description")
-                    Toggle(L10n.text("lan.sync.title"), isOn: Binding(get: { session.lanSyncEnabled }, set: session.setLANSyncEnabled))
-                        .labelsHidden().toggleStyle(.switch).tint(AegisTheme.accentFill)
-                        .disabled(session.unreadableRevisionCount > 0 && !session.lanSyncEnabled)
-                        .accessibilityIdentifier("lanSyncToggle")
+                    Toggle(L10n.text("lan.sync.title"), isOn: Binding(
+                        get: { session.lanSyncEnabled },
+                        set: { enabled in session.setLANSyncEnabled(enabled) }
+                    ))
+                    .labelsHidden().toggleStyle(.switch).tint(AegisTheme.accentFill)
+                    .disabled(session.unreadableRevisionCount > 0 && !session.lanSyncEnabled)
+                    .accessibilityIdentifier("lanSyncToggle")
                 }.padding(18)
                 if session.lanSyncEnabled {
                     VStack(alignment: .leading, spacing: 4) {

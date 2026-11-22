@@ -67,6 +67,50 @@
         }
       }
     },
+    "action.copyUsername": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制用户名"
+          }
+        }
+      }
+    },
+    "action.copyPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制密码"
+          }
+        }
+      }
+    },
+    "action.copyCardNumber": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制卡号"
+          }
+        }
+      }
+    },
+    "action.copySecurityCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制安全码"
+          }
+        }
+      }
+    },
     "action.create": {
       "extractionState": "manual",
       "localizations": {

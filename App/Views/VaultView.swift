@@ -324,6 +324,14 @@ struct VaultView: View {
                                     }
                                 }.id(entry.id)
                                     .contextMenu {
+                                        // Copying is read-only, so it stays available on partially readable vaults.
+                                        let copyFields = entry.item.quickCopyFields
+                                        ForEach(copyFields, id: \.actionKey) { field in
+                                            Button(L10n.text(field.actionKey)) { quickCopy(field) }.disabled(field.value.isEmpty)
+                                        }
+                                        if !copyFields.isEmpty, session.unreadableRevisionCount == 0 {
+                                            Divider()
+                                        }
                                         if session.unreadableRevisionCount > 0 {
                                             EmptyView()
                                         } else if entry.item.deletedAt == nil {
@@ -397,6 +405,11 @@ struct VaultView: View {
         presentedSheet = .editor(entry.item, [entry.id])
     }
 
+    private func quickCopy(_ field: QuickCopyField) {
+        guard !field.value.isEmpty else { return }
+        SecureClipboard.copy(field.value); session.touch()
+    }
+
     private func selectSavedItem(_ id: UUID) {
         guard let entry = session.entries.first(where: { $0.item.id == id }) else { return }
         search = ""
@@ -457,7 +470,9 @@ struct VaultView: View {
                         Task { await session.toggleFavorite(entry) }
                     }
                 },
-                hasSelection: available, isTrashed: entry?.item.deletedAt != nil, isFavorite: entry?.item.isFavorite == true
+                hasSelection: available, isTrashed: entry?.item.deletedAt != nil, isFavorite: entry?.item.isFavorite == true,
+                // Copy ignores `available`: it is read-only and allowed on partially readable vaults.
+                quickCopyFields: entry?.item.quickCopyFields ?? [], copy: quickCopy
             )
         }
     #endif
@@ -558,6 +573,8 @@ private enum VaultSheet: Identifiable {
         let hasSelection: Bool
         let isTrashed: Bool
         let isFavorite: Bool
+        let quickCopyFields: [QuickCopyField]
+        let copy: (QuickCopyField) -> Void
     }
 
     private struct VaultMenuActionsKey: FocusedValueKey {

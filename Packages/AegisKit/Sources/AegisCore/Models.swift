@@ -105,6 +105,27 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct QuickCopyField: Equatable, Sendable {
+    public let actionKey: String
+    public let value: String
+    public init(actionKey: String, value: String) {
+        self.actionKey = actionKey; self.value = value
+    }
+}
+
+public extension VaultItem {
+    /// Fields copyable without opening the record. Order is part of the contract:
+    /// the identifier comes first and the secret second, matching the macOS shortcuts.
+    /// Empty values are kept so menus can show them disabled instead of shifting positions.
+    var quickCopyFields: [QuickCopyField] {
+        switch kind {
+        case .login: [.init(actionKey: "action.copyUsername", value: username), .init(actionKey: "action.copyPassword", value: password)]
+        case .card: [.init(actionKey: "action.copyCardNumber", value: cardNumber), .init(actionKey: "action.copySecurityCode", value: securityCode)]
+        case .note: []
+        }
+    }
+}
+
 public enum TrashPolicy {
     public static let retentionDays = 7
     public static let retentionInterval: TimeInterval = .init(retentionDays * 24 * 60 * 60)

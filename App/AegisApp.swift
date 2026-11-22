@@ -63,6 +63,9 @@ struct AegisApp: App {
                 Button(L10n.text(actions?.isFavorite == true ? "action.unfavorite" : "action.favorite")) { actions?.favorite() }
                     .keyboardShortcut("d").disabled(actions?.hasSelection != true || actions?.isTrashed == true)
                 Divider()
+                quickCopyButton(at: 0, fallbackKey: "action.copyUsername").keyboardShortcut("c", modifiers: [.command, .shift])
+                quickCopyButton(at: 1, fallbackKey: "action.copyPassword").keyboardShortcut("c", modifiers: [.command, .option])
+                Divider()
                 Button(L10n.text(actions?.isTrashed == true ? "action.deleteImmediately" : "action.trash")) { actions?.trash() }
                     .keyboardShortcut(.delete).disabled(actions?.hasSelection != true)
                 Button(L10n.text("action.restore")) { actions?.restore() }
@@ -71,6 +74,17 @@ struct AegisApp: App {
                 Button(L10n.text("nav.generator")) { actions?.generator() }
                     .keyboardShortcut("g", modifiers: [.command, .shift]).disabled(actions == nil)
             }
+        }
+
+        /// Index 0 is the identifier and 1 the secret (see `VaultItem.quickCopyFields`);
+        /// notes and empty selections fall back to a disabled login label.
+        private func quickCopyButton(at index: Int, fallbackKey: String) -> some View {
+            let field = actions?.quickCopyFields.indices.contains(index) == true ? actions?.quickCopyFields[index] : nil
+            return Button(L10n.text(field?.actionKey ?? fallbackKey)) {
+                if let field {
+                    actions?.copy(field)
+                }
+            }.disabled(field?.value.isEmpty ?? true)
         }
     }
 #endif

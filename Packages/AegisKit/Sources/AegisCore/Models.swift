@@ -80,6 +80,9 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var password: String
     public var website: String
     public var notes: String
+    /// Login TOTP secret as a canonical `otpauth://totp` URI (raw input while editing). Optional, so
+    /// records written before this field decode unchanged.
+    public var oneTimePassword: String?
     public var cardholder: String
     public var cardNumber: String
     public var expiry: String

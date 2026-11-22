@@ -86,6 +86,8 @@ struct AegisApp: App {
                 Divider()
                 quickCopyButton(at: 0, fallbackKey: "action.copyUsername").keyboardShortcut("c", modifiers: [.command, .shift])
                 quickCopyButton(at: 1, fallbackKey: "action.copyPassword").keyboardShortcut("c", modifiers: [.command, .option])
+                Button(L10n.text("action.copyOneTimeCode")) { actions?.copyOneTimeCode() }
+                    .keyboardShortcut("c", modifiers: [.command, .control]).disabled(actions?.hasOneTimeCode != true)
                 Divider()
                 Button(L10n.text(actions?.isTrashed == true ? "action.deleteImmediately" : "action.trash")) { actions?.trash() }
                     .keyboardShortcut(.delete).disabled(actions?.hasSelection != true)

@@ -19,6 +19,21 @@ struct PasswordCSVImportTests {
         #expect(result.issues == [.init(line: 4, reason: .archived)])
     }
 
+    @Test func onePasswordImportsTOTPAndFlagsUnreadableOnes() throws {
+        let csv = "Title,Url,Username,Password,OTPAuth,Favorite,Archived,Tags,Notes\n" +
+            "Valid,,me,pw,otpauth://totp/Example:me?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ,false,false,,\n"
+        let valid = try PasswordCSVImport.parse(Data(csv.utf8))
+        let uri = try #require(valid.rows.first?.item.oneTimePassword)
+        #expect(try uri == (OneTimePassword.parse("otpauth://totp/Example:me?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")).uri)
+        #expect(!valid.hasUnsupportedFields)
+
+        let hotp = "Title,Url,Username,Password,OTPAuth,Favorite,Archived,Tags,Notes\n" +
+            "Counter,,me,pw,otpauth://hotp/x?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&counter=1,false,false,,\n"
+        let flagged = try PasswordCSVImport.parse(Data(hotp.utf8))
+        #expect(flagged.rows.first?.item.oneTimePassword == nil)
+        #expect(flagged.hasUnsupportedFields)
+    }
+
     @Test func chromeAcceptsReorderedColumnsAndAndroidURLs() throws {
         let csv = " Username ,NAME,password,URL,note\n,Example,pw,android://hash@com.example/,\"one,two\"\n"
         let result = try PasswordCSVImport.parse(Data(csv.utf8))

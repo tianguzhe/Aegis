@@ -19,6 +19,7 @@
 		11F02DE9B5212A0FB0E48752 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
 		1819F17BC5DAA45A82BD5FE2 /* BackupImportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */; };
 		1CBF1BA77F1B2803DBFA4F7C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
+		2C5A0B05515FA3A3815AAE50 /* QRCodeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB28548CCBC2A8A53FFEB2E1 /* QRCodeReader.swift */; };
 		30E37A62375BE1D5E66120DC /* VaultSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */; };
 		338F8C60A4F8B2229E9EA98D /* QuickAccessPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D54153E4E1757504D8A45B /* QuickAccessPanel.swift */; };
 		34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04269AA33697E609C24EA10F /* PreviewFixtures.swift */; };
@@ -36,6 +37,7 @@
 		60ED916F650B7298B0510CF3 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 38A6421934D871FB675F48E5 /* AegisCore */; };
 		63CD1BB502ACA8886B493632 /* GlobalHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4822CC7E673424512056AC1 /* GlobalHotKey.swift */; };
 		6934E7E8E812D15FE5EE30AD /* PasswordCSVImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434C078B341D46A01E5B8513 /* PasswordCSVImportView.swift */; };
+		6F5F2F059C6DA3381CDC8E7D /* QRCodeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB28548CCBC2A8A53FFEB2E1 /* QRCodeReader.swift */; };
 		727A0C7B591159B76345CE3E /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
 		77871B14476010CA4481EC11 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2587B062E6ED5E64C6A7F3 /* ItemDetailView.swift */; };
 		7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916A488A0BC3C065A08819 /* UnlockView.swift */; };
@@ -154,6 +156,7 @@
 		BD59CC099F3F977414466610 /* MarkdownComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownComposer.swift; sourceTree = "<group>"; };
 		BFFC6D8F6011546414CDEBE2 /* CredentialProviderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialProviderViewController.swift; sourceTree = "<group>"; };
 		C2C4F7B0E5F43F8DB33CBA41 /* AegisKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AegisKit; path = Packages/AegisKit; sourceTree = SOURCE_ROOT; };
+		CB28548CCBC2A8A53FFEB2E1 /* QRCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeReader.swift; sourceTree = "<group>"; };
 		CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultErrorPresenter.swift; sourceTree = "<group>"; };
 		DA17041A55CDE95D6E7867DB /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		DC1EF954C05D7A3D5583102B /* CardInterfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardInterfaceTests.swift; sourceTree = "<group>"; };
@@ -254,6 +257,7 @@
 				A86521A9F7EBF1B236D738BB /* DeviceKeyStore.swift */,
 				E4822CC7E673424512056AC1 /* GlobalHotKey.swift */,
 				04269AA33697E609C24EA10F /* PreviewFixtures.swift */,
+				CB28548CCBC2A8A53FFEB2E1 /* QRCodeReader.swift */,
 				77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */,
 			);
 			path = Services;
@@ -543,6 +547,7 @@
 				EB5EF04F9A02C3478827F33A /* MarkdownSourceEditor.swift in Sources */,
 				5938AE78441A4FCC5A969C5B /* PasswordCSVImportView.swift in Sources */,
 				34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */,
+				2C5A0B05515FA3A3815AAE50 /* QRCodeReader.swift in Sources */,
 				338F8C60A4F8B2229E9EA98D /* QuickAccessPanel.swift in Sources */,
 				97F69E08DA586AC8A6F024B7 /* UnlockView.swift in Sources */,
 				0E9D7D42577A6613BB0E522F /* UtilityViews.swift in Sources */,
@@ -592,6 +597,7 @@
 				4F6B0DCFBE9E12EC55FDAD8E /* MarkdownSourceEditor.swift in Sources */,
 				6934E7E8E812D15FE5EE30AD /* PasswordCSVImportView.swift in Sources */,
 				9A2BC60CBE1CBE7BE20FC985 /* PreviewFixtures.swift in Sources */,
+				6F5F2F059C6DA3381CDC8E7D /* QRCodeReader.swift in Sources */,
 				837E865297A37FE65628A458 /* QuickAccessPanel.swift in Sources */,
 				7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */,
 				0E3631179C3B7B6D4C8E02A7 /* UtilityViews.swift in Sources */,

@@ -289,8 +289,19 @@
                     Button { copy(index: 1) } label: { Text(L10n.text(fields[1].actionKey)) + Text("  ↩").foregroundColor(AegisTheme.secondary) }
                         .disabled(fields[1].value.isEmpty)
                 }
+                if selected?.item.oneTimePassword != nil {
+                    Button(action: copyOneTimeCode) { Text(L10n.text("action.copyOneTimeCode")) + Text("  ⌥↩").foregroundColor(AegisTheme.secondary) }
+                        .keyboardShortcut(.return, modifiers: .option).disabled(selected?.item.oneTimeCode(at: Date()) == nil)
+                }
             }.buttonStyle(.plain).aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.text)
                 .padding(.horizontal, 18).padding(.vertical, 10)
+        }
+
+        /// Computed at press time: TOTP codes roll over every period.
+        private func copyOneTimeCode() {
+            guard let code = selected?.item.oneTimeCode(at: Date()) else { return }
+            SecureClipboard.copy(code); session.touch()
+            onDone()
         }
 
         private func move(_ offset: Int) {

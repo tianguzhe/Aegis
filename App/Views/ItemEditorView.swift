@@ -1,6 +1,10 @@
 import AegisCore
 import AegisMarkdown
 import SwiftUI
+import UniformTypeIdentifiers
+#if os(iOS)
+    import PhotosUI
+#endif
 #if os(iOS)
     import UIKit
 #endif
@@ -13,6 +17,13 @@ struct ItemEditorView: View {
     @State private var parents: [UUID]
     @State private var saving = false
     @State private var showPassword = false
+    @State private var showOneTimePassword = false
+    @State private var readingQRCode = false
+    #if os(iOS)
+        @State private var qrPhoto: PhotosPickerItem?
+    #else
+        @State private var showQRImporter = false
+    #endif
     @State private var confirmClose = false
     @State private var loaded = false
     @State private var draftObserverID = UUID()
@@ -29,7 +40,18 @@ struct ItemEditorView: View {
 
     private var canSave: Bool {
         !item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            (item.kind != .card || cardNumberValidation.allowsSaving)
+            (item.kind != .card || cardNumberValidation.allowsSaving) &&
+            (item.kind != .login || oneTimePasswordError == nil) && !readingQRCode
+    }
+
+    /// While editing the field holds raw input; saving stores the canonical URI.
+    private var oneTimePasswordText: Binding<String> {
+        Binding(get: { item.oneTimePassword ?? "" }, set: { item.oneTimePassword = $0.isEmpty ? nil : $0 })
+    }
+
+    private var oneTimePasswordError: String? {
+        guard let raw = item.oneTimePassword else { return nil }
+        do { _ = try OneTimePassword.parse(raw); return nil } catch { return error.localizedDescription }
     }
 
     init(item: VaultItem, parents: [UUID], onSaved: @escaping (UUID) -> Void = { _ in }) {
@@ -104,6 +126,8 @@ struct ItemEditorView: View {
                     if item.kind == .card {
                         item.cardNumber = CardNumberRules.digits(from: item.cardNumber)
                     }
+                    // Only logins carry a secret; canSave already rejected unparsable input.
+                    item.oneTimePassword = item.kind == .login ? item.oneTimePassword.flatMap { try? OneTimePassword.parse($0).uri } : nil
                     Task {
                         if await session.save(item, parents: parents) {
                             baseline = item; session.discardDraft(item.id); onSaved(item.id); dismiss()
@@ -178,6 +202,62 @@ struct ItemEditorView: View {
         }
     }
 
+    private var oneTimePasswordField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            AegisInput(title: L10n.text("field.oneTimePassword"), icon: "clock.badge.checkmark") {
+                Group {
+                    if showOneTimePassword {
+                        TextField(L10n.text("editor.otpPlaceholder"), text: oneTimePasswordText)
+                    } else {
+                        SecureField(L10n.text("editor.otpPlaceholder"), text: oneTimePasswordText)
+                    }
+                }.aegisNoCapitalization().autocorrectionDisabled().accessibilityIdentifier("oneTimePassword")
+                Button { showOneTimePassword.toggle() } label: { Image(systemName: showOneTimePassword ? "eye.slash" : "eye").foregroundStyle(AegisTheme.secondary).frame(width: AegisMetrics.controlHeight, height: AegisMetrics.controlHeight).contentShape(Rectangle()) }
+                    .buttonStyle(.plain).accessibilityLabel(L10n.text(showOneTimePassword ? "action.hide" : "action.show"))
+                qrButton
+            }
+            if let oneTimePasswordError {
+                Label(oneTimePasswordError, systemImage: "exclamationmark.circle").aegisFont(size: 11).foregroundStyle(AegisTheme.danger)
+            } else if item.oneTimePassword != nil {
+                Label(L10n.text("editor.otpNote"), systemImage: "info.circle").aegisFont(size: 11).foregroundStyle(AegisTheme.secondary)
+            }
+        }
+    }
+
+    private var qrButton: some View {
+        let label = Image(systemName: "qrcode.viewfinder").foregroundStyle(AegisTheme.secondary)
+            .frame(width: AegisMetrics.controlHeight, height: AegisMetrics.controlHeight).contentShape(Rectangle())
+        #if os(iOS)
+            return PhotosPicker(selection: $qrPhoto, matching: .images) { label }
+                .buttonStyle(.plain).accessibilityLabel(L10n.text("editor.otpScan")).disabled(readingQRCode)
+                .onChange(of: qrPhoto) { _, photo in
+                    guard let photo else { return }
+                    qrPhoto = nil
+                    readQRCode { guard let data = try await photo.loadTransferable(type: Data.self) else { throw QRCodeReader.Failure.unreadableImage }
+                        return try await QRCodeReader.payload(in: data)
+                    }
+                }
+        #else
+            return Button { showQRImporter = true } label: { label }
+                .buttonStyle(.plain).accessibilityLabel(L10n.text("editor.otpScan")).disabled(readingQRCode)
+                .fileImporter(isPresented: $showQRImporter, allowedContentTypes: [.image]) { result in
+                    switch result {
+                    case let .success(url): readQRCode { try await QRCodeReader.payload(at: url) }
+                    case let .failure(error): session.error = error.localizedDescription
+                    }
+                }
+        #endif
+    }
+
+    /// The decoded payload goes into the field as-is so the normal validation explains unusable codes (e.g. HOTP).
+    private func readQRCode(_ read: @escaping @MainActor () async throws -> String) {
+        readingQRCode = true
+        Task {
+            defer { readingQRCode = false }
+            do { item.oneTimePassword = try await read() } catch { session.error = error.localizedDescription }
+        }
+    }
+
     private var loginFields: some View {
         VStack(spacing: 16) {
             loginIdentityLayout {
@@ -212,6 +292,7 @@ struct ItemEditorView: View {
                     }.aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.teal)
                 }.buttonStyle(.plain).padding(.horizontal, 3)
             }
+            oneTimePasswordField
         }
     }
 

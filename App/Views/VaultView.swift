@@ -329,6 +329,10 @@ struct VaultView: View {
                                         ForEach(copyFields, id: \.actionKey) { field in
                                             Button(L10n.text(field.actionKey)) { quickCopy(field) }.disabled(field.value.isEmpty)
                                         }
+                                        if entry.item.oneTimePassword != nil {
+                                            Button(L10n.text("action.copyOneTimeCode")) { copyOneTimeCode(entry.item) }
+                                                .disabled(entry.item.oneTimeCode(at: Date()) == nil)
+                                        }
                                         if !copyFields.isEmpty, session.unreadableRevisionCount == 0 {
                                             Divider()
                                         }
@@ -410,6 +414,12 @@ struct VaultView: View {
         SecureClipboard.copy(field.value); session.touch()
     }
 
+    /// Computed at click time: TOTP codes roll over every period.
+    private func copyOneTimeCode(_ item: VaultItem) {
+        guard let code = item.oneTimeCode(at: Date()) else { return }
+        SecureClipboard.copy(code); session.touch()
+    }
+
     private func selectSavedItem(_ id: UUID) {
         guard let entry = session.entries.first(where: { $0.item.id == id }) else { return }
         search = ""
@@ -472,7 +482,13 @@ struct VaultView: View {
                 },
                 hasSelection: available, isTrashed: entry?.item.deletedAt != nil, isFavorite: entry?.item.isFavorite == true,
                 // Copy ignores `available`: it is read-only and allowed on partially readable vaults.
-                quickCopyFields: entry?.item.quickCopyFields ?? [], copy: quickCopy
+                quickCopyFields: entry?.item.quickCopyFields ?? [], copy: quickCopy,
+                hasOneTimeCode: entry?.item.oneTimeCode(at: Date()) != nil,
+                copyOneTimeCode: {
+                    if let entry {
+                        copyOneTimeCode(entry.item)
+                    }
+                }
             )
         }
     #endif
@@ -582,6 +598,8 @@ private enum VaultSheet: Identifiable {
         let isFavorite: Bool
         let quickCopyFields: [QuickCopyField]
         let copy: (QuickCopyField) -> Void
+        let hasOneTimeCode: Bool
+        let copyOneTimeCode: () -> Void
     }
 
     private struct VaultMenuActionsKey: FocusedValueKey {

@@ -154,7 +154,7 @@ public enum PasswordCSVImport {
                     issues.append(Issue(line: line, reason: .archived))
                     return
                 }
-                if ["otpauth", "first one-time password", "tags"].contains(where: { !value($0).isEmpty }) {
+                if !value("tags").isEmpty {
                     hasUnsupportedFields = true
                 }
             }
@@ -170,6 +170,18 @@ public enum PasswordCSVImport {
             var item = VaultItem(title: rawTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackTitle : rawTitle,
                                  username: value("username"), password: password, website: website, notes: value(layout.notes))
             item.isFavorite = layout.source == .onePassword && flag("favorite")
+            if layout.source == .onePassword {
+                // Newer exports use "OTPAuth"; older ones put the same URI in "first one-time password".
+                let rawOTP = ["otpauth", "first one-time password"].lazy.map(value).first { !$0.isEmpty }
+                if let rawOTP {
+                    // Keep the row but report it, so HOTP or malformed secrets are never dropped silently.
+                    if let otp = try? OneTimePassword.parse(rawOTP) {
+                        item.oneTimePassword = otp.uri
+                    } else {
+                        hasUnsupportedFields = true
+                    }
+                }
+            }
             rows.append(Row(line: line, item: item))
         }
         guard let header else { throw Failure.unsupportedHeader }

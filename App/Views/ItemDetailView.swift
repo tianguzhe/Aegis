@@ -34,6 +34,9 @@ struct ItemDetailView: View {
                             SecretField(label: "field.username", value: entry.item.username)
                             fieldDivider
                             SecretField(label: "field.password", value: entry.item.password, secret: true)
+                            if let oneTimePassword = entry.item.oneTimePassword {
+                                fieldDivider; OneTimeCodeField(stored: oneTimePassword)
+                            }
                             if !entry.item.website.isEmpty {
                                 fieldDivider; SecretField(label: "field.website", value: entry.item.website)
                             }
@@ -235,6 +238,60 @@ struct ItemDetailView: View {
             }.padding(.horizontal, 2)
             MarkdownContent(entry.item.notes, accent: AegisTheme.teal).padding(24).aegisSurface()
         }
+    }
+}
+
+private struct OneTimeCodeField: View {
+    @Environment(VaultSession.self) private var session
+    let stored: String
+    @State private var copied = false
+    @ScaledMetric(relativeTo: .body) private var valueSize = 20
+
+    var body: some View {
+        // Parse once per record; the timeline only recomputes the code.
+        switch Result(catching: { try OneTimePassword.parse(stored) }) {
+        case let .success(otp):
+            // Tick on whole seconds so the code flips at the period boundary instead of up to a second late.
+            TimelineView(.periodic(from: Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down)), by: 1)) { context in
+                content(otp, at: context.date)
+            }
+        case .failure:
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.text("field.oneTimePassword")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                Label(L10n.text("totp.unreadable"), systemImage: "exclamationmark.triangle").aegisFont(size: 13).foregroundStyle(.orange)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(.vertical, 15)
+        }
+    }
+
+    private func content(_ otp: OneTimePassword, at date: Date) -> some View {
+        let code = otp.code(at: date)
+        let remaining = otp.secondsRemaining(at: date)
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.text("field.oneTimePassword")).aegisFont(size: 11, weight: .medium).foregroundStyle(AegisTheme.secondary)
+                Text(Self.grouped(code)).font(.system(size: valueSize, weight: .semibold, design: .monospaced)).foregroundStyle(AegisTheme.text)
+                    .contentTransition(.numericText()).accessibilityLabel(code)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            ZStack {
+                Circle().stroke(AegisTheme.border, lineWidth: 3)
+                Circle().trim(from: 0, to: CGFloat(remaining) / CGFloat(otp.period))
+                    .stroke(remaining <= 5 ? Color.orange : AegisTheme.teal, style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
+                Text("\(remaining)").aegisFont(size: 10, weight: .medium).monospacedDigit().foregroundStyle(AegisTheme.secondary)
+            }.frame(width: 26, height: 26).accessibilityElement().accessibilityLabel(L10n.format("totp.remaining", Int64(remaining)))
+            AegisIconButton(symbol: copied ? "checkmark" : "doc.on.doc", label: L10n.text("action.copyOneTimeCode")) {
+                // Recompute at tap time so a code rendered just before rollover is not copied stale.
+                SecureClipboard.copy(otp.code(at: Date())); copied = true; session.touch()
+            }.task(id: copied) {
+                guard copied else { return }
+                try? await Task.sleep(for: .seconds(2)); copied = false
+            }
+        }.padding(.horizontal, 18).padding(.vertical, 15)
+    }
+
+    /// 6 digits read as "123 456", 8 as "1234 5678".
+    private static func grouped(_ code: String) -> String {
+        let split = code.count / 2
+        return String(code.prefix(split)) + " " + String(code.suffix(code.count - split))
     }
 }
 

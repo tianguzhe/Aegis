@@ -6,6 +6,7 @@
 "action.copied" = "已复制";
 "action.copy" = "复制";
 "action.copyCardNumber" = "复制卡号";
+"action.copyOneTimeCode" = "复制验证码";
 "action.copyPassword" = "复制密码";
 "action.copySecurityCode" = "复制安全码";
 "action.copyUsername" = "复制用户名";
@@ -192,7 +193,7 @@
 "csv.skipped" = "查看跳过原因";
 "csv.summary" = "可导入 %lld 条，跳过 %lld 条";
 "csv.title" = "导入密码 CSV";
-"csv.unsupportedFields" = "有条目包含验证码设置或标签，需要另行迁移。";
+"csv.unsupportedFields" = "有条目包含无法识别的验证码设置或标签，需要另行迁移。";
 "draft.closeMessage" = "尚未保存到保险库。可以保留加密草稿，下次解锁后继续编辑。";
 "draft.closeTitle" = "保留这次编辑吗？";
 "draft.continue" = "继续编辑";
@@ -208,6 +209,9 @@
 "editor.itemUnavailable" = "这条记录已被删除，无法保存。请关闭编辑窗口并检查回收站。";
 "editor.new" = "新建记录";
 "editor.notePlaceholder" = "只属于你的重要信息…";
+"editor.otpNote" = "验证码与密码保存在同一个保险库：主密码一旦泄露，两步验证就不再是独立的第二道防线。";
+"editor.otpPlaceholder" = "otpauth:// 链接或 Base32 密钥";
+"editor.otpScan" = "从图片识别二维码";
 "editor.titlePlaceholder" = "例如：Apple 账号";
 "editor.titleRequiredHint" = "填写名称后即可保存记录。";
 "editor.websitePlaceholder" = "https://example.com";
@@ -235,6 +239,7 @@
 "field.kind" = "类型";
 "field.modified" = "最后修改";
 "field.notes" = "备注";
+"field.oneTimePassword" = "两步验证";
 "field.optional" = "选填";
 "field.password" = "密码";
 "field.secureNote" = "笔记内容";
@@ -400,6 +405,12 @@
 "settings.tab.security" = "安全";
 "settings.version" = "版本 0.1.3";
 "settings.versionFormat" = "版本 %@";
+"totp.error.hotp" = "暂不支持基于计数器的验证码（HOTP），请在网站上选择基于时间的验证器。";
+"totp.error.image" = "无法读取这张图片。";
+"totp.error.invalid" = "无法识别验证码密钥，请粘贴 otpauth:// 链接或 Base32 密钥。";
+"totp.error.noQRCode" = "图片中没有找到二维码。";
+"totp.remaining" = "%lld 秒后刷新";
+"totp.unreadable" = "验证码设置无法读取，请重新编辑。";
 "trash.deleteConfirm" = "立即删除这条记录？";
 "trash.deleteMessage" = "“%@”及其所有冲突版本将从回收站删除，无法再从回收站恢复。";
 "trash.expired" = "这条记录的保留时间已到期，无法恢复。";

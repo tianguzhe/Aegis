@@ -346,6 +346,12 @@
 "preview.cardTitle" = "日常支付卡";
 "preview.noteBody" = "# 旅行备忘\n\n把重要的事情，安心放在这里。\n\n## 出发前\n- [x] 保存航班信息\n- [ ] 整理随身物品\n\n> 这是一份 **Markdown** 示例笔记。\n\n```text\nAegis · 私人保险库\n```\n\n| 项目 | 状态 |\n| --- | --- |\n| 行程 | 已确认 |\n| 住宿 | 已预订 |";
 "preview.noteTitle" = "旅行备忘";
+"quick.hotKeyUnavailable" = "全局快捷键 %@ 不可用";
+"quick.locked" = "保险库已锁定";
+"quick.noResults" = "没有匹配的记录";
+"quick.openApp" = "打开 Aegis";
+"quick.quit" = "退出 Aegis";
+"quick.search" = "快速搜索";
 "recovery.confirmHint" = "请先确认已妥善保存恢复密钥，再进入保险库。";
 "recovery.confirmedHint" = "已确认保存恢复密钥，可以继续。";
 "recovery.copy" = "复制恢复密钥";

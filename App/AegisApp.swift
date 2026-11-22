@@ -6,10 +6,18 @@ import SwiftUI
 
 @main
 struct AegisApp: App {
-    @State private var session = VaultSession()
+    @State private var session: VaultSession
+    #if os(macOS)
+        @State private var quickAccess: QuickAccessController
+    #endif
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("aegis.appearance") private var appearance: AegisAppearance = .system
     init() {
+        let session = VaultSession()
+        _session = State(initialValue: session)
+        #if os(macOS)
+            _quickAccess = State(initialValue: QuickAccessController(session: session))
+        #endif
         #if DEBUG && os(macOS)
             CardDesignGallery.renderIfRequested()
         #endif
@@ -37,6 +45,19 @@ struct AegisApp: App {
                     .disabled(session.phase != .unlocked)
             }
         }
+        #endif
+        #if os(macOS)
+            MenuBarExtra("Aegis", systemImage: "lock.shield") {
+                Button(L10n.text("quick.search")) { quickAccess.show() }
+                if !quickAccess.hotKeyRegistered {
+                    Text(L10n.format("quick.hotKeyUnavailable", QuickAccessController.shortcutLabel))
+                }
+                Button(L10n.text("quick.openApp")) { quickAccess.openMainWindow() }
+                Divider()
+                Button(L10n.text("action.lock")) { session.lock() }.disabled(session.phase != .unlocked)
+                Divider()
+                Button(L10n.text("quick.quit")) { NSApp.terminate(nil) }
+            }
         #endif
     }
 }
@@ -114,11 +135,6 @@ struct RootView: View {
                 session.lock(reason: .background)
             }
         }
-        #if os(macOS)
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in session.lock(reason: .system) }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.screensDidSleepNotification)) { _ in session.lock(reason: .system) }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.sessionDidResignActiveNotification)) { _ in session.lock(reason: .system) }
-        #endif
         .vaultErrorPresenter()
         .sheet(isPresented: Binding(get: { session.recoveryKey != nil && !session.recoveryPresentedInline }, set: { _ in })) { RecoveryView().environment(session) }
     }

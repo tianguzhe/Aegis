@@ -20,6 +20,7 @@
 		1819F17BC5DAA45A82BD5FE2 /* BackupImportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E91BC7AB8B9DC74925A163 /* BackupImportSelectionView.swift */; };
 		1CBF1BA77F1B2803DBFA4F7C /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */; };
 		30E37A62375BE1D5E66120DC /* VaultSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */; };
+		338F8C60A4F8B2229E9EA98D /* QuickAccessPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D54153E4E1757504D8A45B /* QuickAccessPanel.swift */; };
 		34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04269AA33697E609C24EA10F /* PreviewFixtures.swift */; };
 		349057ADB5046E3363AA0CEF /* DeviceKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86521A9F7EBF1B236D738BB /* DeviceKeyStore.swift */; };
 		3BC758D4B50613C7BF04DDE1 /* VaultSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */; };
@@ -33,12 +34,15 @@
 		5B9F4DFEFA86A345E53E3DA2 /* AegisStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 707F77412DC2855880B99112 /* AegisStorage */; };
 		5E55248E96C8AE155223771D /* CredentialProviderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFC6D8F6011546414CDEBE2 /* CredentialProviderViewController.swift */; };
 		60ED916F650B7298B0510CF3 /* AegisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 38A6421934D871FB675F48E5 /* AegisCore */; };
+		63CD1BB502ACA8886B493632 /* GlobalHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4822CC7E673424512056AC1 /* GlobalHotKey.swift */; };
 		6934E7E8E812D15FE5EE30AD /* PasswordCSVImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434C078B341D46A01E5B8513 /* PasswordCSVImportView.swift */; };
 		727A0C7B591159B76345CE3E /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
 		77871B14476010CA4481EC11 /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2587B062E6ED5E64C6A7F3 /* ItemDetailView.swift */; };
 		7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916A488A0BC3C065A08819 /* UnlockView.swift */; };
 		7FDFD11A2A3851F5D5633717 /* AegisAutoFill-macOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4624AE0E27BEBF0BFB1A2E62 /* AegisAutoFill-macOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		837E865297A37FE65628A458 /* QuickAccessPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D54153E4E1757504D8A45B /* QuickAccessPanel.swift */; };
 		83B0A6A731FDE8C5076F4956 /* BankCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D89D8A28EF1AFE82A37110 /* BankCardView.swift */; };
+		8A52512742DAE43E79712BF5 /* GlobalHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4822CC7E673424512056AC1 /* GlobalHotKey.swift */; };
 		91DD32FC58752B666244B9EA /* Clipboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BBA07A5D702F2A215B486C4 /* Clipboard.swift */; };
 		91EFEDF66F6AFF7649339A18 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9D6B2F7F668B7E0F36E40B19 /* InfoPlist.xcstrings */; };
 		97F69E08DA586AC8A6F024B7 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60916A488A0BC3C065A08819 /* UnlockView.swift */; };
@@ -126,6 +130,7 @@
 		04269AA33697E609C24EA10F /* PreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewFixtures.swift; sourceTree = "<group>"; };
 		23CB6D82097F4F283910258F /* LocalVaultTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVaultTransferView.swift; sourceTree = "<group>"; };
 		29D89D8A28EF1AFE82A37110 /* BankCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankCardView.swift; sourceTree = "<group>"; };
+		32D54153E4E1757504D8A45B /* QuickAccessPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAccessPanel.swift; sourceTree = "<group>"; };
 		39572A60EB59172506D03265 /* AegisUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AegisUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		434C078B341D46A01E5B8513 /* PasswordCSVImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordCSVImportView.swift; sourceTree = "<group>"; };
 		4624AE0E27BEBF0BFB1A2E62 /* AegisAutoFill-macOS.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "AegisAutoFill-macOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -152,6 +157,7 @@
 		CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultErrorPresenter.swift; sourceTree = "<group>"; };
 		DA17041A55CDE95D6E7867DB /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		DC1EF954C05D7A3D5583102B /* CardInterfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardInterfaceTests.swift; sourceTree = "<group>"; };
+		E4822CC7E673424512056AC1 /* GlobalHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKey.swift; sourceTree = "<group>"; };
 		EC77D144BF6AE127A18D1F57 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		F2EBCD5B20BEEAED0DF46652 /* Aegis-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Aegis-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F75C7D3D0D321FFE69C28ECE /* ItemEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemEditorView.swift; sourceTree = "<group>"; };
@@ -246,6 +252,7 @@
 			children = (
 				8BBA07A5D702F2A215B486C4 /* Clipboard.swift */,
 				A86521A9F7EBF1B236D738BB /* DeviceKeyStore.swift */,
+				E4822CC7E673424512056AC1 /* GlobalHotKey.swift */,
 				04269AA33697E609C24EA10F /* PreviewFixtures.swift */,
 				77FA280ED13A47A06BD6ABE9 /* VaultSession.swift */,
 			);
@@ -293,6 +300,7 @@
 				BD59CC099F3F977414466610 /* MarkdownComposer.swift */,
 				72C8259603E1DC05EA12719E /* MarkdownSourceEditor.swift */,
 				434C078B341D46A01E5B8513 /* PasswordCSVImportView.swift */,
+				32D54153E4E1757504D8A45B /* QuickAccessPanel.swift */,
 				60916A488A0BC3C065A08819 /* UnlockView.swift */,
 				B52948473B7BD2DE48D206B0 /* UtilityViews.swift */,
 				CE767591F6BC7DDD5F2E21DE /* VaultErrorPresenter.swift */,
@@ -527,6 +535,7 @@
 				91DD32FC58752B666244B9EA /* Clipboard.swift in Sources */,
 				EBAADAE48EC66F76718B7168 /* DesignSystem.swift in Sources */,
 				349057ADB5046E3363AA0CEF /* DeviceKeyStore.swift in Sources */,
+				63CD1BB502ACA8886B493632 /* GlobalHotKey.swift in Sources */,
 				77871B14476010CA4481EC11 /* ItemDetailView.swift in Sources */,
 				030FABB9FDBF3119CC8373E7 /* ItemEditorView.swift in Sources */,
 				BDDE1E1F04AAA99D4126D955 /* LocalVaultTransferView.swift in Sources */,
@@ -534,6 +543,7 @@
 				EB5EF04F9A02C3478827F33A /* MarkdownSourceEditor.swift in Sources */,
 				5938AE78441A4FCC5A969C5B /* PasswordCSVImportView.swift in Sources */,
 				34644A03918E61BD55969BEF /* PreviewFixtures.swift in Sources */,
+				338F8C60A4F8B2229E9EA98D /* QuickAccessPanel.swift in Sources */,
 				97F69E08DA586AC8A6F024B7 /* UnlockView.swift in Sources */,
 				0E9D7D42577A6613BB0E522F /* UtilityViews.swift in Sources */,
 				C9043B9B4DF50F00515F5F31 /* VaultErrorPresenter.swift in Sources */,
@@ -574,6 +584,7 @@
 				BB85C8A96D3D23E6B6A09948 /* Clipboard.swift in Sources */,
 				B78FEE950A628CB41E3B755C /* DesignSystem.swift in Sources */,
 				035E3832EA0742C6BD26F6A9 /* DeviceKeyStore.swift in Sources */,
+				8A52512742DAE43E79712BF5 /* GlobalHotKey.swift in Sources */,
 				0C75F9A6F38F17B8DAC7D0B0 /* ItemDetailView.swift in Sources */,
 				A226AA1CDCF51CC967117CAF /* ItemEditorView.swift in Sources */,
 				DCEDEC7FEE91645F1183EDC6 /* LocalVaultTransferView.swift in Sources */,
@@ -581,6 +592,7 @@
 				4F6B0DCFBE9E12EC55FDAD8E /* MarkdownSourceEditor.swift in Sources */,
 				6934E7E8E812D15FE5EE30AD /* PasswordCSVImportView.swift in Sources */,
 				9A2BC60CBE1CBE7BE20FC985 /* PreviewFixtures.swift in Sources */,
+				837E865297A37FE65628A458 /* QuickAccessPanel.swift in Sources */,
 				7C233AB7848EFB711849F3A0 /* UnlockView.swift in Sources */,
 				0E3631179C3B7B6D4C8E02A7 /* UtilityViews.swift in Sources */,
 				F2E9681402EC6ED9100FA492 /* VaultErrorPresenter.swift in Sources */,

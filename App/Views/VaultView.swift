@@ -42,7 +42,7 @@ struct VaultView: View {
 
     private var filtered: [VaultEntry] {
         session.entries.filter { entry in
-            filter.includes(entry) && (search.isEmpty || [entry.item.title, entry.item.username, entry.item.website].contains { $0.localizedStandardContains(search) })
+            filter.includes(entry) && entry.matchesSearch(search)
         }.sorted { recentFirst ? $0.item.modifiedAt > $1.item.modifiedAt : $0.item.title.localizedStandardCompare($1.item.title) == .orderedAscending }
     }
 
@@ -520,7 +520,7 @@ private struct VaultRecordRow: View {
                 ItemIcon(item: entry.item, isSelected: selected, size: 36)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.item.title).font(.system(size: titleSize, weight: .semibold)).foregroundStyle(AegisTheme.text).lineLimit(1)
-                    Text(subtitle)
+                    Text(entry.listSubtitle)
                         .font(.system(size: subtitleSize)).foregroundStyle(selected ? AegisTheme.teal : AegisTheme.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -537,15 +537,22 @@ private struct VaultRecordRow: View {
         }.buttonStyle(.plain).onHover { hovered = $0 }.accessibilityAddTraits(selected ? [.isSelected] : [])
             .accessibilityIdentifier("record-\(entry.item.title)")
     }
+}
 
-    private var subtitle: String {
-        if entry.item.kind == .card {
-            return entry.item.cardDescription
+extension VaultEntry {
+    /// Shared by the main list and the macOS quick-access panel so both find the same records.
+    func matchesSearch(_ text: String) -> Bool {
+        text.isEmpty || [item.title, item.username, item.website].contains { $0.localizedStandardContains(text) }
+    }
+
+    var listSubtitle: String {
+        if item.kind == .card {
+            return item.cardDescription
         }
-        if entry.item.kind == .login, !entry.item.username.isEmpty {
-            return entry.item.username
+        if item.kind == .login, !item.username.isEmpty {
+            return item.username
         }
-        return entry.item.kind.title
+        return item.kind.title
     }
 }
 

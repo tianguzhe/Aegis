@@ -10,10 +10,11 @@ import SwiftUI
 enum SecureClipboard {
     private static var task: Task<Void, Never>?
     private static var ownedChange: Int?
-    static func copy(_ value: String) {
+    static func copy(_ value: String, clearAfter seconds: Int = SecurityPreferences.load().clipboardClear.seconds) {
         task?.cancel()
+        let timeout = max(5, seconds)
         #if os(iOS)
-            UIPasteboard.general.setItems([["public.utf8-plain-text": value]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(30)])
+            UIPasteboard.general.setItems([["public.utf8-plain-text": value]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(TimeInterval(timeout))])
             ownedChange = UIPasteboard.general.changeCount
         #else
             NSPasteboard.general.clearContents()
@@ -23,7 +24,7 @@ enum SecureClipboard {
             ownedChange = NSPasteboard.general.changeCount
         #endif
         task = Task {
-            try? await Task.sleep(for: .seconds(30))
+            try? await Task.sleep(for: .seconds(timeout))
             guard !Task.isCancelled else { return }
             clear()
         }

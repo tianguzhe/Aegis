@@ -165,10 +165,7 @@ private struct AutoFillView: View {
                 let loaded = try await crypto.openAutoFillSnapshot(snapshot)
                 await crypto.lock()
                 guard token == generation else { return }
-                entries = loaded.sorted { lhs, rhs in
-                    let left = matches(lhs.website), right = matches(rhs.website)
-                    return left == right ? lhs.title < rhs.title : left
-                }
+                entries = DomainMatcher.sortCredentials(loaded, for: services)
                 unlocked = true
             } catch {
                 await crypto.lock()
@@ -177,13 +174,5 @@ private struct AutoFillView: View {
                 }
             }
         }
-    }
-
-    private func matches(_ website: String) -> Bool {
-        func host(_ value: String) -> String? {
-            URL(string: value.contains("://") ? value : "https://" + value)?.host?.lowercased()
-        }
-        guard let itemHost = host(website) else { return false }
-        return services.contains { host($0) == itemHost }
     }
 }

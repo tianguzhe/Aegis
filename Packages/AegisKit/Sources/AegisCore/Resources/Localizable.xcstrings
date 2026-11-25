@@ -1305,7 +1305,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "复制后 30 秒自动清理剪贴板。"
+            "value": "复制后 %@ 自动清理剪贴板。"
           }
         }
       }
@@ -1884,7 +1884,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "复制内容仅在本机保留 30 秒；切换应用仍可粘贴，手动锁定会立即清理。"
+            "value": "复制内容仅在本机保留并在设定时长后清理；手动锁定会立即清理。"
           }
         }
       }
@@ -1960,7 +1960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "进入后台时锁定；5 分钟无操作后锁定。"
+            "value": "进入后台时锁定，或在无操作达到设定时长后自动锁定。"
           }
         }
       }
@@ -2334,7 +2334,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "5 分钟无操作后锁定；系统休眠或切换系统用户时锁定。切换普通窗口不会立即锁定。"
+            "value": "无操作达到设定时长、系统休眠或切换系统用户时锁定。切换普通窗口不会立即锁定。"
           }
         }
       }
@@ -5092,6 +5092,644 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在重新加密…"
+          }
+        }
+      }
+    },
+    "generator.capitalize": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首字母大写"
+          }
+        }
+      }
+    },
+    "generator.includeNumber": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "附加随机数字"
+          }
+        }
+      }
+    },
+    "generator.mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成模式"
+          }
+        }
+      }
+    },
+    "generator.mode.passphrase": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单词口令"
+          }
+        }
+      }
+    },
+    "generator.mode.random": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随机字符"
+          }
+        }
+      }
+    },
+    "generator.separator": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分隔符"
+          }
+        }
+      }
+    },
+    "generator.separator.dot": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点号 (.)"
+          }
+        }
+      }
+    },
+    "generator.separator.hyphen": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连字符 (-)"
+          }
+        }
+      }
+    },
+    "generator.separator.space": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空格"
+          }
+        }
+      }
+    },
+    "generator.separator.underscore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下划线 (_)"
+          }
+        }
+      }
+    },
+    "generator.wordCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单词数量"
+          }
+        }
+      }
+    },
+    "generator.wordRange": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 至 8 个单词"
+          }
+        }
+      }
+    },
+    "generator.words": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个单词"
+          }
+        }
+      }
+    },
+    "health.affected": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现 %lld 条需关注的记录"
+          }
+        }
+      }
+    },
+    "health.ageDays": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已 %lld 天"
+          }
+        }
+      }
+    },
+    "health.aged": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "长期未修改（%lld）"
+          }
+        }
+      }
+    },
+    "health.agedDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超过 %lld 天未更新，建议定期轮换重要账号密码。"
+          }
+        }
+      }
+    },
+    "health.allGood": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码状态良好"
+          }
+        }
+      }
+    },
+    "health.allGoodDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未发现弱密码、重复密码或长期未更新的登录记录。"
+          }
+        }
+      }
+    },
+    "health.checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已检查 %lld 条登录密码"
+          }
+        }
+      }
+    },
+    "health.noLogins": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无可检查的登录密码"
+          }
+        }
+      }
+    },
+    "health.noLoginsDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加包含密码的登录记录后，这里会显示离线健康评估。"
+          }
+        }
+      }
+    },
+    "health.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看密码健康报告"
+          }
+        }
+      }
+    },
+    "health.partial": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分历史记录损坏，当前仅基于可读记录评估。"
+          }
+        }
+      }
+    },
+    "health.privacy": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部检测仅在本机内存中完成，不联网、不上传任何密码信息。"
+          }
+        }
+      }
+    },
+    "health.reused": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重复使用（%lld）"
+          }
+        }
+      }
+    },
+    "health.reusedCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 处共用"
+          }
+        }
+      }
+    },
+    "health.reusedDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多个账号共用同一密码，一处泄露会波及其他站点。"
+          }
+        }
+      }
+    },
+    "health.score": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "健康评分 %lld 分"
+          }
+        }
+      }
+    },
+    "health.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离线检测弱密码、重复使用与长期未修改的登录凭据。"
+          }
+        }
+      }
+    },
+    "health.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码健康"
+          }
+        }
+      }
+    },
+    "health.weak": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "弱密码（%lld）"
+          }
+        }
+      }
+    },
+    "health.weakDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强度较低或易被猜测，建议尽快更换为高强度密码。"
+          }
+        }
+      }
+    },
+    "history.change.created": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初始创建"
+          }
+        }
+      }
+    },
+    "history.change.restored": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从回收站恢复"
+          }
+        }
+      }
+    },
+    "history.change.trashed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移入回收站"
+          }
+        }
+      }
+    },
+    "history.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前版本"
+          }
+        }
+      }
+    },
+    "history.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有修改均以不可变加密版本保留。恢复旧版本会写入一条新版本，不会丢失当前内容。"
+          }
+        }
+      }
+    },
+    "history.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无历史版本"
+          }
+        }
+      }
+    },
+    "history.emptyDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这条记录还没有可展示的历史快照。"
+          }
+        }
+      }
+    },
+    "history.restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复此版本"
+          }
+        }
+      }
+    },
+    "history.restoreConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复历史版本"
+          }
+        }
+      }
+    },
+    "history.restoreMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将以此版本的内容创建一条新记录，保留现有修改历史。"
+          }
+        }
+      }
+    },
+    "history.restored": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢复所选历史版本。"
+          }
+        }
+      }
+    },
+    "history.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史版本"
+          }
+        }
+      }
+    },
+    "history.view": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看历史版本"
+          }
+        }
+      }
+    },
+    "security.minutes": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟"
+          }
+        }
+      }
+    },
+    "security.seconds": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 秒"
+          }
+        }
+      }
+    },
+    "strength.fair": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般"
+          }
+        }
+      }
+    },
+    "strength.good": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "良好"
+          }
+        }
+      }
+    },
+    "strength.hint.addVariety": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可混合大小写、数字或符号，或使用多个随机单词。"
+          }
+        }
+      }
+    },
+    "strength.hint.avoidCommonWord": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "避免使用常见弱密码或易猜词汇。"
+          }
+        }
+      }
+    },
+    "strength.hint.avoidRepetition": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "避免连续重复字符或重复片段。"
+          }
+        }
+      }
+    },
+    "strength.hint.avoidSequence": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "避免连续数字、字母或键盘顺序。"
+          }
+        }
+      }
+    },
+    "strength.hint.tooShort": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议至少 12 个字符，更长更安全。"
+          }
+        }
+      }
+    },
+    "strength.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强度：%@"
+          }
+        }
+      }
+    },
+    "strength.strong": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "很强"
+          }
+        }
+      }
+    },
+    "strength.weak": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较弱"
           }
         }
       }

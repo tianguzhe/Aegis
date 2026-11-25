@@ -108,6 +108,9 @@ struct UnlockView: View {
                         .textContentType(creating ? .newPassword : .password).accessibilityIdentifier("masterPassword").onSubmit(submit)
                 }.disabled(session.isBusy)
                 if creating {
+                    if !password.isEmpty {
+                        PasswordStrengthMeter(password: password)
+                    }
                     AegisInput(title: L10n.text("welcome.confirm"), icon: "checkmark.shield") {
                         SecureField(L10n.text("welcome.confirm"), text: $confirmation).textContentType(.newPassword).accessibilityIdentifier("confirmPassword").onSubmit(submit)
                     }.disabled(session.isBusy)

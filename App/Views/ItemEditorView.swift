@@ -288,9 +288,15 @@ struct ItemEditorView: View {
                         Image(systemName: "wand.and.stars")
                         Text(L10n.text("editor.generate"))
                         Spacer()
-                        Text(L10n.format("generator.characters", Int64(session.passwordOptions.length))).foregroundStyle(AegisTheme.secondary)
+                        Text(session.passwordOptions.mode == .passphrase
+                            ? L10n.format("generator.words", Int64(session.passwordOptions.wordCount))
+                            : L10n.format("generator.characters", Int64(session.passwordOptions.length)))
+                            .foregroundStyle(AegisTheme.secondary)
                     }.aegisFont(size: 12, weight: .medium).foregroundStyle(AegisTheme.teal)
                 }.buttonStyle(.plain).padding(.horizontal, 3)
+                if !item.password.isEmpty {
+                    PasswordStrengthMeter(password: item.password, showsSuggestions: false)
+                }
             }
             oneTimePasswordField
         }

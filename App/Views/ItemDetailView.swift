@@ -9,6 +9,7 @@ struct ItemDetailView: View {
     @State private var confirmResolution = false
     @State private var confirmTrash = false
     @State private var confirmDelete = false
+    @State private var showHistory = false
     @State private var copiedNotes = false
     @ScaledMetric(relativeTo: .body) private var titleSize = 26
 
@@ -65,6 +66,10 @@ struct ItemDetailView: View {
                     Image(systemName: "clock").font(.system(size: 11))
                     Text(L10n.text("field.modified"))
                     Text(entry.item.modifiedAt, format: .dateTime.year().month().day().hour().minute())
+                    Spacer(minLength: 8)
+                    Button { showHistory = true } label: {
+                        Label(L10n.text("history.view"), systemImage: "clock.arrow.circlepath")
+                    }.buttonStyle(.plain).foregroundStyle(AegisTheme.teal).accessibilityIdentifier("itemHistoryButton")
                 }.aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).padding(.horizontal, 2)
 
             }.padding(.horizontal, horizontalPadding).padding(.vertical, 28)
@@ -88,6 +93,9 @@ struct ItemDetailView: View {
             Button(L10n.text("action.deleteImmediately"), role: .destructive) { Task { await session.deleteImmediately(entry) } }
             Button(L10n.text("action.cancel"), role: .cancel) {}
         } message: { Text(L10n.format("trash.deleteMessage", entry.item.title)) }
+        .sheet(isPresented: $showHistory) {
+            ItemHistoryView(itemID: entry.item.id, title: entry.item.title).environment(session)
+        }
         .disabled(session.pendingItemIDs.contains(entry.item.id))
         .privacySensitive()
     }
@@ -110,6 +118,8 @@ struct ItemDetailView: View {
                         Task { await session.toggleFavorite(entry) }
                     }
                     Menu {
+                        Button(L10n.text("history.view")) { showHistory = true }
+                        Divider()
                         if entry.item.deletedAt == nil {
                             Button(L10n.text("action.trash"), role: .destructive) { confirmTrash = true }
                         } else {

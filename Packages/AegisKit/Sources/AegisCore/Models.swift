@@ -177,7 +177,7 @@ public struct EncryptedRevision: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-public struct VaultEntry: Identifiable, Sendable {
+public struct VaultEntry: Identifiable, Equatable, Sendable {
     public var id: UUID {
         revision.id
     }

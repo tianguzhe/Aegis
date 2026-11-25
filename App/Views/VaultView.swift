@@ -79,8 +79,9 @@ struct VaultView: View {
             switch sheet {
             case let .editor(item, parents):
                 ItemEditorView(item: item, parents: parents, onSaved: selectSavedItem).environment(session)
-            case .settings: SettingsView().environment(session)
+            case .settings: SettingsView(onOpenItem: selectSavedItem).environment(session)
             case .generator: GeneratorView().environment(session)
+            case .health: PasswordHealthView(onOpen: selectSavedItem).environment(session)
             }
         }
         .onAppear { reconcileSelection() }
@@ -125,7 +126,11 @@ struct VaultView: View {
                         }
                 }.tabItem { Label(L10n.text("nav.library"), systemImage: "square.grid.2x2") }.tag(0)
                 GeneratorView(embedded: true).tabItem { Label(L10n.text("nav.generator"), systemImage: "wand.and.stars") }.tag(1)
-                SettingsView(embedded: true).tabItem { Label(L10n.text("action.settings"), systemImage: "slider.horizontal.3") }.tag(2)
+                SettingsView(embedded: true, onOpenItem: { id in
+                    selectedTab = 0
+                    selectSavedItem(id)
+                    mobilePath = [id]
+                }).tabItem { Label(L10n.text("action.settings"), systemImage: "slider.horizontal.3") }.tag(2)
             }.tint(AegisTheme.teal)
         }
     #endif
@@ -141,6 +146,7 @@ struct VaultView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         sectionCaption("nav.tools")
                         sidebarAction("nav.generator", symbol: "wand.and.stars") { presentedSheet = .generator }
+                        sidebarAction("health.title", symbol: "heart.text.square") { presentedSheet = .health }
                         sidebarAction("nav.settings", symbol: "slider.horizontal.3") { presentedSheet = .settings }
                     }
                 }.padding(.horizontal, 14).padding(.bottom, 20)
@@ -573,12 +579,13 @@ extension VaultEntry {
 }
 
 private enum VaultSheet: Identifiable {
-    case editor(VaultItem, [UUID]), settings, generator
+    case editor(VaultItem, [UUID]), settings, generator, health
     var id: String {
         switch self {
         case let .editor(item, _): "editor-\(item.id)"
         case .settings: "settings"
         case .generator: "generator"
+        case .health: "health"
         }
     }
 }

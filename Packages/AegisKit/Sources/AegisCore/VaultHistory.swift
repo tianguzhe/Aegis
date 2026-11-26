@@ -27,7 +27,10 @@ public enum VaultHistoryChange: String, Equatable, Sendable {
     case oneTimePassword
     case card
     case notes
+    case tags
     case favorite
+    case archived
+    case unarchived
     case trashed
     case restored
 
@@ -41,7 +44,10 @@ public enum VaultHistoryChange: String, Equatable, Sendable {
         case .oneTimePassword: L10n.text("field.oneTimePassword")
         case .card: L10n.text("kind.card")
         case .notes: L10n.text("field.notes")
+        case .tags: L10n.text("field.tags")
         case .favorite: L10n.text("field.favorite")
+        case .archived: L10n.text("history.change.archived")
+        case .unarchived: L10n.text("history.change.unarchived")
         case .trashed: L10n.text("history.change.trashed")
         case .restored: L10n.text("history.change.restored")
         }
@@ -84,8 +90,16 @@ public enum VaultHistoryDiff {
         if previous.notes != current.notes {
             result.append(.notes)
         }
+        if previous.tagList != current.tagList {
+            result.append(.tags)
+        }
         if previous.isFavorite != current.isFavorite {
             result.append(.favorite)
+        }
+        if !previous.archived, current.archived {
+            result.append(.archived)
+        } else if previous.archived, !current.archived {
+            result.append(.unarchived)
         }
         return result
     }

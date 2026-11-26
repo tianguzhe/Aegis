@@ -379,6 +379,24 @@ final class VaultSession {
         await save(item, parents: [entry.id])
     }
 
+    func toggleArchive(_ entry: VaultEntry) async {
+        guard entry.item.deletedAt == nil else { return }
+        var item = entry.item
+        let next = !item.archived
+        item.isArchived = next ? true : nil
+        if await save(item, parents: [entry.id]) {
+            showNotice(L10n.text(next ? "notice.archived" : "notice.unarchived"))
+        }
+    }
+
+    /// Distinct tags across non-trashed records, sorted for sidebar and editor suggestions.
+    var allTags: [String] {
+        let raw = entries.lazy.filter { $0.item.deletedAt == nil }.flatMap(\.item.tagList)
+        return VaultItem.normalizeTags(Array(raw)).sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
+    }
+
     func trash(_ entry: VaultEntry) async {
         guard entry.item.deletedAt == nil else { return }
         var item = entry.item; item.deletedAt = Date()

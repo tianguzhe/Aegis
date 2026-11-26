@@ -26,9 +26,10 @@ extension VaultSession {
             error = L10n.text("editor.itemUnavailable"); return false
         }
         var restored = version.item
-        // Restoring content must not move the item in or out of the trash or change favorites.
+        // Restoring content must not move the item in or out of the trash, archive, or favorites.
         restored.deletedAt = current.item.deletedAt
         restored.isFavorite = current.item.isFavorite
+        restored.isArchived = current.item.isArchived
         restored.permanentlyDeletedAt = nil
         guard await save(restored, parents: heads.map(\.id)) else { return false }
         showNotice(L10n.text("history.restored"))

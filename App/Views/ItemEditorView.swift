@@ -28,10 +28,11 @@ struct ItemEditorView: View {
     @State private var loaded = false
     @State private var draftObserverID = UUID()
     @State private var expandedEditorActive = false
+    @State private var tagInput = ""
     private let onSaved: (UUID) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
     private var isDirty: Bool {
-        item != baseline
+        item != baseline || !tagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var cardNumberValidation: CardNumberValidation {
@@ -107,6 +108,7 @@ struct ItemEditorView: View {
                         cardFields
                     }
                     markdownEditor
+                    tagsEditor
                     Toggle(isOn: $item.isFavorite) {
                         Label(L10n.text("field.favorite"), systemImage: "star").aegisFont(size: 13).foregroundStyle(AegisTheme.text)
                     }.toggleStyle(.switch).tint(AegisTheme.accentFill).padding(16).aegisSurface()
@@ -122,6 +124,7 @@ struct ItemEditorView: View {
                 Button {
                     guard !saving, canSave else { return }
                     saving = true
+                    commitTagInput()
                     item.title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
                     if item.kind == .card {
                         item.cardNumber = CardNumberRules.digits(from: item.cardNumber)
@@ -154,7 +157,14 @@ struct ItemEditorView: View {
                     }
                     loaded = true
                 }
-                session.observeDraft(draftObserverID) { VaultDraft(item: item, original: baseline, parents: parents) }
+                session.observeDraft(draftObserverID) {
+                    var draftItem = item
+                    let pending = VaultItem.parseTags(tagInput)
+                    if !pending.isEmpty {
+                        draftItem.tags = VaultItem.normalizeTags(draftItem.tagList + pending)
+                    }
+                    return VaultDraft(item: draftItem, original: baseline, parents: parents)
+                }
             }
             .onDisappear {
                 if !expandedEditorActive {
@@ -173,6 +183,7 @@ struct ItemEditorView: View {
             }
             .alert(L10n.text("draft.closeTitle"), isPresented: $confirmClose) {
                 Button(L10n.text("draft.keepAndClose")) {
+                    commitTagInput()
                     session.retainDraft(VaultDraft(item: item, original: baseline, parents: parents)); dismiss()
                 }
                 Button(L10n.text("draft.discard"), role: .destructive) { session.discardDraft(item.id); dismiss() }
@@ -345,6 +356,77 @@ struct ItemEditorView: View {
         MarkdownComposer(text: $item.notes,
                          title: L10n.text(item.kind == .note ? "field.secureNote" : "field.notes"),
                          recordTitle: item.title, expanded: $expandedEditorActive)
+    }
+
+    private var tagsEditor: some View {
+        let currentTags = item.tagList
+        let suggestions = session.allTags.filter { candidate in
+            !currentTags.contains { $0.caseInsensitiveCompare(candidate) == .orderedSame }
+        }.prefix(8)
+        return VStack(alignment: .leading, spacing: 10) {
+            AegisInput(title: L10n.text("field.tags"), icon: "tag") {
+                TextField(L10n.text("editor.tagsPlaceholder"), text: $tagInput)
+                    .aegisNoCapitalization()
+                    .onSubmit(commitTagInput)
+                    .accessibilityIdentifier("itemTagsInput")
+                    .onChange(of: tagInput) { _, value in
+                        if value.contains(where: { ",;，；".contains($0) }) {
+                            commitTagInput()
+                        }
+                    }
+                if !tagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button(L10n.text("editor.addTag"), action: commitTagInput)
+                        .aegisFont(size: 12, weight: .medium).buttonStyle(.plain).foregroundStyle(AegisTheme.teal)
+                }
+            }
+            if !currentTags.isEmpty {
+                AegisFlowLayout(spacing: 6) {
+                    ForEach(currentTags, id: \.self) { tag in
+                        HStack(spacing: 5) {
+                            Text(tag).aegisFont(size: 11, weight: .medium)
+                            Button { removeTag(tag) } label: {
+                                Image(systemName: "xmark.circle.fill").font(.system(size: 11))
+                            }.buttonStyle(.plain).accessibilityLabel(L10n.format("editor.removeTag", tag))
+                        }
+                        .foregroundStyle(AegisTheme.teal)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(AegisTheme.teal.opacity(0.08), in: Capsule())
+                    }
+                }
+            }
+            if !suggestions.isEmpty {
+                AegisFlowLayout(spacing: 6) {
+                    ForEach(Array(suggestions), id: \.self) { tag in
+                        Button { appendTags([tag]) } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
+                                Text(tag).aegisFont(size: 11)
+                            }
+                            .foregroundStyle(AegisTheme.secondary)
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(AegisTheme.inset, in: Capsule())
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func commitTagInput() {
+        let parsed = VaultItem.parseTags(tagInput)
+        tagInput = ""
+        guard !parsed.isEmpty else { return }
+        appendTags(parsed)
+    }
+
+    private func appendTags(_ additions: [String]) {
+        let merged = VaultItem.normalizeTags(item.tagList + additions)
+        item.tags = merged.isEmpty ? nil : merged
+    }
+
+    private func removeTag(_ tag: String) {
+        let remaining = item.tagList.filter { $0.caseInsensitiveCompare(tag) != .orderedSame }
+        item.tags = remaining.isEmpty ? nil : remaining
     }
 
     private var typeChoiceLayout: AnyLayout {

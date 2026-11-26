@@ -31,14 +31,13 @@ public enum PasswordCSVImport {
     }
 
     public enum SkipReason: String, Sendable {
-        case wrongColumnCount, unsupportedType, missingPassword, archived, oversized, duplicate
+        case wrongColumnCount, unsupportedType, missingPassword, oversized, duplicate
 
         public var message: String {
             switch self {
             case .wrongColumnCount: L10n.text("csv.skip.columns")
             case .unsupportedType: L10n.text("csv.skip.type")
             case .missingPassword: L10n.text("csv.skip.password")
-            case .archived: L10n.text("csv.skip.archived")
             case .oversized: L10n.text("csv.skip.oversized")
             case .duplicate: L10n.text("csv.skip.duplicate")
             }
@@ -71,6 +70,8 @@ public enum PasswordCSVImport {
         public let title: String
         public let username: String
         public let host: String
+        public let tags: [String]
+        public let isArchived: Bool
         public let revision: EncryptedRevision
 
         public var id: UUID {
@@ -102,7 +103,8 @@ public enum PasswordCSVImport {
             do {
                 let revision = try await crypto.encrypt(item, parents: [])
                 let host = URLComponents(string: item.website)?.host ?? ""
-                candidates.append(Candidate(title: item.title, username: item.username, host: host, revision: revision))
+                candidates.append(Candidate(title: item.title, username: item.username, host: host,
+                                            tags: item.tagList, isArchived: item.archived, revision: revision))
             } catch VaultError.oversizedRecord {
                 issues.append(Issue(line: row.line, reason: .oversized))
             }
@@ -114,11 +116,15 @@ public enum PasswordCSVImport {
     /// In-memory comparison only. UTF-8 byte comparison distinguishes canonically equivalent passwords.
     public struct MatchKey: Hashable {
         private let fields: [Data]
+        private let tags: [Data]
         private let isFavorite: Bool
+        private let isArchived: Bool
 
         public init(_ item: VaultItem) {
-            fields = [item.title, item.website, item.username, item.password, item.notes].map { Data($0.utf8) }
+            fields = [item.title, item.website, item.username, item.password, item.notes, item.oneTimePassword ?? ""].map { Data($0.utf8) }
+            tags = item.tagList.map { Data($0.utf8) }
             isFavorite = item.isFavorite
+            isArchived = item.archived
         }
     }
 
@@ -150,13 +156,6 @@ public enum PasswordCSVImport {
                     issues.append(Issue(line: line, reason: .unsupportedType))
                     return
                 }
-                if flag("archived") {
-                    issues.append(Issue(line: line, reason: .archived))
-                    return
-                }
-                if !value("tags").isEmpty {
-                    hasUnsupportedFields = true
-                }
             }
             let password = value("password")
             guard !password.isEmpty else {
@@ -167,9 +166,13 @@ public enum PasswordCSVImport {
             let rawTitle = value(layout.title)
             let host = URLComponents(string: website)?.host ?? ""
             let fallbackTitle = host.isEmpty ? L10n.text("list.untitled") : host
+            let parsedTags = layout.source == .onePassword ? VaultItem.parseTags(value("tags")) : []
+            let archived = layout.source == .onePassword && flag("archived")
             var item = VaultItem(title: rawTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackTitle : rawTitle,
-                                 username: value("username"), password: password, website: website, notes: value(layout.notes))
-            item.isFavorite = layout.source == .onePassword && flag("favorite")
+                                 username: value("username"), password: password, website: website, notes: value(layout.notes),
+                                 isFavorite: layout.source == .onePassword && flag("favorite"),
+                                 tags: parsedTags.isEmpty ? nil : parsedTags,
+                                 isArchived: archived ? true : nil)
             if layout.source == .onePassword {
                 // Newer exports use "OTPAuth"; older ones put the same URI in "first one-time password".
                 let rawOTP = ["otpauth", "first one-time password"].lazy.map(value).first { !$0.isEmpty }

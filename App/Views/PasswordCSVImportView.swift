@@ -112,8 +112,15 @@ struct PasswordCSVImportView: View {
                 }.buttonStyle(.plain).aegisFont(size: 12).foregroundStyle(AegisTheme.teal)
                 LazyVStack(spacing: 0) {
                     ForEach(content.candidates) { candidate in
+                        let tagSummary = candidate.tags.map { "#\($0)" }.joined(separator: " ")
+                        let detailParts = [
+                            candidate.isArchived ? L10n.text("nav.archived") : "",
+                            candidate.username,
+                            candidate.host,
+                            tagSummary,
+                        ].filter { !$0.isEmpty }
                         ImportItemToggle(title: candidate.title,
-                                         detail: [candidate.username, candidate.host].filter { !$0.isEmpty }.joined(separator: " · "),
+                                         detail: detailParts.joined(separator: " · "),
                                          symbol: ItemKind.login.symbol, itemID: candidate.id, selectedItemIDs: $selectedItemIDs)
                         Divider().overlay(AegisTheme.border)
                     }

@@ -76,7 +76,7 @@ public enum PasswordHealth {
     public static func analyze(_ entries: [VaultEntry], now: Date = Date(),
                                agedThresholdDays: Int = agedThresholdDays) -> Report
     {
-        let activeLogins = entries.filter { $0.item.kind == .login && $0.item.deletedAt == nil }
+        let activeLogins = entries.filter { $0.item.kind == .login && $0.item.deletedAt == nil && !$0.item.archived }
         let withPassword = activeLogins.filter { !$0.item.password.isEmpty }
         guard !withPassword.isEmpty else {
             return Report(totalLogins: activeLogins.count, loginsWithPassword: 0,

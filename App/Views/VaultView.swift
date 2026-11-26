@@ -2,17 +2,17 @@ import AegisCore
 import SwiftUI
 
 enum VaultFilter: String, CaseIterable, Identifiable {
-    case all, favorites, login, card, note, trash
+    case all, favorites, archived, login, card, note, trash
     var id: String {
         rawValue
     }
 
     var title: String {
-        L10n.text(["all": "nav.all", "favorites": "nav.favorites", "login": "kind.login", "card": "kind.card", "note": "kind.note", "trash": "nav.trash"][rawValue]!)
+        L10n.text(["all": "nav.all", "favorites": "nav.favorites", "archived": "nav.archived", "login": "kind.login", "card": "kind.card", "note": "kind.note", "trash": "nav.trash"][rawValue]!)
     }
 
     var symbol: String {
-        switch self { case .all: "square.grid.2x2"; case .favorites: "star"; case .login: "key.horizontal"; case .card: "creditcard"; case .note: "note.text"; case .trash: "trash" }
+        switch self { case .all: "square.grid.2x2"; case .favorites: "star"; case .archived: "archivebox"; case .login: "key.horizontal"; case .card: "creditcard"; case .note: "note.text"; case .trash: "trash" }
     }
 
     func includes(_ entry: VaultEntry) -> Bool {
@@ -20,15 +20,20 @@ enum VaultFilter: String, CaseIterable, Identifiable {
             return entry.item.deletedAt != nil
         }
         guard entry.item.deletedAt == nil else { return false }
+        if self == .archived {
+            return entry.item.archived
+        }
+        guard !entry.item.archived else { return false }
         switch self { case .all: return true; case .favorites: return entry.item.isFavorite
         case .login: return entry.item.kind == .login; case .card: return entry.item.kind == .card
-        case .note: return entry.item.kind == .note; case .trash: return false }
+        case .note: return entry.item.kind == .note; case .archived, .trash: return false }
     }
 }
 
 struct VaultView: View {
     @Environment(VaultSession.self) private var session
     @State private var filter: VaultFilter = .all
+    @State private var selectedTag: String?
     @State private var selection: UUID?
     @State private var selectedItem: UUID?
     @State private var search = ""
@@ -42,7 +47,13 @@ struct VaultView: View {
 
     private var filtered: [VaultEntry] {
         session.entries.filter { entry in
-            filter.includes(entry) && entry.matchesSearch(search)
+            let matchesScope: Bool = if let selectedTag {
+                entry.item.deletedAt == nil &&
+                    entry.item.tagList.contains { $0.caseInsensitiveCompare(selectedTag) == .orderedSame }
+            } else {
+                filter.includes(entry)
+            }
+            return matchesScope && entry.matchesSearch(search)
         }.sorted { recentFirst ? $0.item.modifiedAt > $1.item.modifiedAt : $0.item.title.localizedStandardCompare($1.item.title) == .orderedAscending }
     }
 
@@ -141,8 +152,11 @@ struct VaultView: View {
                 .padding(.horizontal, 20).frame(height: AegisMetrics.toolbarHeight).padding(.bottom, 18)
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    sidebarSection("nav.library", values: [.all, .favorites, .trash])
+                    sidebarSection("nav.library", values: [.all, .favorites, .archived, .trash])
                     sidebarSection("nav.categories", values: [.login, .card, .note])
+                    if !session.allTags.isEmpty {
+                        sidebarTagsSection
+                    }
                     VStack(alignment: .leading, spacing: 10) {
                         sectionCaption("nav.tools")
                         sidebarAction("nav.generator", symbol: "wand.and.stars") { presentedSheet = .generator }
@@ -176,9 +190,9 @@ struct VaultView: View {
     }
 
     private func sidebarRow(_ value: VaultFilter) -> some View {
-        let active = filter == value
+        let active = selectedTag == nil && filter == value
         let count = session.entries.filter { value.includes($0) }.count
-        return Button { filter = value } label: {
+        return Button { selectedTag = nil; filter = value } label: {
             HStack(spacing: 12) {
                 Image(systemName: value.symbol).font(.system(size: 14, weight: active ? .semibold : .regular)).frame(width: 20)
                 Text(value.title).aegisFont(size: 13, weight: active ? .semibold : .regular)
@@ -194,6 +208,39 @@ struct VaultView: View {
                 .background(active ? AegisTheme.selected : Color.clear, in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
                 .contentShape(Rectangle())
         }.buttonStyle(AegisNavigationButtonStyle()).accessibilityAddTraits(active ? [.isSelected] : [])
+    }
+
+    private var sidebarTagsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionCaption("nav.tags")
+            VStack(spacing: 4) {
+                ForEach(session.allTags, id: \.self) { tag in
+                    let active = selectedTag?.caseInsensitiveCompare(tag) == .orderedSame
+                    let count = session.entries.filter {
+                        $0.item.deletedAt == nil && $0.item.tagList.contains { $0.caseInsensitiveCompare(tag) == .orderedSame }
+                    }.count
+                    Button {
+                        selectedTag = active ? nil : tag
+                        session.touch()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "tag").font(.system(size: 13, weight: active ? .semibold : .regular)).frame(width: 20)
+                            Text(tag).aegisFont(size: 13, weight: active ? .semibold : .regular).lineLimit(1)
+                            Spacer(minLength: 0)
+                            if count > 0 {
+                                Text(count, format: .number).aegisFont(size: 10, weight: .medium).monospacedDigit()
+                                    .foregroundStyle(active ? AegisTheme.teal : AegisTheme.secondary)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(active ? AegisTheme.surface.opacity(0.65) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+                            }
+                        }.foregroundStyle(active ? AegisTheme.teal : AegisTheme.text)
+                            .padding(.horizontal, 10).padding(.vertical, 9).frame(maxWidth: .infinity)
+                            .background(active ? AegisTheme.selected : Color.clear, in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
+                            .contentShape(Rectangle())
+                    }.buttonStyle(AegisNavigationButtonStyle()).accessibilityAddTraits(active ? [.isSelected] : [])
+                }
+            }
+        }
     }
 
     private func sidebarAction(_ key: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -214,7 +261,7 @@ struct VaultView: View {
                     }.padding(.horizontal, 20).padding(.top, 12)
                 }
                 HStack(spacing: 8) {
-                    Text(filter.title).aegisFont(size: mobile ? 24 : 16, weight: .semibold).foregroundStyle(AegisTheme.text)
+                    Text(selectedTag.map { "#\($0)" } ?? filter.title).aegisFont(size: mobile ? 24 : 16, weight: .semibold).foregroundStyle(AegisTheme.text)
                         .accessibilityIdentifier("vaultListTitle")
                     Text(filtered.count, format: .number).aegisFont(size: 11, weight: .medium).monospacedDigit()
                         .foregroundStyle(AegisTheme.secondary).padding(.horizontal, 7).padding(.vertical, 3)
@@ -258,13 +305,24 @@ struct VaultView: View {
                     ScrollView(.horizontal) {
                         HStack(spacing: 8) {
                             ForEach(VaultFilter.allCases) { value in
-                                Button { filter = value } label: {
+                                let active = selectedTag == nil && filter == value
+                                Button { selectedTag = nil; filter = value } label: {
                                     Label(value.title, systemImage: value.symbol).aegisFont(size: 12, weight: .medium)
                                         .padding(.horizontal, 12).frame(minHeight: 44)
-                                        .foregroundStyle(filter == value ? AegisTheme.teal : AegisTheme.secondary)
-                                        .background(filter == value ? AegisTheme.selected : AegisTheme.inset,
+                                        .foregroundStyle(active ? AegisTheme.teal : AegisTheme.secondary)
+                                        .background(active ? AegisTheme.selected : AegisTheme.inset,
                                                     in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
-                                }.buttonStyle(.plain).accessibilityAddTraits(filter == value ? .isSelected : [])
+                                }.buttonStyle(.plain).accessibilityAddTraits(active ? .isSelected : [])
+                            }
+                            ForEach(session.allTags, id: \.self) { tag in
+                                let active = selectedTag?.caseInsensitiveCompare(tag) == .orderedSame
+                                Button { selectedTag = active ? nil : tag } label: {
+                                    Label(tag, systemImage: "tag").aegisFont(size: 12, weight: .medium)
+                                        .padding(.horizontal, 12).frame(minHeight: 44)
+                                        .foregroundStyle(active ? AegisTheme.teal : AegisTheme.secondary)
+                                        .background(active ? AegisTheme.selected : AegisTheme.inset,
+                                                    in: RoundedRectangle(cornerRadius: AegisMetrics.controlRadius))
+                                }.buttonStyle(.plain).accessibilityAddTraits(active ? .isSelected : [])
                             }
                         }.padding(.horizontal, 16)
                     }.scrollIndicators(.hidden).padding(.bottom, 12)
@@ -279,8 +337,13 @@ struct VaultView: View {
                     .padding(.horizontal, 16).padding(.bottom, 12)
                     .accessibilityIdentifier("vaultIntegrityWarning")
             }
-            if filter == .trash {
+            if selectedTag == nil, filter == .trash {
                 Label(L10n.format("trash.retention", Int64(TrashPolicy.retentionDays)), systemImage: "clock")
+                    .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 18).padding(.bottom, 12)
+            } else if selectedTag == nil, filter == .archived {
+                Label(L10n.text("archive.banner"), systemImage: "archivebox")
                     .aegisFont(size: 12).foregroundStyle(AegisTheme.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 18).padding(.bottom, 12)
@@ -347,6 +410,7 @@ struct VaultView: View {
                                         } else if entry.item.deletedAt == nil {
                                             Button(L10n.text("action.edit")) { edit(entry) }
                                             Button(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite")) { Task { await session.toggleFavorite(entry) } }
+                                            Button(L10n.text(entry.item.archived ? "action.unarchive" : "action.archive")) { Task { await session.toggleArchive(entry) } }
                                             Divider()
                                             Button(L10n.text("action.trash"), role: .destructive) { pendingTrash = entry }
                                         } else {
@@ -429,7 +493,10 @@ struct VaultView: View {
     private func selectSavedItem(_ id: UUID) {
         guard let entry = session.entries.first(where: { $0.item.id == id }) else { return }
         search = ""
-        if !filter.includes(entry) {
+        selectedTag = nil
+        if entry.item.archived {
+            filter = .archived
+        } else if !filter.includes(entry) {
             filter = .all
         }
         select(entry)
@@ -510,14 +577,27 @@ struct VaultView: View {
         if !search.isEmpty {
             return "list.noResults"
         }
-        switch filter { case .trash: return "list.trashEmpty"; case .favorites: return "list.favoritesEmpty"; default: return "list.emptyTitle" }
+        if selectedTag != nil {
+            return "list.noResults"
+        }
+        switch filter {
+        case .trash: return "list.trashEmpty"
+        case .favorites: return "list.favoritesEmpty"
+        case .archived: return "list.archivedEmpty"
+        default: return "list.emptyTitle"
+        }
     }
 
     private var emptyDescription: String {
-        if !search.isEmpty {
+        if !search.isEmpty || selectedTag != nil {
             return "list.noResultsDescription"
         }
-        switch filter { case .trash: return "list.trashDescription"; case .favorites: return "list.favoritesDescription"; default: return "list.emptyDescription" }
+        switch filter {
+        case .trash: return "list.trashDescription"
+        case .favorites: return "list.favoritesDescription"
+        case .archived: return "list.archivedDescription"
+        default: return "list.emptyDescription"
+        }
     }
 }
 
@@ -564,7 +644,7 @@ private struct VaultRecordRow: View {
 extension VaultEntry {
     /// Shared by the main list and the macOS quick-access panel so both find the same records.
     func matchesSearch(_ text: String) -> Bool {
-        text.isEmpty || [item.title, item.username, item.website].contains { $0.localizedStandardContains(text) }
+        text.isEmpty || ([item.title, item.username, item.website] + item.tagList).contains { $0.localizedStandardContains(text) }
     }
 
     var listSubtitle: String {

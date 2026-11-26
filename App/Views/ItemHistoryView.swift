@@ -149,6 +149,9 @@ private struct HistoryRow: View {
                         row("field.expiry", version.item.expiry)
                     }
                 }
+                if !version.item.tagList.isEmpty {
+                    row("field.tags", version.item.tagList.joined(separator: ", "))
+                }
                 if !version.item.notes.isEmpty {
                     row(version.item.kind == .note ? "field.secureNote" : "field.notes", version.item.notes)
                 }

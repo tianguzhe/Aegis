@@ -119,6 +119,11 @@ struct ItemDetailView: View {
                     }
                     Menu {
                         Button(L10n.text("history.view")) { showHistory = true }
+                        if entry.item.deletedAt == nil {
+                            Button(L10n.text(entry.item.archived ? "action.unarchive" : "action.archive")) {
+                                Task { await session.toggleArchive(entry) }
+                            }
+                        }
                         Divider()
                         if entry.item.deletedAt == nil {
                             Button(L10n.text("action.trash"), role: .destructive) { confirmTrash = true }
@@ -144,8 +149,17 @@ struct ItemDetailView: View {
                     }
                 }
             }
+            if !entry.item.tagList.isEmpty {
+                AegisFlowLayout(spacing: 6) {
+                    ForEach(entry.item.tagList, id: \.self) { tag in
+                        AegisPill(title: tag, symbol: "tag")
+                    }
+                }
+            }
             if entry.item.deletedAt != nil {
                 trashNotice
+            } else if entry.item.archived {
+                archivedNotice
             }
             #if os(iOS)
                 HStack(spacing: 10) {
@@ -188,6 +202,11 @@ struct ItemDetailView: View {
                     .help(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
                     .accessibilityLabel(L10n.text(entry.item.isFavorite ? "action.unfavorite" : "action.favorite"))
                     .tint(entry.item.isFavorite ? AegisTheme.gold : AegisTheme.teal)
+                    Button { Task { await session.toggleArchive(entry) } } label: {
+                        Image(systemName: entry.item.archived ? "tray.and.arrow.up" : "archivebox")
+                    }
+                    .help(L10n.text(entry.item.archived ? "action.unarchive" : "action.archive"))
+                    .accessibilityLabel(L10n.text(entry.item.archived ? "action.unarchive" : "action.archive"))
                     Button(action: onEdit) {
                         Label(L10n.text("action.edit"), systemImage: "square.and.pencil")
                     }.buttonStyle(.borderedProminent).tint(AegisTheme.accentFill).accessibilityIdentifier("editItemButton")
@@ -217,6 +236,25 @@ struct ItemDetailView: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var archivedNotice: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "archivebox")
+                .font(.system(size: 16)).foregroundStyle(AegisTheme.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.text("archive.itemStatus")).aegisFont(size: 12, weight: .medium)
+                    .foregroundStyle(AegisTheme.text)
+                Text(L10n.text("archive.itemHint"))
+                    .aegisFont(size: 11).foregroundStyle(AegisTheme.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button(L10n.text("action.unarchive")) {
+                Task { await session.toggleArchive(entry) }
+            }.buttonStyle(.bordered).controlSize(.small).disabled(session.unreadableRevisionCount > 0)
         }
         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
         .background(AegisTheme.inset, in: RoundedRectangle(cornerRadius: 10))

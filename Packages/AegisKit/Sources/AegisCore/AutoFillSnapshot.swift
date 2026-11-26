@@ -16,7 +16,7 @@ public struct AutoFillCredential: Codable, Identifiable, Sendable {
     }
 
     public static func includes(_ entry: VaultEntry) -> Bool {
-        entry.item.kind == .login && entry.item.deletedAt == nil && entry.item.permanentlyDeletedAt == nil
+        entry.item.kind == .login && entry.item.deletedAt == nil && entry.item.permanentlyDeletedAt == nil && !entry.item.archived
     }
 }
 

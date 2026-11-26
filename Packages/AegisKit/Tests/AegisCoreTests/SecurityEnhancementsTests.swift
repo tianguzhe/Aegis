@@ -180,4 +180,41 @@ final class SecurityEnhancementsTests: XCTestCase {
         XCTAssertEqual(report.affectedEntryCount, 3)
         XCTAssertLessThan(report.score, 100)
     }
+
+    // MARK: - Tags and Archive
+
+    func testTagsAndArchiveCompatibilityAndFiltering() async throws {
+        // Legacy JSON without `tags` or `isArchived` decodes with empty tags and archived == false.
+        let legacyItem = VaultItem(kind: .login, title: "Legacy", username: "u", password: "123", website: "https://example.com")
+        let encoded = try JSONEncoder().encode(legacyItem)
+        let decoded = try JSONDecoder().decode(VaultItem.self, from: encoded)
+        XCTAssertEqual(decoded.tagList, [])
+        XCTAssertFalse(decoded.archived)
+
+        XCTAssertEqual(VaultItem.parseTags(" work, Personal ; WORK，开发 \n "), ["work", "Personal", "开发"])
+
+        let crypto = VaultCrypto()
+        _ = try await crypto.create(password: "archive filter test password")
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+        var archived = VaultItem(kind: .login, title: "Archived Weak", username: "u", password: "123", website: "https://old.example")
+        archived.isArchived = true
+        archived.tags = ["legacy"]
+        archived.modifiedAt = now.addingTimeInterval(-365 * 86400)
+        let archivedRev = try await crypto.encrypt(archived, parents: [])
+        let archivedEntry = VaultEntry(item: archived, revision: archivedRev, isConflict: false)
+
+        // Archived logins are excluded from AutoFill snapshots and PasswordHealth reports.
+        XCTAssertFalse(AutoFillCredential.includes(archivedEntry))
+        let report = PasswordHealth.analyze([archivedEntry], now: now)
+        XCTAssertEqual(report.totalLogins, 0)
+        XCTAssertTrue(report.isHealthy)
+
+        // History diff detects tag, archive, and unarchive transitions.
+        var unarchived = archived
+        unarchived.isArchived = nil
+        unarchived.tags = ["legacy", "active"]
+        XCTAssertEqual(VaultHistoryDiff.changes(from: legacyItem, to: archived).contains(.archived), true)
+        XCTAssertEqual(VaultHistoryDiff.changes(from: archived, to: unarchived), [.tags, .unarchived])
+    }
 }

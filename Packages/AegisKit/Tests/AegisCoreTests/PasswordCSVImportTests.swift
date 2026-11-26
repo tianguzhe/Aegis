@@ -4,19 +4,27 @@ import Foundation
 import Testing
 
 struct PasswordCSVImportTests {
-    @Test func onePasswordHeadersPreserveSecrets() throws {
+    @Test func onePasswordHeadersPreserveSecretsTagsAndArchive() throws {
         let csv = "\u{FEFF}Title,Url,Username,Password,OTPAuth,Favorite,Archived,Tags,Notes\r\n" +
-            "Example,,user,\" secret,\"\"quoted\"\" \",,true,false,work,\"first\r\nsecond\"\r\n" +
-            "Archived,https://archive.example,,secret,,false,true,,\r\n"
+            "Example,,user,\" secret,\"\"quoted\"\" \",,true,false,\"work, Personal; WORK\",\"first\r\nsecond\"\r\n" +
+            "Archived,https://archive.example,,secret,,false,true,old,\r\n"
         let result = try PasswordCSVImport.parse(Data(csv.utf8))
         #expect(result.source == .onePassword)
+        #expect(result.rows.count == 2)
         let item = try #require(result.rows.first?.item)
         #expect(item.password == " secret,\"quoted\" ")
         #expect(item.website.isEmpty)
         #expect(item.notes == "first\r\nsecond")
         #expect(item.isFavorite)
-        #expect(result.hasUnsupportedFields)
-        #expect(result.issues == [.init(line: 4, reason: .archived)])
+        #expect(!item.archived)
+        #expect(item.tagList == ["work", "Personal"])
+
+        let archived = try #require(result.rows.last?.item)
+        #expect(archived.title == "Archived")
+        #expect(archived.archived)
+        #expect(archived.tagList == ["old"])
+        #expect(!result.hasUnsupportedFields)
+        #expect(result.issues.isEmpty)
     }
 
     @Test func onePasswordImportsTOTPAndFlagsUnreadableOnes() throws {
@@ -70,6 +78,15 @@ struct PasswordCSVImportTests {
         #expect(PasswordCSVImport.MatchKey(item) != PasswordCSVImport.MatchKey(changed))
         changed = item
         changed.website = "https://example.test/b"
+        #expect(PasswordCSVImport.MatchKey(item) != PasswordCSVImport.MatchKey(changed))
+        changed = item
+        changed.oneTimePassword = "otpauth://totp/Example:user?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&algorithm=SHA1&digits=6&period=30"
+        #expect(PasswordCSVImport.MatchKey(item) != PasswordCSVImport.MatchKey(changed))
+        changed = item
+        changed.tags = ["work"]
+        #expect(PasswordCSVImport.MatchKey(item) != PasswordCSVImport.MatchKey(changed))
+        changed = item
+        changed.isArchived = true
         #expect(PasswordCSVImport.MatchKey(item) != PasswordCSVImport.MatchKey(changed))
         changed = item
         changed.id = UUID()

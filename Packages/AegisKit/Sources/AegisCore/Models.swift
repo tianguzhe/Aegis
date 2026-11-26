@@ -91,17 +91,52 @@ public struct VaultItem: Codable, Equatable, Identifiable, Sendable {
     public var cardBrand: CardBrand?
     public var cardType: PaymentCardType?
     public var isFavorite: Bool
+    /// Optional user labels; nil and empty are treated identically so older records decode unchanged.
+    public var tags: [String]?
+    /// Archived items stay encrypted and synced, but are hidden from main lists, AutoFill, and health audits.
+    public var isArchived: Bool?
     public var deletedAt: Date?
     public var permanentlyDeletedAt: Date?
     public var modifiedAt: Date
     // Only the reserved internal record carries rotation lineage.
     var rotationLineage: VaultRotation.Lineage?
 
+    public var tagList: [String] {
+        tags ?? []
+    }
+
+    public var archived: Bool {
+        isArchived == true
+    }
+
+    public static func normalizeTags(_ raw: [String]) -> [String] {
+        var seen: Set<String> = []
+        var result: [String] = []
+        for entry in raw {
+            let trimmed = entry.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let key = trimmed.lowercased()
+            if seen.insert(key).inserted {
+                result.append(trimmed)
+            }
+        }
+        return result
+    }
+
+    public static func parseTags(_ text: String) -> [String] {
+        let separators = CharacterSet(charactersIn: ",;，；\r\n")
+        return normalizeTags(text.components(separatedBy: separators))
+    }
+
     public init(id: UUID = UUID(), kind: ItemKind = .login, title: String = "", username: String = "",
-                password: String = "", website: String = "", notes: String = "", isFavorite: Bool = false)
+                password: String = "", website: String = "", notes: String = "", isFavorite: Bool = false,
+                tags: [String]? = nil, isArchived: Bool? = nil)
     {
         self.id = id; self.kind = kind; self.title = title; self.username = username; self.password = password
         self.website = website; self.notes = notes; self.isFavorite = isFavorite
+        let normalized = tags.map(Self.normalizeTags) ?? []
+        self.tags = normalized.isEmpty ? nil : normalized
+        self.isArchived = isArchived == true ? true : nil
         cardholder = ""; cardNumber = ""; expiry = ""; securityCode = ""; deletedAt = nil; modifiedAt = Date()
         cardBrand = kind == .card ? .unionPay : nil
         cardType = kind == .card ? .debit : nil

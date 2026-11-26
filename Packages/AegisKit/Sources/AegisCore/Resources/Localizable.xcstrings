@@ -694,17 +694,6 @@
         }
       }
     },
-    "csv.skip.archived": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1Password 中已归档"
-          }
-        }
-      }
-    },
     "csv.skip.columns": {
       "extractionState": "manual",
       "localizations": {
@@ -799,7 +788,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "有条目包含无法识别的验证码设置或标签，需要另行迁移。"
+            "value": "有条目包含无法识别的验证码设置，需要另行迁移。"
           }
         }
       }
@@ -5730,6 +5719,193 @@
           "stringUnit": {
             "state": "translated",
             "value": "较弱"
+          }
+        }
+      }
+    },
+    "nav.archived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已归档"
+          }
+        }
+      }
+    },
+    "nav.tags": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签"
+          }
+        }
+      }
+    },
+    "field.tags": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签"
+          }
+        }
+      }
+    },
+    "action.archive": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "归档"
+          }
+        }
+      }
+    },
+    "action.unarchive": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消归档"
+          }
+        }
+      }
+    },
+    "notice.archived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已归档记录。"
+          }
+        }
+      }
+    },
+    "notice.unarchived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已取消归档。"
+          }
+        }
+      }
+    },
+    "archive.banner": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已归档记录不会出现在主列表、快速搜索、自动填充或密码健康检查中。"
+          }
+        }
+      }
+    },
+    "archive.itemStatus": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此记录已归档"
+          }
+        }
+      }
+    },
+    "archive.itemHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不会出现在主列表、自动填充或密码健康检查中，可随时取消归档。"
+          }
+        }
+      }
+    },
+    "list.archivedEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无归档记录"
+          }
+        }
+      }
+    },
+    "list.archivedDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不再常用但需要保留的记录可以归档到这里。"
+          }
+        }
+      }
+    },
+    "editor.tagsPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入标签，按回车或逗号添加"
+          }
+        }
+      }
+    },
+    "editor.addTag": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "editor.removeTag": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除标签 %@"
+          }
+        }
+      }
+    },
+    "history.change.archived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "归档"
+          }
+        }
+      }
+    },
+    "history.change.unarchived": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消归档"
           }
         }
       }

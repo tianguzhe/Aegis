@@ -209,7 +209,7 @@
 
         /// Active, copyable records only; favorites first so the common targets need fewer keystrokes.
         private var results: [VaultEntry] {
-            Array(session.entries.filter { $0.item.deletedAt == nil && !$0.item.quickCopyFields.isEmpty && $0.matchesSearch(search) }
+            Array(session.entries.filter { $0.item.deletedAt == nil && !$0.item.archived && !$0.item.quickCopyFields.isEmpty && $0.matchesSearch(search) }
                 .sorted { lhs, rhs in
                     lhs.item.isFavorite != rhs.item.isFavorite ? lhs.item.isFavorite : lhs.item.title.localizedStandardCompare(rhs.item.title) == .orderedAscending
                 }.prefix(Self.resultLimit))

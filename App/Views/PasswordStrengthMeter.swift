@@ -44,3 +44,27 @@ struct PasswordStrengthMeter: View {
         .accessibilityIdentifier("passwordStrength")
     }
 }
+
+/// Master passwords are the only barrier against offline guessing of a copied vault header, so a
+/// password rated below `.good` needs an explicit acknowledgement before it can be used.
+struct WeakPasswordAcknowledgement: View {
+    let password: String
+    @Binding var acknowledged: Bool
+
+    static func required(for password: String) -> Bool {
+        !password.isEmpty && PasswordStrength.evaluate(password).level < .good
+    }
+
+    var body: some View {
+        if Self.required(for: password) {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(L10n.text("strength.weakMasterWarning"), systemImage: "exclamationmark.triangle")
+                    .aegisFont(size: 12).lineSpacing(4).foregroundStyle(Color.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle(L10n.text("strength.weakMasterAcknowledge"), isOn: $acknowledged)
+                    .aegisFont(size: 12).accessibilityIdentifier("weakPasswordAcknowledge")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}

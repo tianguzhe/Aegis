@@ -15,6 +15,12 @@ final class StoredObject {
 @ModelActor
 public actor VaultStore {
     private var cachedHeader: VaultHeader?
+    /// Decoded revision rows, mirroring the store. This actor is the only writer of the database in
+    /// the process (the AutoFill extension reads a separate snapshot file), so every successful save
+    /// updates the mirror and saves, refreshes and sync rounds skip refetching and decoding all rows.
+    /// Only set while every row decodes, so `localRevisions()` keeps counting damaged rows.
+    /// A failed save drops it, and the next read refetches from the store.
+    private var cachedRevisions: [EncryptedRevision]?
 
     private func encode(_ value: some Encodable) throws -> Data {
         let encoder = JSONEncoder()
@@ -68,13 +74,21 @@ public actor VaultStore {
     }
 
     public func revisions() throws -> [EncryptedRevision] {
+        if let cachedRevisions {
+            return cachedRevisions
+        }
         let decoder = JSONDecoder()
-        return try revisionObjects().map { try decoder.decode(EncryptedRevision.self, from: $0.payload) }
+        let revisions = try revisionObjects().map { try decoder.decode(EncryptedRevision.self, from: $0.payload) }
+        cachedRevisions = revisions
+        return revisions
     }
 
     /// Reads local revision rows for display. Counts undecodable rows without modifying them.
     /// Store fetch errors still propagate. Decoded revisions must be authenticated by the caller.
     public func localRevisions() throws -> (revisions: [EncryptedRevision], unreadableRowCount: Int) {
+        if let cachedRevisions {
+            return (cachedRevisions, 0)
+        }
         let decoder = JSONDecoder()
         var revisions: [EncryptedRevision] = []
         var unreadable = 0
@@ -85,6 +99,9 @@ public actor VaultStore {
                 unreadable += 1
             }
         }
+        if unreadable == 0 {
+            cachedRevisions = revisions
+        }
         return (revisions, unreadable)
     }
 
@@ -94,6 +111,7 @@ public actor VaultStore {
         guard try object(name) == nil else { return }
         try modelContext.insert(StoredObject(name: name, kind: "revision", payload: encode(revision)))
         try saveChanges()
+        cachedRevisions?.append(revision)
     }
 
     private func saveChanges() throws {
@@ -101,6 +119,7 @@ public actor VaultStore {
             try modelContext.save()
         } catch {
             modelContext.rollback()
+            cachedRevisions = nil
             throw error
         }
     }
@@ -184,8 +203,10 @@ public actor VaultStore {
             try beforeSave()
             try modelContext.save()
             cachedHeader = header
+            cachedRevisions = incoming
         } catch {
             modelContext.rollback()
+            cachedRevisions = nil
             throw error
         }
     }
@@ -229,9 +250,11 @@ public actor VaultStore {
             try beforeSave()
             try modelContext.save()
             cachedHeader = header
+            cachedRevisions?.append(contentsOf: additions.values)
         } catch {
             // Unsaved inserts would otherwise be committed by the next unrelated save().
             modelContext.rollback()
+            cachedRevisions = nil
             throw error
         }
         return RestoreResult(createdHeader: localHeader == nil, insertedRevisions: additions.count)

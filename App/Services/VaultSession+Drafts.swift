@@ -14,7 +14,40 @@ extension VaultSession {
         recoveryAcknowledged = false
     }
 
+    /// Coalesces per-keystroke editor updates: each write re-seals the whole local state file on the
+    /// main actor. Lock flushes the pending draft, and any direct retain or discard of the same item
+    /// supersedes it, so a stale pending write can neither overwrite nor resurrect a draft.
+    func retainDraftSoon(_ draft: VaultDraft) {
+        if let pending = pendingDraft, pending.draft.id != draft.id {
+            flushPendingDraft()
+        }
+        pendingDraft?.task.cancel()
+        let token = generation
+        let task = Task { [weak self] in
+            do { try await Task.sleep(for: Self.draftWriteDelay) } catch { return }
+            guard let self, generation == token else { return }
+            flushPendingDraft()
+        }
+        pendingDraft = (draft, task)
+    }
+
+    static let draftWriteDelay: Duration = .milliseconds(400)
+
+    func flushPendingDraft() {
+        guard let pending = pendingDraft else { return }
+        pendingDraft = nil
+        pending.task.cancel()
+        retainDraft(pending.draft)
+    }
+
+    private func dropPendingDraft(for id: UUID) {
+        guard let pending = pendingDraft, pending.draft.id == id else { return }
+        pendingDraft = nil
+        pending.task.cancel()
+    }
+
     func retainDraft(_ draft: VaultDraft) {
+        dropPendingDraft(for: draft.id)
         guard phase == .unlocked, !permanentlyDeletedItemIDs.contains(draft.id), let localState else { return }
         do {
             var updated = localState.state
@@ -33,6 +66,7 @@ extension VaultSession {
     }
 
     func discardDraft(_ id: UUID) {
+        dropPendingDraft(for: id)
         guard phase == .unlocked, let localState else { return }
         do {
             var updated = localState.state

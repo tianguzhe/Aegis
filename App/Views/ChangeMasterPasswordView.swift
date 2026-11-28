@@ -11,13 +11,15 @@ struct ChangeMasterPasswordView: View {
     @State private var confirmation = ""
     @State private var finished = false
     @State private var compactHistory = false
+    @State private var weakPasswordAcknowledged = false
 
     private var validPassword: Bool {
         password.count >= 12 && password.utf8.count <= 4096
     }
 
     private var canSubmit: Bool {
-        !session.isBusy && !current.isEmpty && validPassword && password == confirmation
+        !session.isBusy && !current.isEmpty && validPassword && password == confirmation &&
+            (weakPasswordAcknowledged || !WeakPasswordAcknowledgement.required(for: password))
     }
 
     var body: some View {
@@ -28,6 +30,8 @@ struct ChangeMasterPasswordView: View {
                 form
             }
         }
+        // An acknowledgement covers only the password it was given for.
+        .onChange(of: password) { _, _ in weakPasswordAcknowledged = false }
         .onAppear { session.recoveryPresentedInline = true }
         .onDisappear { session.recoveryPresentedInline = false }
         .onChange(of: session.recoveryKey) {
@@ -57,6 +61,7 @@ struct ChangeMasterPasswordView: View {
                     if !password.isEmpty {
                         PasswordStrengthMeter(password: password)
                     }
+                    WeakPasswordAcknowledgement(password: password, acknowledged: $weakPasswordAcknowledged)
                     AegisInput(title: L10n.text("rotation.confirm"), icon: "checkmark.shield") {
                         SecureField(L10n.text("rotation.confirm"), text: $confirmation).textContentType(.newPassword)
                             .accessibilityIdentifier("confirmNewMasterPassword")

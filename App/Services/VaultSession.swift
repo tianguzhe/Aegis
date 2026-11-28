@@ -64,6 +64,7 @@ final class VaultSession {
     @ObservationIgnored var noticeTask: Task<Void, Never>?
     @ObservationIgnored var localState: LocalVaultStateStore?
     @ObservationIgnored var draftSnapshots: [UUID: () -> VaultDraft] = [:]
+    @ObservationIgnored var pendingDraft: (draft: VaultDraft, task: Task<Void, Never>)?
     @ObservationIgnored var permanentlyDeletedItemIDs: Set<UUID> = []
     /// Session generation in which the user last passed the export check (DEC-4); a lock invalidates it.
     @ObservationIgnored var exportAuthorization: UUID?
@@ -111,7 +112,8 @@ final class VaultSession {
                         recoverableDrafts = state.drafts
                     }
                     if PreviewFixtures.keychainDeleteFails {
-                        UserDefaults.standard.set(true, forKey: "biometry.\(result.header.vaultID)")
+                        // Simulates enabled biometrics without a Keychain item, so disabling hits the failing delete.
+                        try await DeviceKeyStore.markEnabledForPreview(key: crypto.deviceKey(), vaultID: result.header.vaultID)
                     }
                     phase = .unlocked
                     try await refresh(); touch()
@@ -147,7 +149,7 @@ final class VaultSession {
         }
         header = loadedHeader
         if let header {
-            biometricEnabled = UserDefaults.standard.bool(forKey: "biometry.\(header.vaultID)")
+            biometricEnabled = DeviceKeyStore.isEnabled(vaultID: header.vaultID)
             lanSyncEnabled = UserDefaults.standard.bool(forKey: "lanSync.\(header.vaultID)")
         }
         if phase == .unlocked {
@@ -259,7 +261,17 @@ final class VaultSession {
             var key = try await Task.detached { try DeviceKeyStore.read(vaultID: header.vaultID) }.value
             defer { key.resetBytes(in: 0 ..< key.count) }
             guard token == generation else { return }
-            try await crypto.unlock(deviceKey: key, header: header)
+            do {
+                try await crypto.unlock(deviceKey: key, header: header, keyCheck: DeviceKeyStore.keyCheck(vaultID: header.vaultID) ?? Data())
+            } catch VaultError.deviceKeyMismatch {
+                // A key that cannot be confirmed must not be offered again; the password path re-enables it.
+                // Removing the flags already stops that, and re-enabling overwrites the item, so a failed
+                // delete only leaves an unused item and must not hide the mismatch error below.
+                try? DeviceKeyStore.delete(vaultID: header.vaultID)
+                DeviceKeyStore.forget(vaultID: header.vaultID)
+                biometricEnabled = false
+                throw VaultError.deviceKeyMismatch
+            }
             guard token == generation else { await crypto.lock(); return }
             try await unlockLocalState(header: header)
             guard token == generation else { localState?.lock(); await crypto.lock(); return }
@@ -278,11 +290,12 @@ final class VaultSession {
                 // A lock can occur while fetching the key. Do not register it for a stale session.
                 guard token == generation, phase == .unlocked, self.header == header else { return }
                 try DeviceKeyStore.save(key, vaultID: header.vaultID)
+                biometricEnabled = true
             } else {
                 try DeviceKeyStore.delete(vaultID: header.vaultID)
+                DeviceKeyStore.forget(vaultID: header.vaultID)
+                biometricEnabled = false
             }
-            biometricEnabled = enabled
-            UserDefaults.standard.set(enabled, forKey: "biometry.\(header.vaultID)")
         } catch { self.error = error.localizedDescription }
     }
 
@@ -291,6 +304,7 @@ final class VaultSession {
     func lock(reason: LockReason = .manual) {
         let syncCommit = lanSyncCommit
         stopLANSync()
+        flushPendingDraft()
         // Capture the latest bindings even if SwiftUI has not delivered onChange yet.
         for snapshot in draftSnapshots.values {
             retainDraft(snapshot())

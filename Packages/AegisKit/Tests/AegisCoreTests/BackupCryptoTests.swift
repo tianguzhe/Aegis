@@ -203,7 +203,7 @@ import Testing
         let recoveryBytes = hex(spec.recoveryKey.replacingOccurrences(of: "-", with: ""))
         func wrapVaultKey(_ key: SymmetricKey, nonce: String, purpose: String) throws -> Data {
             try AES.GCM.seal(vaultKey, using: key, nonce: AES.GCM.Nonce(data: hex(nonce)),
-                             authenticating: Data("aegis|key|1|\(id.uuidString)|\(purpose)".utf8)).combined!
+                             authenticating: Data("aegis|key|2|\(id.uuidString)|\(purpose)|\(spec.vault.salt.lowercased())|\(kdf.memoryKiB)|\(kdf.iterations)|\(kdf.parallelism)".utf8)).combined!
         }
         let header = try VaultHeader(vaultID: id, salt: hex(spec.vault.salt), kdf: kdf,
                                      wrappedKey: wrapVaultKey(masterKEK, nonce: spec.vault.masterWrapNonce, purpose: "master"),

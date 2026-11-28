@@ -16,6 +16,8 @@ extension VaultSession {
     func changeMasterPassword(current: String, new: String, compactHistory: Bool) async -> Bool {
         guard phase == .unlocked, let store, let localState, let header, !isBusy, !isUpdatingBiometrics,
               pendingItemIDs.isEmpty else { return false }
+        // A debounced draft from a just-closed editor would otherwise land mid-rotation, sealed with the old key.
+        flushPendingDraft()
         guard draftSnapshots.isEmpty, recoverableDrafts.isEmpty else {
             error = L10n.text("rotation.error.unsavedDrafts"); return false
         }
@@ -85,13 +87,13 @@ extension VaultSession {
         }
         do { try DeviceKeyStore.delete(vaultID: header.vaultID) }
         catch { warnings.append(L10n.format("rotation.biometricCleanupFailed", error.localizedDescription)) }
-        UserDefaults.standard.removeObject(forKey: "biometry.\(header.vaultID)")
+        DeviceKeyStore.forget(vaultID: header.vaultID)
         biometricEnabled = false
         do { try localState.discard(vaultID: header.vaultID) } catch { warnings.append(error.localizedDescription) }
         // Locked while committing: the next unlock uses the new password and shows the recovery key.
         guard token == generation, phase == .unlocked else { return true }
         do {
-            try await crypto.unlock(deviceKey: rotation.vaultKey, header: rotation.header)
+            try await crypto.unlock(verifiedKey: rotation.vaultKey, header: rotation.header)
             guard token == generation, phase == .unlocked else { return true }
             replacingVault = false
             recoveryKey = rotation.recoveryKey; recoveryAcknowledged = false
@@ -99,7 +101,6 @@ extension VaultSession {
                 do {
                     try DeviceKeyStore.save(rotation.vaultKey, vaultID: rotation.header.vaultID)
                     biometricEnabled = true
-                    UserDefaults.standard.set(true, forKey: "biometry.\(rotation.header.vaultID)")
                 } catch { warnings.append(L10n.format("rotation.biometricFailed", error.localizedDescription)) }
             }
             try await refresh(); touch()

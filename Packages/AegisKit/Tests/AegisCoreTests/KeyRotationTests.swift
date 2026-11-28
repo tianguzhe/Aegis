@@ -76,7 +76,7 @@ import Testing
         }
         // A device that only kept the old vault key cannot read anything written by the rotation.
         let stale = VaultCrypto()
-        try await stale.unlock(deviceKey: source.vaultKey, header: rotation.header)
+        try await stale.unlock(verifiedKey: source.vaultKey, header: rotation.header)
         for revision in rotation.revisions {
             await #expect(throws: VaultError.damagedData) { try await stale.decrypt(revision) }
         }
@@ -86,7 +86,7 @@ import Testing
         let source = try await Self.makeSource()
         let rotation = try await Self.rotate(source)
         let before = VaultCrypto(), after = VaultCrypto()
-        try await before.unlock(deviceKey: source.vaultKey, header: source.header)
+        try await before.unlock(verifiedKey: source.vaultKey, header: source.header)
         try await after.unlock(password: Self.newPassword, header: rotation.header)
         let oldEntries = try await before.entries(from: source.revisions)
         let newEntries = try await after.entries(from: rotation.revisions)
@@ -133,7 +133,7 @@ import Testing
         }
 
         let crypto = VaultCrypto()
-        try await crypto.unlock(deviceKey: compacted.vaultKey, header: compacted.header)
+        try await crypto.unlock(verifiedKey: compacted.vaultKey, header: compacted.header)
         var retainedItems: [VaultItem] = []
         for revision in compacted.revisions {
             try await retainedItems.append(crypto.decrypt(revision))
@@ -150,7 +150,7 @@ import Testing
         let target = try VaultStore.make(inMemory: true)
         try await target.restoreNewVault(header: second.header, revisions: second.revisions)
         let crypto = VaultCrypto()
-        try await crypto.unlock(deviceKey: second.vaultKey, header: second.header)
+        try await crypto.unlock(verifiedKey: second.vaultKey, header: second.header)
         let current = try #require(try await crypto.entries(from: second.revisions).first { $0.item.title == "Bank" })
         var edited = current.item; edited.password = "after two rotations"
         try await target.saveRevision(crypto.encrypt(edited, parents: [current.id]))
@@ -212,7 +212,7 @@ import Testing
         let snapshot = try await source.store.snapshot()
         let rotation = try await Self.rotate(source)
         let crypto = VaultCrypto()
-        try await crypto.unlock(deviceKey: source.vaultKey, header: source.header)
+        try await crypto.unlock(verifiedKey: source.vaultKey, header: source.header)
         let late = try await crypto.encrypt(VaultItem(title: "Saved meanwhile"), parents: [])
         try await source.store.saveRevision(late)
 

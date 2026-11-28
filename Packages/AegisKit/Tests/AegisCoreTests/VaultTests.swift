@@ -114,7 +114,7 @@ struct VaultTests {
             #expect(read.readableRevisionCount == 3)
             #expect(read.unreadableRevisionCount == 4)
         }
-        try await crypto.unlock(deviceKey: Data(repeating: 0, count: 32), header: created.header)
+        try await crypto.unlock(verifiedKey: Data(repeating: 0, count: 32), header: created.header)
         let wrongKey = try await crypto.localEntries(from: [original])
         #expect(wrongKey.readableRevisionCount == 0)
         #expect(wrongKey.unreadableRevisionCount == 1)

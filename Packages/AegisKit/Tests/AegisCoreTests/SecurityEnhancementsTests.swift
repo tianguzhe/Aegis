@@ -78,6 +78,8 @@ final class SecurityEnhancementsTests: XCTestCase {
         XCTAssertEqual(DomainMatcher.registrableDomain(for: "accounts.bbc.co.uk"), "bbc.co.uk")
         XCTAssertEqual(DomainMatcher.registrableDomain(for: "mail.company.com.cn"), "company.com.cn")
         XCTAssertEqual(DomainMatcher.registrableDomain(for: "alice.github.io"), "alice.github.io")
+        XCTAssertEqual(DomainMatcher.registrableDomain(for: "www.alice.blogspot.com"), "alice.blogspot.com")
+        XCTAssertEqual(DomainMatcher.registrableDomain(for: "shop.myshopify.com"), "shop.myshopify.com")
         XCTAssertNil(DomainMatcher.registrableDomain(for: "127.0.0.1"))
         XCTAssertNil(DomainMatcher.registrableDomain(for: "localhost"))
 

@@ -260,7 +260,7 @@ extension VaultSession {
             if enterVault {
                 await lockingTask?.value
                 try await guardedRestoreStep(token: token) {
-                    try await crypto.unlock(deviceKey: preview.payload.vaultKey, header: preview.payload.header)
+                    try await crypto.unlock(verifiedKey: preview.payload.vaultKey, header: preview.payload.header)
                 }
                 try await guardedRestoreStep(token: token) { try await unlockLocalState(header: preview.payload.header) }
                 phase = .unlocked

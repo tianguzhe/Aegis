@@ -31,7 +31,7 @@ public struct VaultRotation: Sendable {
         let expected = try await BackupValidator.validate(source)
         let origin = VaultCrypto(), destination = VaultCrypto()
         do {
-            try await origin.unlock(deviceKey: vaultKey, header: header)
+            try await origin.unlock(verifiedKey: vaultKey, header: header)
             var lineage = try await lineage(in: revisions, using: origin)
             lineage.predecessorChain.append(header.vaultID)
             if compactHistory {

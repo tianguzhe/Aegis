@@ -18,8 +18,8 @@ public enum BackupMigration {
     {
         let source = VaultCrypto(), destination = VaultCrypto()
         do {
-            try await source.unlock(deviceKey: payload.vaultKey, header: payload.header)
-            try await destination.unlock(deviceKey: key, header: header)
+            try await source.unlock(verifiedKey: payload.vaultKey, header: payload.header)
+            try await destination.unlock(verifiedKey: key, header: header)
             let lineage = try await VaultRotation.lineage(in: existing, using: destination)
             let sourceID = payload.header.vaultID
             guard !lineage.retired.contains(sourceID) else { throw VaultError.retiredVaultHistory }

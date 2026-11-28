@@ -17,7 +17,7 @@ public enum DomainMatcher {
     /// owns a distinct site (so `alice.github.io` will not match `bob.github.io`).
     private static let multiPartSuffixes: Set<String> = [
         // Country-code second-level domains
-        "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "net.uk",
+        "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "net.uk", "ltd.uk", "plc.uk", "sch.uk", "nhs.uk",
         "com.cn", "net.cn", "org.cn", "gov.cn", "edu.cn", "ac.cn",
         "com.hk", "org.hk", "edu.hk", "gov.hk", "net.hk",
         "com.tw", "org.tw", "edu.tw", "gov.tw", "net.tw", "idv.tw",
@@ -50,6 +50,8 @@ public enum DomainMatcher {
         "vercel.app", "netlify.app", "herokuapp.com", "appspot.com",
         "azurewebsites.net", "cloudfront.net", "s3.amazonaws.com",
         "fly.dev", "railway.app", "onrender.com", "firebaseapp.com", "web.app",
+        "blogspot.com", "myshopify.com", "readthedocs.io", "glitch.me", "surge.sh",
+        "ngrok.io", "ngrok-free.app", "repl.co", "pythonanywhere.com", "deno.dev",
     ]
 
     private static let reverseDNSTLDs: Set<String> = [

@@ -8,7 +8,7 @@ public enum BackupValidator {
         try checkGraph(payload)
         let crypto = VaultCrypto()
         do {
-            try await crypto.unlock(deviceKey: payload.vaultKey, header: payload.header)
+            try await crypto.unlock(verifiedKey: payload.vaultKey, header: payload.header)
             let entries = try await crypto.entries(from: payload.revisions)
             await crypto.lock()
             return entries

@@ -27,6 +27,9 @@ public final class LANSyncService {
     @ObservationIgnored private var scheduler: Task<Void, Never>?
     @ObservationIgnored private var transfer: Task<Void, Never>?
     @ObservationIgnored private var active: LocalTransferConnection?
+    /// Inbound connections still proving the sync key, oldest first. They do not hold the round slot,
+    /// so a host that connects and never authenticates cannot starve legitimate peers.
+    @ObservationIgnored private var pendingHandshakes: [(id: ObjectIdentifier, socket: LocalTransferConnection)] = []
     @ObservationIgnored private var blocked = Set<Source>()
 
     private enum Source: Hashable { case listener, browser }
@@ -56,8 +59,8 @@ public final class LANSyncService {
                                               txtRecord: NWTXTRecord(["t": tag]))
         listener.newConnectionHandler = { [weak self] connection in
             Task { @MainActor [weak self] in
-                guard let self, instance == token, active == nil, blocked.isEmpty else { connection.cancel(); return }
-                exchange(connection, expectedPeer: nil)
+                guard let self, instance == token, blocked.isEmpty else { connection.cancel(); return }
+                accept(connection)
             }
         }
         listener.stateUpdateHandler = { [weak self] status in
@@ -139,6 +142,7 @@ public final class LANSyncService {
         browser?.cancel(); browser = nil
         active?.cancel(); active = nil
         transfer?.cancel(); transfer = nil
+        cancelPendingHandshakes()
         scheduler?.cancel(); scheduler = nil
         key = nil; snapshot = nil; apply = nil
         peers = [:]; endpointFailures = [:]; nextAttempt = [:]; blocked = []
@@ -148,6 +152,10 @@ public final class LANSyncService {
     }
 
     nonisolated static let maxEndpointFailures = 3
+    /// Concurrent unauthenticated inbound handshakes. A new connection evicts the oldest instead of
+    /// being refused: refusing would let a host that keeps the pool full block every real peer, while
+    /// eviction forces it to keep reconnecting faster than a real handshake completes (tens of ms).
+    nonisolated static let maxPendingHandshakes = 4
 
     /// The endpoint with the fewest consecutive failures, keeping discovery order on ties, so an
     /// endpoint that succeeded stays preferred over replayed ones. Nil once every endpoint is paused.
@@ -167,10 +175,67 @@ public final class LANSyncService {
         exchange(NWConnection(to: peer.endpoint, using: LocalVaultTransfer.parameters()), expectedPeer: peer.id, endpoint: peer.endpoint)
     }
 
-    private func exchange(_ connection: NWConnection, expectedPeer: UUID?, endpoint: NWEndpoint? = nil) {
-        guard let key, let snapshot, let apply else { connection.cancel(); return }
+    /// Authenticates an inbound connection outside the round slot, which it claims only afterwards.
+    private func accept(_ connection: NWConnection) {
+        guard let key else { connection.cancel(); return }
+        while pendingHandshakes.count >= Self.maxPendingHandshakes {
+            pendingHandshakes.removeFirst().socket.cancel()
+        }
         let token = instance
         let socket = LocalTransferConnection(connection, maxRead: LANSyncFrames.maxLength)
+        let id = ObjectIdentifier(socket)
+        pendingHandshakes.append((id, socket))
+        Task { [weak self] in
+            // `authenticate` bounds the handshake itself; this also bounds a connection that never starts.
+            let deadline = Task {
+                do { try await Task.sleep(for: LANSyncRound.handshakeTimeout + .seconds(2)) } catch { return }
+                socket.cancel()
+            }
+            defer { deadline.cancel() }
+            let round: LANSyncRound
+            do {
+                try await socket.start()
+                round = try await LANSyncRound.authenticate(socket: socket, instance: token, expectedPeer: nil, key: key)
+            } catch {
+                socket.cancel()
+                if let self, instance == token {
+                    pendingHandshakes.removeAll { $0.id == id }
+                }
+                return
+            }
+            // An evicted connection may still have finished authenticating; only a tracked one may take the slot.
+            guard let self, instance == token, pendingHandshakes.contains(where: { $0.id == id }) else {
+                socket.cancel(); return
+            }
+            pendingHandshakes.removeAll { $0.id == id }
+            guard active == nil, blocked.isEmpty else { socket.cancel(); return }
+            begin(socket, expectedPeer: nil, endpoint: nil) { round }
+        }
+    }
+
+    private func cancelPendingHandshakes() {
+        for pending in pendingHandshakes {
+            pending.socket.cancel()
+        }
+        pendingHandshakes = []
+    }
+
+    private func exchange(_ connection: NWConnection, expectedPeer: UUID, endpoint: NWEndpoint) {
+        guard let key else { connection.cancel(); return }
+        let token = instance
+        let socket = LocalTransferConnection(connection, maxRead: LANSyncFrames.maxLength)
+        begin(socket, expectedPeer: expectedPeer, endpoint: endpoint) {
+            try await socket.start()
+            return try await LANSyncRound.authenticate(socket: socket, instance: token, expectedPeer: expectedPeer, key: key)
+        }
+    }
+
+    /// Runs one round in the single slot. `prepare` returns an authenticated round on `socket`.
+    private func begin(_ socket: LocalTransferConnection, expectedPeer: UUID?, endpoint: NWEndpoint?,
+                       prepare: @escaping @Sendable () async throws -> LANSyncRound)
+    {
+        guard let snapshot, let apply else { socket.cancel(); return }
+        let token = instance
         active = socket
         state = .syncing
         transfer = Task { [weak self] in
@@ -182,8 +247,7 @@ public final class LANSyncService {
             }
             defer { deadline.cancel(); socket.cancel() }
             do {
-                try await socket.start()
-                var round = try await LANSyncRound.authenticate(socket: socket, instance: token, expectedPeer: expectedPeer, key: key)
+                var round = try await prepare()
                 try await round.run(snapshot: snapshot, apply: apply)
                 guard let self, instance == token else { return }
                 lastSuccess = Date()
@@ -223,6 +287,7 @@ public final class LANSyncService {
             blocked.insert(source)
             state = .permissionDenied
             active?.cancel(); transfer?.cancel()
+            cancelPendingHandshakes()
         }
     }
 

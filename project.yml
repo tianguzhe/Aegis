@@ -99,6 +99,26 @@ targetTemplates:
         com.apple.developer.authentication-services.autofill-credential-provider: true
         com.apple.security.application-groups: [$(AEGIS_APP_GROUP)]
 targets:
+  # Unhosted: compiles the session layer directly, so tests never launch the app or open its vault.
+  AegisSessionTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/AegisSessionTests
+      - path: App/Services
+    settings:
+      base:
+        PRODUCT_NAME: AegisSessionTests
+        PRODUCT_BUNDLE_IDENTIFIER: $(AEGIS_BUNDLE_PREFIX).mac.sessiontests
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: ''
+    dependencies:
+      - package: AegisKit
+        product: AegisCore
+      - package: AegisKit
+        product: AegisStorage
+      - package: AegisKit
+        product: AegisSync
   AegisUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -208,6 +228,8 @@ schemes:
       postActions:
         - *cleanupAegisMacArtifacts
     test:
+      targets:
+        - AegisSessionTests
       postActions:
         - *cleanupAegisMacArtifacts
     profile:

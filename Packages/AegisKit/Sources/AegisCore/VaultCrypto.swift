@@ -48,15 +48,19 @@ public actor VaultCrypto {
     public init() {}
 
     public func create(password: String) throws -> (header: VaultHeader, recoveryKey: String) {
+        let password = Self.normalizedMasterPassword(password)
         guard password.count >= 12 else { throw VaultError.weakMasterPassword }
         let id = UUID(), salt = try SecureRandom.bytes(count: 16), parameters = KDFParameters()
         let kek = try Argon2id.derive(password: password, salt: salt, parameters: parameters)
         var raw = try SecureRandom.bytes(count: 32)
         var recovery = try SecureRandom.bytes(count: 32)
         defer { raw.resetBytes(in: 0 ..< raw.count); recovery.resetBytes(in: 0 ..< recovery.count) }
-        let wrapped = try AES.GCM.seal(raw, using: kek, authenticating: Self.keyAAD(id, "master")).combined!
-        let recoveryWrapped = try AES.GCM.seal(raw, using: SymmetricKey(data: recovery),
-                                               authenticating: Self.keyAAD(id, "recovery")).combined!
+        let wrapped = try AES.GCM.seal(raw, using: kek, authenticating: Self.keyAAD(
+            vaultID: id, salt: salt, kdf: parameters, purpose: "master"
+        )).combined!
+        let recoveryWrapped = try AES.GCM.seal(raw, using: SymmetricKey(data: recovery), authenticating: Self.keyAAD(
+            vaultID: id, salt: salt, kdf: parameters, purpose: "recovery"
+        )).combined!
         let hex = recovery.map { String(format: "%02X", $0) }.joined()
         let formatted = stride(from: 0, to: 64, by: 8).map { start in
             String(hex.dropFirst(start).prefix(8))
@@ -82,10 +86,10 @@ public actor VaultCrypto {
     /// Throws `VaultError.invalidPassword` when the password does not open `header.wrappedKey`.
     static func unwrapVaultKey(password: String, header: VaultHeader) throws -> Data {
         try header.validate()
-        let kek = try Argon2id.derive(password: password, salt: header.salt, parameters: header.kdf)
+        let kek = try Argon2id.derive(password: normalizedMasterPassword(password), salt: header.salt, parameters: header.kdf)
         do {
             return try AES.GCM.open(AES.GCM.SealedBox(combined: header.wrappedKey), using: kek,
-                                    authenticating: keyAAD(header.vaultID, "master"))
+                                    authenticating: keyAAD(header, "master"))
         } catch { throw VaultError.invalidPassword }
     }
 
@@ -104,14 +108,44 @@ public actor VaultCrypto {
         defer { recovery.resetBytes(in: 0 ..< recovery.count) }
         do {
             return try AES.GCM.open(AES.GCM.SealedBox(combined: header.recoveryWrappedKey),
-                                    using: SymmetricKey(data: recovery), authenticating: keyAAD(header.vaultID, "recovery"))
+                                    using: SymmetricKey(data: recovery), authenticating: keyAAD(header, "recovery"))
         } catch { throw VaultError.invalidPassword }
     }
 
-    public func unlock(deviceKey: Data, header: VaultHeader) throws {
+    /// Adopts a raw vault key stored on this device (the biometric Keychain item).
+    ///
+    /// The vault header holds no key check value, so a wrong key would only surface once a revision
+    /// fails to decrypt; an empty vault would accept it silently and seal new records under it.
+    /// `keyCheck` must come from `deviceKeyCheck(_:vaultID:)`, computed while the vault was unlocked
+    /// with a verified key, and stored apart from the key itself.
+    /// - Throws: `VaultError.deviceKeyMismatch` when `deviceKey` does not match `keyCheck`.
+    public func unlock(deviceKey: Data, header: VaultHeader, keyCheck: Data) throws {
+        guard Self.deviceKeyMatches(deviceKey, vaultID: header.vaultID, check: keyCheck) else {
+            throw VaultError.deviceKeyMismatch
+        }
+        try unlock(verifiedKey: deviceKey, header: header)
+    }
+
+    /// Adopts a raw vault key whose source already authenticated it: an AEAD-protected backup
+    /// payload, or a key generated together with `header` during rotation. Device-stored keys
+    /// must use `unlock(deviceKey:header:keyCheck:)` instead.
+    public func unlock(verifiedKey: Data, header: VaultHeader) throws {
         try header.validate()
-        guard deviceKey.count == 32 else { throw VaultError.damagedData }
-        setKey(deviceKey, vaultID: header.vaultID)
+        guard verifiedKey.count == 32 else { throw VaultError.damagedData }
+        setKey(verifiedKey, vaultID: header.vaultID)
+    }
+
+    /// A public commitment to a 256-bit vault key; revealing it does not help guess the key.
+    public static func deviceKeyCheck(_ key: Data, vaultID: UUID) -> Data {
+        Data(HMAC<SHA256>.authenticationCode(for: deviceKeyCheckLabel(vaultID), using: SymmetricKey(data: key)))
+    }
+
+    static func deviceKeyMatches(_ key: Data, vaultID: UUID, check: Data) -> Bool {
+        HMAC<SHA256>.isValidAuthenticationCode(check, authenticating: deviceKeyCheckLabel(vaultID), using: SymmetricKey(data: key))
+    }
+
+    private static func deviceKeyCheckLabel(_ vaultID: UUID) -> Data {
+        Data("aegis|device-key-check|1|\(vaultID.uuidString)".utf8)
     }
 
     private func setKey(_ raw: Data, vaultID: UUID) {
@@ -337,7 +371,23 @@ public actor VaultCrypto {
         }.sorted { $0.item.modifiedAt > $1.item.modifiedAt }
     }
 
-    private static func keyAAD(_ id: UUID, _ purpose: String) -> Data {
-        Data("aegis|key|1|\(id.uuidString)|\(purpose)".utf8)
+    /// Binds each key wrap to every public header field that influences unwrapping, so a header with
+    /// a swapped salt or altered KDF parameters fails authentication instead of deriving another KEK.
+    /// Version 2 of this label; vaults sealed with the version 1 label (vault ID and purpose only)
+    /// no longer open, which is acceptable before the first release.
+    static func keyAAD(vaultID: UUID, salt: Data, kdf: KDFParameters, purpose: String) -> Data {
+        let saltHex = salt.map { String(format: "%02x", $0) }.joined()
+        return Data("aegis|key|2|\(vaultID.uuidString)|\(purpose)|\(saltHex)|\(kdf.memoryKiB)|\(kdf.iterations)|\(kdf.parallelism)".utf8)
+    }
+
+    private static func keyAAD(_ header: VaultHeader, _ purpose: String) -> Data {
+        keyAAD(vaultID: header.vaultID, salt: header.salt, kdf: header.kdf, purpose: purpose)
+    }
+
+    /// Master passwords are NFC-normalized before key derivation so the same password typed on
+    /// another platform or keyboard (composed vs. decomposed accents) derives the same KEK.
+    /// Backup passwords use the same rule (`BackupCryptor`).
+    static func normalizedMasterPassword(_ password: String) -> String {
+        password.precomposedStringWithCanonicalMapping
     }
 }

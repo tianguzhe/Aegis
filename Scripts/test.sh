@@ -17,6 +17,10 @@ python3 Scripts/check_localizations.py
 python3 Scripts/generate_localizations.py --check
 python3 "$isolation_script" exec --root "$project_root" --lane core-test -- \
     swift test --build-system native --manifest-cache local --package-path Packages/AegisKit
+# Session layer (App/Services) in an unhosted macOS bundle; see AegisSessionTests in project.yml.
+python3 "$isolation_script" exec --root "$project_root" --lane session-test -- \
+    xcodebuild -project Aegis.xcodeproj -scheme Aegis-macOS -configuration Debug \
+    -destination 'platform=macOS' -only-testing:AegisSessionTests CODE_SIGNING_ALLOWED=NO test
 if [[ "$#" -eq 2 ]]; then
     python3 "$isolation_script" exec --root "$project_root" --lane ios-ui-test -- \
         xcodebuild -project Aegis.xcodeproj -scheme Aegis-iOS -configuration Debug \

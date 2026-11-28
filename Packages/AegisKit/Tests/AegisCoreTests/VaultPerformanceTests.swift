@@ -25,7 +25,7 @@ struct VaultPerformanceTests {
         await crypto.lock()
         await #expect(throws: VaultError.locked) { try await crypto.cachedEntries(from: [first, second]) }
         // Reopening with the same vault ID and a different key must never reuse plaintext.
-        try await crypto.unlock(deviceKey: Data(repeating: 0, count: 32), header: created.header)
+        try await crypto.unlock(verifiedKey: Data(repeating: 0, count: 32), header: created.header)
         await #expect(throws: VaultError.damagedData) { try await crypto.cachedEntries(from: [first]) }
     }
 

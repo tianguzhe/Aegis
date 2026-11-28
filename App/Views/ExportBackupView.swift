@@ -55,6 +55,10 @@ struct ExportBackupView: View {
                         let mismatch = !confirmation.isEmpty && !passwordsMatch
                         Label(L10n.text(mismatch ? "backup.passwordMismatch" : "backup.passwordRequirement"), systemImage: "info.circle")
                             .aegisFont(size: 11).foregroundStyle(mismatch ? Color.orange : AegisTheme.secondary)
+                        // The payload carries the raw vault key (§5), so this password guards the whole vault identity.
+                        Label(L10n.text("backup.passwordVaultKeyWarning"), systemImage: "exclamationmark.triangle")
+                            .aegisFont(size: 12).lineSpacing(4).foregroundStyle(Color.orange)
+                            .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("backupPasswordVaultKeyWarning")
                         Toggle(isOn: $passwordOnly) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(L10n.text("backup.passwordOnly")).aegisFont(size: 13, weight: .medium).foregroundStyle(AegisTheme.text)

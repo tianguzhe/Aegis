@@ -5909,6 +5909,50 @@
           }
         }
       }
+    },
+    "error.deviceKeyMismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机保存的生物识别密钥与保险库不匹配，已停用生物识别。请用主密码解锁，再到设置中重新开启。"
+          }
+        }
+      }
+    },
+    "strength.weakMasterWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个主密码强度不足。保险库文件、备份或其他设备上的副本一旦外泄，较弱的主密码可能被离线猜出，且无法远程补救。"
+          }
+        }
+      }
+    },
+    "strength.weakMasterAcknowledge": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我了解风险，仍使用这个主密码"
+          }
+        }
+      }
+    },
+    "backup.passwordVaultKeyWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份内含保险库密钥。知道备份密码的人可以打开其中所有记录，也能解密之后从这个保险库同步或导出的密文。请使用与主密码同等强度、且不同于主密码的备份密码。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

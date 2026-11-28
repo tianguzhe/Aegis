@@ -11,9 +11,9 @@
 
 ## 密钥
 
-主密码（UTF-8 原样编码，不自动去空格或归一化）+ 16 字节随机盐，经 Argon2id 派生 32 字节 KEK。KEK 以 AES-GCM 包裹 32 字节随机保险库密钥。独立的 32 字节随机恢复密钥另行包裹同一保险库密钥。密钥包裹 AAD 包含格式版本、保险库 ID 与用途。
+主密码（NFC 归一化后取 UTF-8，不去空格、不改大小写）+ 16 字节随机盐，经 Argon2id 派生 32 字节 KEK。KEK 以 AES-GCM 包裹 32 字节随机保险库密钥。独立的 32 字节随机恢复密钥另行包裹同一保险库密钥。密钥包裹 AAD（`aegis|key|2|…`）包含标签版本、保险库 ID、用途、盐和全部 KDF 参数；篡改 header 中任一公开字段都会使两种解包失败，而不是派生出另一把 KEK。版本 1 标签（仅保险库 ID 与用途）创建的保险库已不再支持。主密码强度低于「良好」时，创建和修改都需另行确认风险。
 
-生物识别使用 `biometryCurrentSet` 与 `WhenPasscodeSetThisDeviceOnly` 的 Keychain 条目，仅限本设备；不参与 iCloud Keychain 同步。主密码不持久化。恢复密钥在用户确认前以保险库密钥加密保存在本机，确认后从本地状态移除。Swift 字符串和 SwiftUI 控件无法保证所有内存副本立即清零；锁定清理可控密钥引用、可见条目和表单。iOS 后台锁定保留系统设置的 local-only 剪贴板过期时间，以支持切到其他 App 粘贴；手动锁定立即清理本应用持有的剪贴板内容。
+生物识别使用 `biometryCurrentSet` 与 `WhenPasscodeSetThisDeviceOnly` 的 Keychain 条目，仅限本设备；不参与 iCloud Keychain 同步。Keychain 中保存的是保险库密钥本身，开启时另在 UserDefaults 记下它的 HMAC 校验值（`biometryCheck.<vaultID>`），与密钥分开存放；解锁时校验不符即拒绝并停用生物识别，避免空保险库静默接受错误密钥。主密码不持久化。恢复密钥在用户确认前以保险库密钥加密保存在本机，确认后从本地状态移除。Swift 字符串和 SwiftUI 控件无法保证所有内存副本立即清零；锁定清理可控密钥引用、可见条目和表单。iOS 后台锁定保留系统设置的 local-only 剪贴板过期时间，以支持切到其他 App 粘贴；手动锁定立即清理本应用持有的剪贴板内容。
 
 ## 可恢复的本机状态
 

@@ -233,18 +233,25 @@ def _unwrap_file_key(data, index, slot, raw, kek):
     return _gcm_open(kek, bytes.fromhex(slot["wrapNonce"]), wrapped, aad)
 
 
+def _key_wrap_aad(slot, purpose):
+    """Vault key wrap AAD (label version 2): binds the salt and KDF parameters to each wrap."""
+    return (f"aegis|key|2|{slot['vaultID']}|{purpose}|{slot['vaultSalt'].lower()}|"
+            f"{slot['memoryKiB']}|{slot['iterations']}|{slot['parallelism']}").encode()
+
+
 def _vault_key(slot, credential):
     """Returns (kind, vault key) for a master password or recovery key, or None."""
     wrapped_key, recovery_wrapped = bytes.fromhex(slot["wrappedKey"]), bytes.fromhex(slot["recoveryWrappedKey"])
     recovery_hex = re.sub(r"[\s-]", "", credential)
     if re.fullmatch(r"[0-9A-Fa-f]{64}", recovery_hex):
-        aad = f"aegis|key|1|{slot['vaultID']}|recovery".encode()
+        aad = _key_wrap_aad(slot, "recovery")
         key = _gcm_open(bytes.fromhex(recovery_hex), recovery_wrapped[:12], recovery_wrapped[12:], aad)
         if key is not None:
             return "recoveryKey", key
-    kek = _argon2id(credential.encode(), bytes.fromhex(slot["vaultSalt"]),
+    # Master passwords are NFC-normalized before derivation, like backup passwords.
+    kek = _argon2id(unicodedata.normalize("NFC", credential).encode(), bytes.fromhex(slot["vaultSalt"]),
                     slot["memoryKiB"], slot["iterations"], slot["parallelism"])
-    key = _gcm_open(kek, wrapped_key[:12], wrapped_key[12:], f"aegis|key|1|{slot['vaultID']}|master".encode())
+    key = _gcm_open(kek, wrapped_key[:12], wrapped_key[12:], _key_wrap_aad(slot, "master"))
     return ("masterPassword", key) if key is not None else None
 
 

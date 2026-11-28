@@ -8,6 +8,7 @@ struct UnlockView: View {
     @State private var useRecovery = false
     @State private var showImport = false
     @State private var showLocalImport = false
+    @State private var weakPasswordAcknowledged = false
     private var creating: Bool {
         session.phase == .setup
     }
@@ -18,7 +19,8 @@ struct UnlockView: View {
 
     private var canSubmit: Bool {
         !session.isBusy && session.storageAvailable && !password.isEmpty &&
-            (!creating || (validCreationPassword && password == confirmation))
+            (!creating || (validCreationPassword && password == confirmation &&
+                    (weakPasswordAcknowledged || !WeakPasswordAcknowledgement.required(for: password))))
     }
 
     private var confirmationHint: String {
@@ -46,6 +48,8 @@ struct UnlockView: View {
                 }
             }
         }.background(AegisTheme.background)
+            // An acknowledgement covers only the password it was given for.
+            .onChange(of: password) { _, _ in weakPasswordAcknowledged = false }
             .sheet(isPresented: $showImport) { ImportBackupView().environment(session) }
             .sheet(isPresented: $showLocalImport) { LocalVaultTransferView(mode: .receive).environment(session) }
             .onDisappear { password = ""; confirmation = "" }
@@ -111,6 +115,7 @@ struct UnlockView: View {
                     if !password.isEmpty {
                         PasswordStrengthMeter(password: password)
                     }
+                    WeakPasswordAcknowledgement(password: password, acknowledged: $weakPasswordAcknowledged)
                     AegisInput(title: L10n.text("welcome.confirm"), icon: "checkmark.shield") {
                         SecureField(L10n.text("welcome.confirm"), text: $confirmation).textContentType(.newPassword).accessibilityIdentifier("confirmPassword").onSubmit(submit)
                     }.disabled(session.isBusy)

@@ -94,6 +94,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B59B461D1D6ED626879D59AA"
+               BuildableName = "AegisSessionTests.xctest"
+               BlueprintName = "AegisSessionTests"
+               ReferencedContainer = "container:Aegis.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

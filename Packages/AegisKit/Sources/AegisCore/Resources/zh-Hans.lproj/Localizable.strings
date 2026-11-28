@@ -92,6 +92,7 @@
 "backup.passwordOnly" = "仅允许备份密码打开";
 "backup.passwordOnlyDetail" = "开启后，主密码和恢复密钥都无法打开此文件；忘记备份密码将无法恢复。";
 "backup.passwordRequirement" = "至少 12 个字符。";
+"backup.passwordVaultKeyWarning" = "备份内含保险库密钥。知道备份密码的人可以打开其中所有记录，也能解密之后从这个保险库同步或导出的密文。请使用与主密码同等强度、且不同于主密码的备份密码。";
 "backup.preview.conflicts" = "冲突";
 "backup.preview.crossVault" = "此备份来自另一个保险库。确认后会将条目和历史加密导入当前保险库，保留本地已有数据。导入后仍使用当前保险库的主密码或恢复密钥解锁；重复导入不会新增相同版本。";
 "backup.preview.exportedAt" = "导出时间";
@@ -225,6 +226,7 @@
 "error.appGroup" = "无法访问应用共享容器，请检查 App Group 签名配置。";
 "error.damagedData" = "数据完整性验证失败，已停止读取。";
 "error.derivationFailed" = "密钥派生失败，请稍后重试。";
+"error.deviceKeyMismatch" = "本机保存的生物识别密钥与保险库不匹配，已停用生物识别。请用主密码解锁，再到设置中重新开启。";
 "error.differentVault" = "发现另一个保险库。请先导出本地加密备份，再处理保险库冲突。";
 "error.invalidParameters" = "保险库的加密参数不受支持。";
 "error.invalidPassword" = "主密码不正确，或保险库数据已损坏。";
@@ -479,6 +481,8 @@
 "strength.label" = "强度：%@";
 "strength.strong" = "很强";
 "strength.weak" = "较弱";
+"strength.weakMasterAcknowledge" = "我了解风险，仍使用这个主密码";
+"strength.weakMasterWarning" = "这个主密码强度不足。保险库文件、备份或其他设备上的副本一旦外泄，较弱的主密码可能被离线猜出，且无法远程补救。";
 "totp.error.hotp" = "暂不支持基于计数器的验证码（HOTP），请在网站上选择基于时间的验证器。";
 "totp.error.image" = "无法读取这张图片。";
 "totp.error.invalid" = "无法识别验证码密钥，请粘贴 otpauth:// 链接或 Base32 密钥。";

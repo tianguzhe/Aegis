@@ -173,7 +173,7 @@ struct ItemEditorView: View {
             }
             .onChange(of: item) { _, _ in
                 guard loaded, !saving else { return }
-                session.retainDraft(VaultDraft(item: item, original: baseline, parents: parents))
+                session.retainDraftSoon(VaultDraft(item: item, original: baseline, parents: parents))
                 session.touch()
             }
             .onChange(of: item.kind) { _, kind in
